@@ -1,261 +1,360 @@
-import { Link, router } from "expo-router";
-import React from "react";
-import { 
-  SafeAreaView, 
-  Text, 
-  View, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image 
-} from "react-native";
-import AntDesign from "@expo/vector-icons/AntDesign";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
-import { useUser } from "@clerk/clerk-expo";
-import { StatusBar } from "expo-status-bar";
+// Page.js
+import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, Image, Modal } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
+import Svg, { Path } from "react-native-svg";
+import { useRouter } from "expo-router";
+import { useFonts } from "expo-font";
+import SideMenu from '../../components/SideMenu';
 
 export default function Page() {
-  const { user } = useUser();
-  
-  return (
-    <SafeAreaView className="flex-1 bg-white">
-      <Header />
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <WelcomeSection />
-        <QuickActions />
-        <PopularServices />
-        <UpcomingAppointments />
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+  const router = useRouter();
+  const [isMenuVisible, setMenuVisible] = useState(false);
 
-function Header() {
-  const { user } = useUser();
-  
-  // You can replace this with your actual notification count state
-  const notificationCount = 3; // This could come from your state management or API
-  
-  return (
-    <View className="px-6 pt-4 pb-2 bg-[#F4EDE5]">
-      <View className="flex-row mt-5 items-center justify-between">
-        <View className="flex-1 mt-6">
-          <Text className="text-[#968469] text-sm font-[Philosopher]">Welcome back</Text>
-          <Text className="text-[#423120] text-xl font-bold font-[Philosopher]">
-            {user?.firstName || "Beautiful"} ✨
-          </Text>
-        </View>
-        <TouchableOpacity className="bg-white mb-3 p-3 rounded-full shadow-sm relative">
-          <MaterialIcons name="notifications-none" size={24} color="#423120" />
-          {notificationCount > 0 && (
-            <View className="absolute -top-1 -right-1 bg-[#423120] rounded-full min-w-[20px] h-5 items-center justify-center px-1">
-              <Text className="text-white text-xs font-bold">
-                {notificationCount > 99 ? '99+' : notificationCount}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
+  // Load all Philosopher font variants
+  const [fontsLoaded] = useFonts({
+    'Philosopher-Regular': require("../../assets/fonts/Philosopher-Regular.ttf"),
+    'Philosopher-Bold': require("../../assets/fonts/Philosopher-Bold.ttf"),
+    'Philosopher-Italic': require("../../assets/fonts/Philosopher-Italic.ttf"),
+    'Philosopher-BoldItalic': require("../../assets/fonts/Philosopher-BoldItalic.ttf"),
+  });
 
-function WelcomeSection() {
-  return (
-    <View className="px-6 py-8 bg-gradient-to-br from-[#F4EDE5] to-white">
-      <View className="bg-white rounded-3xl p-6 shadow-lg border border-[#E0D7CA]">
-        <View className="flex-row items-center">
-          <View className="flex-1">
-            <Text className="text-[#423120] text-lg font-bold font-[Philosopher] mb-2">
-              Ready to Relax?
-            </Text>
-            <Text className="text-[#968469] text-sm font-[Philosopher] mb-4 leading-5">
-              Book your perfect spa experience and let us take care of you today.
-            </Text>
-            <TouchableOpacity className="bg-[#423120] px-6 py-3 rounded-full self-start">
-              <Text className="text-white font-bold font-[Philosopher]">Book Now</Text>
-            </TouchableOpacity>
-          </View>
-          <View className="ml-4">
-            <View className="w-20 h-20 bg-[#E0D7CA] rounded-full items-center justify-center">
-              <MaterialIcons name="spa" size={40} color="#423120" />
-            </View>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
+  // New color scheme based on provided HEX codes
+  const darkBrown = "#423120";
+  const lightBrown = "#D7C3A7";
+  const veryLightBeige = "#F4EDE5";
+  const white = "#FFFFFF";
 
-function QuickActions() {
-  const actions = [
-    { icon: "spa", label: "Browse Services", color: "#423120", route: "/service" },
-    { icon: "calendar-today", label: "My Bookings", color: "#D7C3A7", route: "/bookings" },
-    { icon: "favorite", label: "Favorites", color: "#E0D7CA", route: "/favorites" },
-    { icon: "person", label: "Profile", color: "#968469", route: "/profile" },
-  ];
+  // Don't render if fonts aren't loaded
+  if (!fontsLoaded) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: white, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Loading...</Text>
+      </SafeAreaView>
+    );
+  }
 
-  return (
-    <View className="px-6 py-6">
-      <Text className="text-[#423120] text-lg font-bold font-[Philosopher] mb-4">
-        Quick Actions
-      </Text>
-      <View className="flex-row justify-between">
-        {actions.map((action, index) => (
-          <TouchableOpacity
-            key={index}
-            className="items-center flex-1 mx-1"
-            onPress={() => router.push(action.route)}
-          >
-            <View 
-              className="w-16 h-16 rounded-2xl items-center justify-center mb-2"
-              style={{ backgroundColor: action.color + "20" }}
-            >
-              <MaterialIcons name={action.icon as any} size={28} color={action.color} />
-            </View>
-            <Text className="text-[#423120] text-xs font-[Philosopher] text-center">
-              {action.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function PopularServices() {
-  const services = [
+  const items = [
     {
-      id: 1,
-      name: "Swedish Massage",
-      category: "Massage Therapy",
-      price: 80,
-      duration: 60,
-      rating: 4.9,
-      image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=300&h=200&fit=crop"
+      label: "Gua Sha hoidot",
+      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533723/pexels-cottonbro-3737599_1_qnzthw.png",
     },
     {
-      id: 2,
-      name: "Deep Cleansing Facial",
-      category: "Facial Treatment",
-      price: 65,
-      duration: 45,
-      rating: 4.8,
-      image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=300&h=200&fit=crop"
-    }
+      label: "Ripsienpidennykset",
+      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png",
+    },
+    {
+      label: "Hieronnat",
+      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533708/AdobeStock_169329470_hte0yt.png",
+    },
+    {
+      label: "Kynsihoidot",
+      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533708/AdobeStock_248196993_1_azoalh.png",
+    },
   ];
 
   return (
-    <View className="px-6 py-4">
-      <View className="flex-row items-center justify-between mb-4">
-        <Text className="text-[#423120] text-lg font-bold font-[Philosopher]">
-          Popular Services
+    <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
+      {/* FIXED HEADER - Outside ScrollView */}
+      <View
+        style={{
+          backgroundColor: white,
+          borderBottomWidth: 1,
+          borderBottomColor: '#f0f0f0',
+          elevation: 2, // Android shadow
+          shadowColor: '#000', // iOS shadow
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.1,
+          shadowRadius: 2,
+        }}
+        className="flex-row items-center justify-center px-4 py-5 mt-8"
+      >
+        <Text
+          style={{
+            fontSize: 24,
+            fontFamily: "Philosopher-Bold",
+            letterSpacing: 3,
+            color: darkBrown,
+          }}
+        >
+          COSMIX
         </Text>
-        <TouchableOpacity>
-          <Text className="text-[#968469] font-[Philosopher]">See All</Text>
+        <TouchableOpacity
+          onPress={() => setMenuVisible(true)}
+          style={{ position: "absolute", right: 16 }}
+        >
+          <Ionicons name="menu" size={28} color={darkBrown} />
         </TouchableOpacity>
       </View>
-      
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {services.map((service) => (
-          <TouchableOpacity
-            key={service.id}
-            className="mr-4 w-64"
-          >
-            <View className="bg-white rounded-2xl shadow-lg overflow-hidden border border-[#F4EDE5]">
-              <Image 
-                source={{ uri: service.image }}
-                className="w-full h-32"
-                resizeMode="cover"
-              />
-              <View className="p-4">
-                <Text className="text-[#423120] font-bold font-[Philosopher] mb-1">
-                  {service.name}
-                </Text>
-                <Text className="text-[#968469] text-sm font-[Philosopher] mb-2">
-                  {service.category}
-                </Text>
-                <View className="flex-row items-center justify-between">
-                  <View className="flex-row items-center">
-                    <Text className="text-[#423120] font-bold font-[Philosopher]">
-                      ${service.price}
-                    </Text>
-                    <Text className="text-[#968469] text-sm font-[Philosopher] ml-2">
-                      {service.duration}min
-                    </Text>
-                  </View>
-                  <View className="flex-row items-center">
-                    <AntDesign name="star" size={12} color="#FFD700" />
-                    <Text className="text-[#968469] text-sm font-[Philosopher] ml-1">
-                      {service.rating}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
 
-function UpcomingAppointments() {
-  const appointments = [
-    {
-      id: 1,
-      service: "Hot Stone Massage",
-      staff: "Sarah Johnson",
-      date: "Today, 2:00 PM",
-      status: "confirmed"
-    }
-  ];
-
-  return (
-    <View className="px-6 py-4 pb-8">
-      <Text className="text-[#423120] text-lg font-bold font-[Philosopher] mb-4">
-        Upcoming Appointments
-      </Text>
-      
-      {appointments.length > 0 ? (
-        appointments.map((appointment) => (
-          <TouchableOpacity
-            key={appointment.id}
-            className="bg-white rounded-2xl p-4 shadow-sm border border-[#F4EDE5] mb-3"
+      {/* SCROLLABLE CONTENT */}
+      <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
+        {/* Hero Section */}
+        <View style={{ backgroundColor: lightBrown }} className="px-4 py-6">
+          <View
+            style={{
+              borderRadius: 20,
+              overflow: "hidden",
+              alignItems: "center",
+              height: 300,
+              justifyContent: "center",
+              position: "relative",
+            }}
           >
-            <View className="flex-row items-center">
-              <View className="w-12 h-12 bg-[#E0D7CA] rounded-full items-center justify-center mr-4">
-                <MaterialIcons name="spa" size={20} color="#423120" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-[#423120] font-bold font-[Philosopher]">
-                  {appointment.service}
-                </Text>
-                <Text className="text-[#968469] text-sm font-[Philosopher]">
-                  with {appointment.staff}
-                </Text>
-                <Text className="text-[#968469] text-sm font-[Philosopher]">
-                  {appointment.date}
-                </Text>
-              </View>
-              <View className="bg-green-100 px-3 py-1 rounded-full">
-                <Text className="text-green-800 text-xs font-[Philosopher] capitalize">
-                  {appointment.status}
-                </Text>
-              </View>
+            <Image
+              source={{
+                uri: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533724/AdobeStock_130939808_cq1whi.png",
+              }}
+              style={{
+                width: 327,
+                height: 213,
+                borderRadius: 20,
+              }}
+              resizeMode="cover"
+            />
+
+            <View
+              style={{
+                position: "absolute",
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 40,
+                  fontFamily: "Philosopher-Bold",
+                  color: darkBrown,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8,
+                }}
+              >
+                Palvelut kotiin!
+              </Text>
             </View>
-          </TouchableOpacity>
-        ))
-      ) : (
-        <View className="bg-[#F4EDE5] rounded-2xl p-6 items-center">
-          <MaterialIcons name="event-available" size={48} color="#968469" />
-          <Text className="text-[#968469] font-[Philosopher] mt-2 text-center">
-            No upcoming appointments
-          </Text>
-          <TouchableOpacity className="bg-[#423120] px-6 py-2 rounded-full mt-3">
-            <Text className="text-white font-[Philosopher]">Book Now</Text>
-          </TouchableOpacity>
+          </View>
         </View>
-      )}
-    </View>
+
+        {/* POPULAR SERVICES */}
+        <View style={{ paddingHorizontal: 16, paddingVertical: 24 }}>
+          <Text
+            style={{
+              color: darkBrown,
+              fontFamily: "Philosopher-Bold",
+              fontSize: 25,
+              textAlign: "center",
+            }}
+          >
+            Kauden suosituimmat palvelut.
+          </Text>
+
+          <View
+            style={{
+              flexDirection: "row",
+              flexWrap: "wrap",
+              justifyContent: "space-between",
+              marginTop: 16,
+            }}
+          >
+            {items.map((item, idx) => (
+              <View
+                key={idx}
+                style={{ marginBottom: 24, width: "48%", alignItems: "center" }}
+              >
+                <View style={{ position: "absolute", top: 45 }}>
+                  <Svg width={160} height={120} viewBox="0 0 200 150">
+                    <Path
+                      d="M50,20 C90,-10 170,20 150,80 C140,110 70,130 30,90 C-10,50 10,50 50,20 Z"
+                      fill={veryLightBeige}
+                    />
+                  </Svg>
+                </View>
+
+                <Image
+                  source={{ uri: item.img }}
+                  style={{
+                    width: 127,
+                    height: 128,
+                    borderRadius: 24,
+                  }}
+                />
+
+                <Text
+                  style={{
+                    textAlign: "center",
+                    marginTop: 10,
+                    color: darkBrown,
+                    fontFamily: "Philosopher-Bold",
+                    fontSize: 15,
+                    maxWidth: 120,
+                  }}
+                >
+                  {item.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* TAGLINE */}
+        <View style={{ backgroundColor: lightBrown }} className="py-3">
+          <Text
+            style={{
+              textAlign: "center",
+              color: darkBrown,
+              fontFamily: "Philosopher-Bold",
+              fontSize: 20,
+            }}
+          >
+            Hemmottelu, jonka ansaitset.
+          </Text>
+        </View>
+
+        {/* CATEGORIES */}
+       <View className="px-4 py-6">
+          <Text
+            style={{
+              textAlign: "center",
+              color: darkBrown,
+              fontFamily: "Philosopher-Bold",
+              fontSize: 25,
+            }}
+          >
+            Kategoriat
+          </Text>
+          <View className="mt-4">
+            {[
+              ["Kynnet", "Ripset"],
+              ["Hieronnat", "Karvanpoistot"],
+              ["Kasvohoidot", "Hiukset"],
+              ["Parturi", "Jalkahoidot"],
+              ["Meikki", "Esteettiset hoidot"],
+              ["Kulmat", "Lisää"],
+            ].map((row, rowIdx) => (
+              <View key={rowIdx} style={{ flexDirection: "row", justifyContent: "center", gap: 51, marginBottom: 20 }}>
+                {row.map((cat, colIdx) => (
+                  <TouchableOpacity
+                    key={colIdx}
+                    style={{
+                      backgroundColor: "#D7C3A7",
+                      width: 127,
+                      height: 47,
+                      borderRadius: 30,
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                    onPress={() => {
+                      if (cat === "Lisää") {
+                        router.push("/categories");
+                      }
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: darkBrown,
+                        textAlign: "center",
+                        fontFamily: "Philosopher-Bold",
+                      }}
+                    >
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* LOGIN & ENTREPRENEURS */}
+                <View
+          style={{ backgroundColor: lightBrown }}
+          className="py-8"
+        >
+          <View className="flex-row" style={{ justifyContent: "center", gap: 49 }}>
+            <View
+              style={{
+                backgroundColor: veryLightBeige,
+                width: 122,
+                height: 122,
+                borderTopLeftRadius: 100,
+                borderTopRightRadius: 100,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: darkBrown, fontSize: 25, fontFamily: "Philosopher-Bold", textAlign: "center" }}>
+                Kirjaudu sisään
+              </Text>
+            </View>
+            <View
+              style={{
+                backgroundColor: veryLightBeige,
+                width: 122,
+                height: 122,
+                borderTopLeftRadius: 100,
+                borderTopRightRadius: 100,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: darkBrown, fontSize: 25, fontFamily: "Philosopher-Bold", textAlign: "center" }}>
+                Yrittäjille
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* FOOTER LINKS */}
+<View className="py-6 px-4">
+          {[
+            ["Käyttöehdot", "Palvelut"],
+            ["Meistä", "Etusivu"],
+            ["Tili", "Lahjakortit"],
+            ["Ota yhteyttä", "Ajanvaraus"],
+          ].map((row, rowIdx) => (
+            <View key={rowIdx} className="flex-row justify-between" style={{ marginBottom: 20 }}>
+              {row.map((link, colIdx) => (
+                <TouchableOpacity key={colIdx} style={{ width: "48%", justifyContent: "center" }}>
+                  <Text
+                    style={{
+                      color: darkBrown,
+                      fontSize: 15,
+                      marginLeft: 24,
+                      fontFamily: "Philosopher-Bold",
+                      textAlign: "left",
+                    }}
+                  >
+                    {link}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* BOTTOM NAV */}
+
+      {/* Modal for the side menu */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isMenuVisible}
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: veryLightBeige,
+              alignSelf: 'flex-end',
+            }}
+          >
+            <SideMenu onClose={() => setMenuVisible(false)} />
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }

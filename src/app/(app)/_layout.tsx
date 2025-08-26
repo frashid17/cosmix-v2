@@ -18,7 +18,8 @@ function Layout() {
     <Stack>
         <Stack.Protected guard={isSignedIn}>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="bookings" options={{ headerShown: false }} />
+           
+            <Stack.Screen name="categories" options={{ headerShown: false }} />
             {/* Add other authenticated screens here */}
         </Stack.Protected>
 
