@@ -6,11 +6,11 @@ const getApiBaseUrl = () => {
   if (__DEV__) {
     // Development environment
     if (Platform.OS === 'android') {
-      return 'http://192.168.1.148:3000/api/62e3071c-2ad8-4574-86d4-8bcc1a9bc052'; // Android emulator
+      return 'http://10.0.46.243/api/0bfe2d44-ee33-4886-b870-5c2afa61bbe6'; // Android emulator
     } else if (Platform.OS === 'ios') {
-      return 'http://localhost:3000/api'; // iOS simulator
+      return 'http://10.0.46.243:3000/api/0bfe2d44-ee33-4886-b870-5c2afa61bbe6'; // iOS simulator
     } else {
-      return 'http://192.168.1.148:3000/api/62e3071c-2ad8-4574-86d4-8bcc1a9bc052'; // Physical device - your computer's IP
+      return 'http://10.0.46.243:3000/api/0bfe2d44-ee33-4886-b870-5c2afa61bbe6'; // Physical device - your computer's IP
     }
   }
   
