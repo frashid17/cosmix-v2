@@ -3,6 +3,8 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, Image, SafeAreaView, Text, TouchableOpacity, View } from "react-native";
 import Animated from 'react-native-reanimated';
+import MyBookings from '../../../components/MyBookings';
+import { Booking } from '../../../types';
 
 const { ScrollView } = Animated;
 
@@ -23,19 +25,27 @@ export default function ProfilepPage() {
     });
   };
 
-    const handleSignOut = () => {
-      Alert.alert("Sign Out", "Are you sure you wanna sign out?", [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Sign Out",
-          style: "destructive",
-          onPress: () => signOut(),
-        },
-      ]);
-    };
+  const handleSignOut = () => {
+    Alert.alert("Sign Out", "Are you sure you wanna sign out?", [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: () => signOut(),
+      },
+    ]);
+  };
+
+  const handleBookingPress = (booking: Booking) => {
+    Alert.alert(
+      "Booking Details",
+      `Service: ${booking.service?.name}\nSalon: ${booking.saloon?.name}\nDate: ${new Date(booking.bookingTime).toLocaleDateString()}\nStatus: ${booking.status}\nAmount: $${booking.totalAmount.toFixed(2)}`,
+      [{ text: "OK" }]
+    );
+  };
 
     // Fixed: Change condition to check if loading is true
     if (loading) {
@@ -105,50 +115,8 @@ export default function ProfilepPage() {
           </View>
         </View>
 
-        <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
-          <View style={{ 
-            backgroundColor: '#FFFFFF', 
-            borderRadius: 16, 
-            padding: 24, 
-            shadowColor: '#423120',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 2,
-            borderWidth: 1,
-            borderColor: '#E0D7CA'
-          }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', color: '#423120', marginBottom: 16 }}>
-              Your Beauty Stats
-            </Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#423120' }}>
-                  12
-                </Text>
-                <Text style={{ fontSize: 14, color: '#423120', textAlign: 'center', opacity: 0.7 }}>
-                  Total{"\n"}Bookings
-                </Text>
-              </View>
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#423120' }}>
-                  28h
-                </Text>
-                <Text style={{ fontSize: 14, color: '#423120', textAlign: 'center', opacity: 0.7 }}>
-                  Relaxation{"\n"}Time
-                </Text>
-              </View>
-              <View style={{ alignItems: 'center', flex: 1 }}>
-                <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#423120' }}>
-                  {daysSinceJoining}
-                </Text>
-                <Text style={{ fontSize: 14, color: '#423120', textAlign: 'center', opacity: 0.7 }}> 
-                  Days as{"\n"}Client
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
+        {/* My Bookings */}
+        <MyBookings onBookingPress={handleBookingPress} />
 
         {/* Sign Out */}
         <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
