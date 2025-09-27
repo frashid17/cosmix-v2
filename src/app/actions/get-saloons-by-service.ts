@@ -59,7 +59,13 @@ export interface SaloonData {
 
 const getSaloonsByService = async (serviceId: string): Promise<SaloonData[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/services/${serviceId}`);
+    const response = await fetch(`${API_BASE_URL}/public/services/${serviceId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

@@ -1,148 +1,171 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, SafeAreaView, Text, TouchableOpacity, View } from "react-native";
-import Animated from 'react-native-reanimated';
-import MyBookings from '../../../components/MyBookings';
-import { Booking } from '../../../types';
+import React from "react";
+import {
+  Alert,
+  SafeAreaView,
+  Text,
+  TouchableOpacity,
+  View,
+  StyleSheet,
+  ScrollView
+} from "react-native";
+import { router } from "expo-router";
+import { useFonts } from "expo-font";
+import Header from "../../../components/Header";
 
-const { ScrollView } = Animated;
-
-export default function ProfilepPage() {
-  const  { signOut } = useAuth();
+export default function ProfilePage() {
+  const { signOut } = useAuth();
   const { user } = useUser();
-  const [loading, setLoading] = useState(false);
 
-  const joinDate = user?.createdAt ? new Date(user.createdAt) : new Date();
-  const daysSinceJoining = Math.floor(
-    (new Date().getTime() - joinDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  // Load all Philosopher font variants
+  const [fontsLoaded] = useFonts({
+    'Philosopher-Regular': require("../../../assets/fonts/Philosopher-Regular.ttf"),
+    'Philosopher-Bold': require("../../../assets/fonts/Philosopher-Bold.ttf"),
+    'Philosopher-Italic': require("../../../assets/fonts/Philosopher-Italic.ttf"),
+    'Philosopher-BoldItalic': require("../../../assets/fonts/Philosopher-BoldItalic.ttf"),
+  });
 
-  const formatJoinDate = (date: Date) => {
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      year: "numeric"
-    });
-  };
+  // Don't render if fonts aren't loaded
+  if (!fontsLoaded) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF", justifyContent: 'center', alignItems: 'center' }}>
+        <Text style={{ fontFamily: "Philosopher-Regular", color: "#423120" }}>Loading fonts...</Text>
+      </SafeAreaView>
+    );
+  }
 
   const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you wanna sign out?", [
-      {
-        text: "Cancel",
-        style: "cancel"
-      },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: () => signOut(),
-      },
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Sign Out", style: "destructive", onPress: () => signOut() },
     ]);
   };
 
-  const handleBookingPress = (booking: Booking) => {
-    Alert.alert(
-      "Booking Details",
-      `Service: ${booking.service?.name}\nSalon: ${booking.saloon?.name}\nDate: ${new Date(booking.bookingTime).toLocaleDateString()}\nStatus: ${booking.status}\nAmount: $${booking.totalAmount.toFixed(2)}`,
-      [{ text: "OK" }]
-    );
+  const handleMenuPress = (menuItem: string) => {
+    switch (menuItem) {
+      case "Tulevat hoidot":
+        router.push("/bookings");
+        break;
+      case "Menneet hoidot":
+        Alert.alert("Menneet hoidot", "Past treatments feature coming soon!");
+        break;
+      case "Asetukset":
+        Alert.alert("Asetukset", "Settings feature coming soon!");
+        break;
+      case "Kieli":
+        Alert.alert("Kieli", "Language settings feature coming soon!");
+        break;
+      case "Kirjaudu ulos":
+        handleSignOut();
+        break;
+    }
   };
 
-    // Fixed: Change condition to check if loading is true
-    if (loading) {
-      return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color="#423120" />
-          </View>
-        </SafeAreaView>
-      )
-    }
+  const menuItems = [
+    "Tulevat hoidot",
+    "Menneet hoidot",
+    "Asetukset",
+    "Kieli",
+    "Kirjaudu ulos",
+  ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
-      <ScrollView style={{ flex: 1 }}>
-        <View style={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 24 }}>
-          <Text style={{ fontSize: 32, fontWeight: 'bold', color: '#423120' }}>My Profile</Text>
-          <Text style={{ fontSize: 18, color: '#423120', marginTop: 4, opacity: 0.8 }}>
-            Your beauty & wellness journey
-          </Text>
-        </View>
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <Header 
+        title="COSMIX"
+        showBack={true}
+        showMenu={true}
+        onBackPress={() => router.back()}
+      />
 
-        <View style={{ paddingHorizontal: 24, marginBottom: 24 }}>
-          <View style={{ 
-            backgroundColor: '#FFFFFF', 
-            borderRadius: 16, 
-            padding: 24, 
-            shadowColor: '#423120',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 2,
-            borderWidth: 1,
-            borderColor: '#E0D7CA'
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-              <View style={{ 
-                width: 64, 
-                height: 64, 
-                backgroundColor: '#D7C3A7', 
-                borderRadius: 32, 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                marginRight: 16 
-              }}>
-                <Image 
-                  source={{
-                    uri: user.externalAccounts[0]?.imageUrl ?? user?.imageUrl,
-                  }}
-                  style={{ width: 64, height: 64, borderRadius: 32 }}       
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 20, fontWeight: '600', color: '#423120' }}>
-                  {user?.firstName && user?.lastName
-                  ? `${user.firstName} ${user.lastName}`
-                : user?.firstName || "User"}
-                </Text>
-                <Text style={{ color: '#423120', opacity: 0.7 }}>
-                  {user?.emailAddresses?.[0]?.emailAddress}
-                </Text>
-                <Text style={{ fontSize: 14, color: '#423120', marginTop: 4, opacity: 0.6 }}>
-                  Client since {formatJoinDate(joinDate)}
-                </Text>
-              </View>
-            </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* WELCOME SECTION */}
+        <View style={styles.headerContainer}>
+          <View style={styles.archContainer}>
+            <Text style={styles.welcomeText}>
+              Tervetuloa,{"\n"}
+              {user?.firstName || "Sarah"}!
+            </Text>
           </View>
         </View>
 
-        {/* My Bookings */}
-        <MyBookings onBookingPress={handleBookingPress} />
-
-        {/* Sign Out */}
-        <View style={{ paddingHorizontal: 24, marginBottom: 32 }}>
-          <TouchableOpacity
-            onPress={handleSignOut}
-            style={{ 
-              backgroundColor: '#423120', 
-              borderRadius: 16, 
-              padding: 16, 
-              shadowColor: '#423120',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 3
-            }}
-            activeOpacity={0.8}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="log-out-outline" size={20} color="#FFFFFF" />
-              <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 18, marginLeft: 8 }}>
-                Sign Out
-              </Text>
-            </View>
-          </TouchableOpacity>
+        {/* MENU */}
+        <View style={styles.menuContainer}>
+          {menuItems.map((item) => (
+            <TouchableOpacity
+              key={item}
+              onPress={() => handleMenuPress(item)}
+              style={styles.menuButton}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.menuButtonText}>{item}</Text>
+              <Ionicons name="arrow-forward" size={20} width={35} color="#423120" />
+            </TouchableOpacity>
+          ))}
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF", // white base background
+  },
+
+  // WELCOME SECTION
+  headerContainer: {
+    backgroundColor: "#D7C3A7", // tan top section
+    paddingTop: 20,
+    paddingBottom: 40,
+    alignItems: "center",
+  },
+  archContainer: {
+    backgroundColor: "#F4EDE5",
+    width: 240,
+    height: 240,
+    borderTopLeftRadius: 180,
+    borderTopRightRadius: 180,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 40,
+  },
+  welcomeText: {
+    fontSize: 25,
+    fontFamily: "Philosopher-Bold",
+    color: "#423120",
+    textAlign: "center",
+    lineHeight: 30,
+  },
+
+  // MENU
+  menuContainer: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    width: "100%",
+  },
+  menuButton: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    minHeight: 84,               // ✅ ensures each button is at least 84 tall
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderWidth: 1,
+    borderColor: "#D7C3A7",
+  },
+  menuButtonText: {
+    fontSize: 20,
+    fontFamily: "Philosopher-Bold",
+    color: "#423120",
+  },
+});

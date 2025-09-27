@@ -10,17 +10,24 @@ export interface SalonDetails {
   address?: string;
 }
 
-export const getSalon = async (salonId: string): Promise<SalonDetails | null> => {
+export const getSalon = async (salonId: string, authToken?: string): Promise<SalonDetails | null> => {
     try {
         console.log('Fetching salon details for ID:', salonId);
+        
+        const headers: Record<string, string> = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+        };
+        
+        // Add authorization header if token is available
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
         
         // Try to fetch salon details - this endpoint might not exist yet
         const res = await fetch(`${API_BASE_URL}/saloons/${salonId}`, {
             method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
+            headers,
         });
         
         if (!res.ok) {

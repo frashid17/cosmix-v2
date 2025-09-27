@@ -3,6 +3,7 @@
     "scheme": "acme",
     "userInterfaceStyle": "automatic",
     "orientation": "default",
+    "sdkVersion": "54.0.0",
     "web": {
       "output": "static"
     },
@@ -13,7 +14,8 @@
           "origin": "https://n"
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store"
     ],
     "name": "fit-app",
     "slug": "fit-app"

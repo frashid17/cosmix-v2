@@ -8,8 +8,7 @@ This guide explains how to integrate the checkout functionality with your Expo a
 Make sure your Expo app has the correct environment variables in your `.env` file:
 
 ```env
-EXPO_PUBLIC_STORE_ID=your-store-id
-EXPO_PUBLIC_DEV_IP=192.168.0.102   # Your computer's IP address
+EXPO_PUBLIC_DEV_IP=172.26.222.187   # Your computer's IP address
 EXPO_PUBLIC_DEV_PORT=3000
 EXPO_PUBLIC_PRODUCTION_DOMAIN=your-production-domain.com
 ```
@@ -86,14 +85,14 @@ const handleCustomCheckout = async () => {
 
 The checkout integration uses these endpoints:
 
-- **POST** `/api/[storeId]/checkout` - Create checkout session
-- **GET** `/api/[storeId]/services` - Get available services
-- **GET** `/api/[storeId]/saloons` - Get available salons
+- **POST** `/api/checkout` - Create checkout session
+- **GET** `/api/services` - Get available services
+- **GET** `/api/saloons` - Get available salons
 
 ## Data Flow
 
 1. User selects salon services in your Expo app
-2. App calls `/api/[storeId]/checkout` with service IDs and customer info
+2. App calls `/api/checkout` with service IDs and customer info
 3. API creates booking records and Stripe checkout session
 4. User is redirected to Stripe checkout
 5. After payment, user returns to your app

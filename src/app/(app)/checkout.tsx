@@ -11,7 +11,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useStripe } from '@stripe/stripe-react-native';
 import BookingCalendar from '../components/BookingCalendar';
-import { CURRENT_STORE_ID } from '@/config/constants';
 
 // Mock data - replace with your actual data
 const mockSaloonServices: SaloonService[] = [
@@ -25,7 +24,6 @@ const mockSaloonServices: SaloonService[] = [
       id: 'saloon-1',
       name: 'Beauty Salon',
       userId: 'user-1',
-      storeId: 'store-1',
       rating: 4.5,
     },
     service: {
@@ -46,7 +44,6 @@ const mockSaloonServices: SaloonService[] = [
       id: 'saloon-1',
       name: 'Beauty Salon',
       userId: 'user-1',
-      storeId: 'store-1',
       rating: 4.5,
     },
     service: {
@@ -105,7 +102,7 @@ export default function CheckoutScreen() {
           id: params.saloonId,
           name: params.saloonName || 'Unknown Salon',
           userId: 'user-1', // You might want to get this from the API
-          storeId: 'store-1', // You might want to get this from the API
+ // You might want to get this from the API
           rating: 4.5, // You might want to get this from the API
         },
         service: {
@@ -228,6 +225,10 @@ export default function CheckoutScreen() {
 
         // Payment successful
         handleSuccess(session.sessionId || 'success');
+      } else {
+        console.error('No client secret received from checkout session');
+        Alert.alert('Error', 'Failed to create payment session');
+        setIsProcessingPayment(false);
       }
     } catch (error) {
       console.error('Payment error:', error);
@@ -508,7 +509,6 @@ export default function CheckoutScreen() {
       salonName={params.saloonName || 'Salon'}
       saloonId={params.saloonId}
       serviceId={params.serviceId}
-      storeId={CURRENT_STORE_ID}
     />
     </SafeAreaView>
   );

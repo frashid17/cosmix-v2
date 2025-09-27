@@ -2,23 +2,16 @@
 import { Service } from "@/app/types";
 import { API_ENDPOINTS } from "@/config/constants";
 
-const getServicesByCategory = async (categoryName: string, authToken?: string): Promise<Service[]> => {
+const getServicesByCategory = async (categoryName: string): Promise<Service[]> => {
     try {
         console.log('Fetching services for category:', categoryName);
         
-        const headers: Record<string, string> = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-        };
-        
-        // Add authorization header if token is available
-        if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-        }
-        
         const res = await fetch(`${API_ENDPOINTS.SERVICES}?category=${encodeURIComponent(categoryName)}`, {
             method: 'GET',
-            headers,
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
         });
         
         if (!res.ok) {

@@ -32,7 +32,7 @@ const Categories: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getCategories(); // Remove the STORE_ID parameter
+        const data = await getCategories();
         setCategories(data);
         console.log('Fetched categories:', data);
       } catch (err) {
@@ -193,13 +193,17 @@ const Categories: React.FC = () => {
                 paddingVertical: 10,
                 borderRadius: 8,
               }}
-              onPress={() => {
+              onPress={async () => {
                 setError(null);
                 setLoading(true);
-                getCategories() // Remove STORE_ID parameter here too
-                  .then(setCategories)
-                  .catch((err) => setError(err.message))
-                  .finally(() => setLoading(false));
+                try {
+                  const data = await getCategories();
+                  setCategories(data);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : 'Failed to fetch categories');
+                } finally {
+                  setLoading(false);
+                }
               }}
             >
               <Text style={{ fontFamily: "PhilosopherBold", color: baseTextColor }}>

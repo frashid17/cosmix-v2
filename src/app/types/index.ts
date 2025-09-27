@@ -8,24 +8,8 @@ export interface User {
   updatedAt?: string;
 }
 
-export interface Store {
-  id: string;
-  name: string;
-  userId: string;
-  description?: string;
-  shortIntro?: string;
-  rating: number;
-  address?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  images?: Image[];
-  categories?: Category[];
-  services?: Service[];
-}
-
 export interface Image {
   id: string;
-  storeId: string;
   url: string;
   createdAt?: string;
   updatedAt?: string;
@@ -33,7 +17,6 @@ export interface Image {
 
 export interface Category {
   id: string;
-  storeId: string;
   name: string;
   createdAt?: string;
   updatedAt?: string;
@@ -46,21 +29,19 @@ export interface Service {
   description?: string;
   categoryId: string;
   parentServiceId?: string;
-  price?: number;
-  durationMinutes?: number;
   isPopular: boolean;
   createdAt?: string;
   updatedAt?: string;
   category?: Category;
   parentService?: Service;
   subServices?: Service[];
+  saloonServices?: SaloonService[];
 }
 
 export interface Saloon {
   id: string;
   name: string;
   userId: string;
-  storeId: string;
   description?: string;
   shortIntro?: string;
   rating: number;
@@ -96,7 +77,6 @@ export interface Booking {
   userId: string;
   saloonId: string;
   serviceId: string;
-  storeId: string;
   bookingTime: string; // ISO string
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   paymentStatus?: 'pending' | 'paid' | 'failed' | 'refunded';

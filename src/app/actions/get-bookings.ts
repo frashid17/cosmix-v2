@@ -23,11 +23,19 @@ export const getBookings = async (authToken?: string, userId?: string, userEmail
             console.log('No auth token, making unauthenticated request');
         }
         
-        // Build URL with user ID query parameter if provided
+        // Build URL with user ID and/or email query parameters if provided
         let url = API_ENDPOINTS.BOOKINGS;
+        const params: string[] = [];
         if (userId) {
-            url += `?userId=${encodeURIComponent(userId)}`;
+            params.push(`userId=${encodeURIComponent(userId)}`);
             console.log('Requesting bookings for user:', userId);
+        }
+        if (userEmail) {
+            params.push(`email=${encodeURIComponent(userEmail)}`);
+            console.log('Including user email in query:', userEmail);
+        }
+        if (params.length > 0) {
+            url += `?${params.join('&')}`;
         }
         
         const res = await fetch(url, {

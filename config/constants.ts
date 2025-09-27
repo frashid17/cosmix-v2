@@ -2,16 +2,10 @@
 import { Platform } from 'react-native';
 
 // Get environment variables
-const STORE_ID = process.env.EXPO_PUBLIC_STORE_ID;
 const DEV_IP = process.env.EXPO_PUBLIC_DEV_IP;
 const DEV_PORT = process.env.EXPO_PUBLIC_DEV_PORT || '3000';
 const PRODUCTION_DOMAIN = process.env.EXPO_PUBLIC_PRODUCTION_DOMAIN;
 const STAGING_DOMAIN = process.env.EXPO_PUBLIC_STAGING_DOMAIN;
-
-// Validate required environment variables
-if (!STORE_ID) {
-  throw new Error('EXPO_PUBLIC_STORE_ID is not defined in environment variables');
-}
 
 if (!PRODUCTION_DOMAIN) {
   throw new Error('EXPO_PUBLIC_PRODUCTION_DOMAIN is not defined in environment variables');
@@ -25,14 +19,14 @@ if (__DEV__ && !DEV_IP) {
 const getApiBaseUrl = () => {
   if (__DEV__) {
     // Development environment
-    const devIP = DEV_IP || '192.168.0.102'; // fallback IP
+    const devIP = DEV_IP || '192.168.1.148'; // fallback IP
     
     if (Platform.OS === 'android') {
-      return `http://${devIP}:${DEV_PORT}/api/${STORE_ID}`; // Android emulator
+      return `http://${devIP}:${DEV_PORT}/api`; // Android emulator
     } else if (Platform.OS === 'ios') {
-      return `http://localhost:${DEV_PORT}/api/${STORE_ID}`; // iOS simulator
+      return `http://localhost:${DEV_PORT}/api`; // iOS simulator
     } else {
-      return `http://${devIP}:${DEV_PORT}/api/${STORE_ID}`; // Physical device
+      return `http://${devIP}:${DEV_PORT}/api`; // Physical device
     }
   }
   
@@ -41,31 +35,28 @@ const getApiBaseUrl = () => {
                    process.env.NODE_ENV === 'staging';
   
   if (isStaging && STAGING_DOMAIN) {
-    return `https://${STAGING_DOMAIN}/api/${STORE_ID}`;
+    return `https://${STAGING_DOMAIN}/api`;
   }
   
   // Production environment
-  return `https://${PRODUCTION_DOMAIN}/api/${STORE_ID}`;
+  return `https://${PRODUCTION_DOMAIN}/api`;
 };
 
 export const API_BASE_URL = getApiBaseUrl();
 
 // API Endpoints
 export const API_ENDPOINTS = {
-  CATEGORIES: `${API_BASE_URL}/categories`,
-  SERVICES: `${API_BASE_URL}/services`,
+  CATEGORIES: `${API_BASE_URL}/public/categories`,
+  SERVICES: `${API_BASE_URL}/public/services`,
   // Add more endpoints as needed
   BOOKINGS: `${API_BASE_URL}/bookings`,
   PRODUCTS: `${API_BASE_URL}/products`,
   CHECKOUT: `${API_BASE_URL}/checkout`,
+  SALONS: `${API_BASE_URL}/public/saloons`,
 } as const;
-
-// Export store ID for use in other parts of the app
-export const CURRENT_STORE_ID = STORE_ID;
 
 // Export other useful constants
 export const CONFIG = {
-  STORE_ID,
   DEV_IP,
   DEV_PORT,
   PRODUCTION_DOMAIN,
@@ -78,7 +69,6 @@ export const CONFIG = {
 if (__DEV__) {
   console.log('API Configuration:', {
     API_BASE_URL,
-    STORE_ID,
     PLATFORM: Platform.OS,
   });
 }

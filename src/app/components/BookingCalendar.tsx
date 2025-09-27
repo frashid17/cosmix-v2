@@ -27,7 +27,6 @@ interface BookingCalendarProps {
   salonName: string;
   saloonId?: string;
   serviceId?: string;
-  storeId?: string;
 }
 
 const BookingCalendar: React.FC<BookingCalendarProps> = ({
@@ -36,8 +35,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
   onConfirm,
   salonName,
   saloonId,
-  serviceId,
-  storeId
+  serviceId
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -45,31 +43,50 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isClosed, setIsClosed] = useState(false);
 
   // Fetch available slots from backend
   const fetchAvailableSlots = async (date: string) => {
-    if (!saloonId || !serviceId || !storeId) {
+    if (!saloonId || !serviceId) {
       console.log('Missing required props for fetching slots');
       return;
     }
 
     try {
       setLoading(true);
-      const response = await fetch(
-        `${API_BASE_URL}/saloons/${saloonId}/available-slots?serviceId=${serviceId}&date=${date}`
-      );
+      const url = `${API_BASE_URL}/public/saloons/${saloonId}/available-slots?serviceId=${serviceId}&date=${date}`;
+      console.log('Fetching available slots from:', url);
+      console.log('Parameters:', { saloonId, serviceId, date });
+      
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Available slots response:', data);
+        
+        // Check if the saloon is closed on this day
+        if (data.isClosed) {
+          console.log('Saloon is closed on this day:', data.message);
+          setAvailableSlots([]);
+          setIsClosed(true);
+          return;
+        }
+        
+        // Reset closed state if saloon is open
+        setIsClosed(false);
+        
         const slots = data.availableSlots.map((slot: any) => slot.time);
+        console.log('Available time slots:', slots);
         setAvailableSlots(slots);
       } else {
-        console.log('Failed to fetch available slots');
+        console.log('Failed to fetch available slots:', response.status, response.statusText);
         setAvailableSlots([]);
+        setIsClosed(false);
       }
     } catch (error) {
       console.error('Error fetching available slots:', error);
       setAvailableSlots([]);
+      setIsClosed(false);
     } finally {
       setLoading(false);
     }
@@ -77,12 +94,12 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
 
   // Fetch slots when date is selected
   useEffect(() => {
-    if (selectedDate && saloonId && serviceId && storeId) {
+    if (selectedDate && saloonId && serviceId) {
       fetchAvailableSlots(selectedDate);
     } else {
       setAvailableSlots([]);
     }
-  }, [selectedDate, saloonId, serviceId, storeId]);
+  }, [selectedDate, saloonId, serviceId]);
 
   // Generate next 14 days
   const generateDates = () => {
@@ -97,13 +114,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
     return dates;
   };
 
-  // All possible time slots - we'll show all but grey out unavailable ones
-  const allTimeSlots = [
-    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-    '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-    '18:00', '18:30', '19:00', '19:30', '20:00'
-  ];
+  // Use available slots from API - these are dynamically generated based on service duration
+  const allTimeSlots = availableSlots;
 
   const formatDate = (date: Date) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -307,6 +319,31 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
                     Loading available times...
                   </Text>
                 </View>
+              ) : isClosed ? (
+                <View style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingVertical: 40
+                }}>
+                  <Text style={{
+                    fontSize: 18,
+                    fontFamily: 'Philosopher-Bold',
+                    color: '#E53E3E',
+                    textAlign: 'center'
+                  }}>
+                    We are closed on this day
+                  </Text>
+                  <Text style={{
+                    fontSize: 14,
+                    fontFamily: 'Philosopher-Regular',
+                    color: '#666',
+                    textAlign: 'center',
+                    marginTop: 8
+                  }}>
+                    Please select another date
+                  </Text>
+                </View>
               ) : (
                 <View style={{
                   flexDirection: 'row',
@@ -314,7 +351,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
                   gap: 12
                 }}>
                   {allTimeSlots.map((time) => {
-                    const isAvailable = isTimeSlotAvailable(time);
+                    // All slots from API are available (they're pre-filtered)
+                    const isAvailable = true;
                     const isSelected = selectedTime === time;
                     
                     return (

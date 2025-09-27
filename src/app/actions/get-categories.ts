@@ -1,5 +1,5 @@
-import { Category } from "@/app/types";
-import { API_ENDPOINTS } from "@/config/constants";
+import { Category } from "../../app/types";
+import { API_ENDPOINTS } from "../../../config/constants";
 
 const getCategories = async (): Promise<Category[]> => {
     try {

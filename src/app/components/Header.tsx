@@ -105,9 +105,17 @@ export default function Header({
       {showMenu && (
         <TouchableOpacity
           onPress={handleMenuPress}
-          style={{ position: "absolute", right: 16, zIndex: 10, marginTop: 25 }}
+          style={{ 
+            position: "absolute", 
+            right: 16, 
+            zIndex: 10, 
+            marginTop: 25,
+            width: 40,
+            alignItems: "center",
+            justifyContent: "center"
+          }}
         >
-          <Ionicons name="menu" size={28} color={darkBrown} />
+          <Ionicons name="menu" size={37} color={darkBrown} />
         </TouchableOpacity>
       )}
     </View>
