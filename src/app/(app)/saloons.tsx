@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useFonts } from "expo-font";
 import getSaloonsByService, { SaloonData } from "../actions/get-saloons-by-service";
+import getSalonById from "../actions/get-salon-by-id";
 import Header from "../components/Header";
 
 const darkBrown = "#3C2C1E";
@@ -13,10 +14,11 @@ const lightBeige = "#E4D2BA";
 
 const Saloons = () => {
     const router = useRouter();
-    const { serviceName, categoryName, serviceId } = useLocalSearchParams<{
+    const { serviceName, categoryName, serviceId, salonId } = useLocalSearchParams<{
         serviceName?: string;
         serviceId?: string;
         categoryName: string;
+        salonId?: string;
     }>();
 
     const [saloons, setSaloons] = useState<SaloonData[]>([]);
@@ -41,9 +43,18 @@ const Saloons = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const data = await getSaloonsByService(serviceId);
-                setSaloons(data);
-                console.log('Fetched saloons for service:', serviceId, data);
+                
+                // If coming from filtered services (has salonId), fetch only that specific salon
+                if (salonId) {
+                    const data = await getSalonById(salonId, serviceId);
+                    setSaloons(data);
+                    console.log('Fetched specific salon for service:', salonId, serviceId, data);
+                } else {
+                    // Normal flow - fetch all saloons for the service
+                    const data = await getSaloonsByService(serviceId);
+                    setSaloons(data);
+                    console.log('Fetched saloons for service:', serviceId, data);
+                }
             } catch (err) {
                 console.error('Error fetching saloons:', err);
                 setError(err instanceof Error ? err.message : 'Failed to fetch saloons');
@@ -55,7 +66,7 @@ const Saloons = () => {
         if (serviceId) {
             fetchSaloons();
         }
-    }, [serviceId]);
+    }, [serviceId, salonId]);
 
     // Render nothing until fonts are loaded to prevent style flashing
     if (!fontsLoaded) {
@@ -65,12 +76,14 @@ const Saloons = () => {
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
             {/* Header - Full Width */}
-            <Header 
+            <Header
                 title="COSMIX"
                 showBack={true}
                 showMenu={true}
                 onBackPress={() => router.back()}
             />
+
+
 
             {/* HERO SECTION */}
             <View style={{ backgroundColor: beige, height: 320 }}>
@@ -100,7 +113,7 @@ const Saloons = () => {
                                 color: darkBrown,
                             }}
                         >
-                            {categoryName || "Services"}
+                            {salonId ? `${serviceName || "Service"} - ${saloons.length > 0 ? saloons[0].name : "Salon"}` : (categoryName || "Services")}
                         </Text>
 
                         {/* Ellipses at bottom */}

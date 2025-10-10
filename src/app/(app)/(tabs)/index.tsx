@@ -16,6 +16,7 @@ export default function Page() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [heroText, setHeroText] = useState("Palvelut nyt!");
 
   // Load all Philosopher font variants
   const [fontsLoaded] = useFonts({
@@ -49,6 +50,17 @@ export default function Page() {
     };
 
     fetchCategories();
+  }, []);
+
+  // Alternate hero text every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setHeroText(prevText => 
+        prevText === "Palvelut nyt!" ? "Kartta" : "Palvelut nyt!"
+      );
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Don't render if fonts aren't loaded
@@ -106,7 +118,7 @@ export default function Page() {
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
         {/* Hero Section */}
         <View style={{ backgroundColor: lightBrown }} className="px-4 py-6">
-          <View
+          <TouchableOpacity
             style={{
               borderRadius: 20,
               overflow: "hidden",
@@ -115,6 +127,8 @@ export default function Page() {
               justifyContent: "center",
               position: "relative",
             }}
+            onPress={() => router.push("/map")}
+            activeOpacity={0.8}
           >
             <Image
               source={{
@@ -144,10 +158,38 @@ export default function Page() {
                   paddingVertical: 8,
                 }}
               >
-                Palvelut kotiin!
+                {heroText}
               </Text>
             </View>
-          </View>
+            
+            {/* Dots indicator at bottom of image */}
+            <View style={{ 
+              position: "absolute", 
+              bottom: 50,
+              left: 0,
+              right: 0,
+              flexDirection: "row",
+              justifyContent: "center"
+            }}>
+              <View
+                style={{ 
+                  width: 11, 
+                  height: 11,
+                  backgroundColor: darkBrown,
+                  borderRadius: 5.5
+                }}
+              />
+              <View
+                style={{ 
+                  width: 11, 
+                  height: 11, 
+                  marginLeft: 5,
+                  backgroundColor: darkBrown,
+                  borderRadius: 5.5
+                }}
+              />
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* POPULAR SERVICES */}

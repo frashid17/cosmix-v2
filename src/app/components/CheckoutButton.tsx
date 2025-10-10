@@ -4,12 +4,12 @@ import { Alert, Platform, TouchableOpacity, View, Text, ActivityIndicator } from
 import { initiateCheckout, CustomerInfo, CheckoutResponse } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
 import { useAuth } from '@clerk/clerk-expo';
-import { useStripe, StripeProvider } from '@stripe/stripe-react-native';
+import PaytrailPaymentSheet from './PaytrailPaymentSheet';
 
 interface CheckoutButtonProps {
   saloonServices: SaloonService[];
   customerInfo: CustomerInfo;
-  onSuccess?: (sessionId: string) => void;
+  onSuccess?: (transactionId: string) => void;
   onError?: (error: Error) => void;
   disabled?: boolean;
   children?: React.ReactNode;
@@ -24,8 +24,9 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
   children = "Proceed to Checkout"
 }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
+  const [paymentData, setPaymentData] = useState<CheckoutResponse | null>(null);
   const { getToken } = useAuth();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const handleCheckout = async () => {
     if (saloonServices.length === 0) {
@@ -48,38 +49,9 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
       
       const result = await initiateCheckout(saloonServices, customerInfo, token || undefined);
       
-      // Initialize and present Stripe payment sheet directly
-      const { error: initError } = await initPaymentSheet({
-        merchantDisplayName: 'Cosmix Beauty',
-        paymentIntentClientSecret: result.clientSecret,
-        defaultBillingDetails: {
-          name: customerInfo.name,
-        },
-        allowsDelayedPaymentMethods: true,
-      });
-
-      if (initError) {
-        console.error('Error initializing payment sheet:', initError);
-        onError?.(new Error(initError.message));
-        return;
-      }
-
-      // Present the payment sheet
-      const { error: presentError } = await presentPaymentSheet();
-
-      if (presentError) {
-        if (presentError.code === 'Canceled') {
-          // User canceled - no error needed
-          return;
-        } else {
-          console.error('Payment sheet error:', presentError);
-          onError?.(new Error(presentError.message));
-          return;
-        }
-      } else {
-        // Payment succeeded
-        onSuccess?.(result.sessionId);
-      }
+      // Set payment data and show Paytrail payment sheet
+      setPaymentData(result);
+      setShowPaymentSheet(true);
       
     } catch (error) {
       console.error('Checkout error:', error);
@@ -92,9 +64,25 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
     }
   };
 
-  // Direct Stripe payment sheet - no modal needed
+  const handlePaymentSuccess = (transactionId: string) => {
+    setShowPaymentSheet(false);
+    setPaymentData(null);
+    onSuccess?.(transactionId);
+  };
+
+  const handlePaymentError = (error: Error) => {
+    setShowPaymentSheet(false);
+    setPaymentData(null);
+    onError?.(error);
+  };
+
+  const handlePaymentCancel = () => {
+    setShowPaymentSheet(false);
+    setPaymentData(null);
+  };
 
   return (
+    <>
     <TouchableOpacity
       onPress={handleCheckout}
       disabled={disabled || isLoading}
@@ -126,17 +114,22 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
         )}
       </View>
     </TouchableOpacity>
+
+    {paymentData && (
+      <PaytrailPaymentSheet
+        paymentData={paymentData}
+        visible={showPaymentSheet}
+        onSuccess={handlePaymentSuccess}
+        onError={handlePaymentError}
+        onCancel={handlePaymentCancel}
+      />
+    )}
+    </>
   );
 };
 
 export const CheckoutButton: React.FC<CheckoutButtonProps> = (props) => {
-  const publishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || 'pk_test_your_key_here';
-
-  return (
-    <StripeProvider publishableKey={publishableKey}>
-      <CheckoutButtonInner {...props} />
-    </StripeProvider>
-  );
+  return <CheckoutButtonInner {...props} />;
 };
 
 export default CheckoutButton;

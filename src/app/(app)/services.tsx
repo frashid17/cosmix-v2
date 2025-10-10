@@ -6,6 +6,7 @@ import { useFonts } from 'expo-font';
 import Svg, { Path } from "react-native-svg";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import getServicesByCategory from "../actions/get-services";
+import getServicesBySalon from "../actions/get-services-by-salon";
 import { Service } from "../types";
 import Header from "../components/Header";
 
@@ -17,11 +18,16 @@ const blobFill = "#E9DCCC";
 
 export default function ServicesPage() {
   const router = useRouter();
-  const { categoryName } = useLocalSearchParams<{ categoryName: string }>();
+  const { categoryName, salonId, salonName } = useLocalSearchParams<{ 
+    categoryName: string;
+    salonId?: string;
+    salonName?: string;
+  }>();
   
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dynamicCategoryName, setDynamicCategoryName] = useState<string>('');
   
   const [fontsLoaded] = useFonts({
     'Philosopher-Regular': require("../assets/fonts/Philosopher-Regular.ttf"),
@@ -30,9 +36,54 @@ export default function ServicesPage() {
     'Philosopher-BoldItalic': require("../assets/fonts/Philosopher-BoldItalic.ttf"),
   });
 
+  // Function to extract category names from services
+  const extractCategoryNames = (services: Service[]) => {
+    const categoryNames = new Set<string>();
+    
+    services.forEach(service => {
+      if (service.category?.name) {
+        categoryNames.add(service.category.name);
+      }
+      // Also check parent service category
+      if (service.parentService?.category?.name) {
+        categoryNames.add(service.parentService.category.name);
+      }
+    });
+    
+    return Array.from(categoryNames);
+  };
+
   // Fetch services when component mounts
   useEffect(() => {
     const fetchServices = async () => {
+      // If coming from map (has salonId), fetch services for that specific salon
+      if (salonId) {
+        try {
+          setLoading(true);
+          setError(null);
+          const data = await getServicesBySalon(salonId);
+          setServices(data);
+          
+          // Extract category names from the services
+          const categoryNames = extractCategoryNames(data);
+          const categoryDisplayName = categoryNames.length > 0 
+            ? categoryNames.join(', ') 
+            : 'Palvelut';
+          setDynamicCategoryName(categoryDisplayName);
+          
+          console.log('Fetched services for salon:', salonId, data);
+          console.log('Category names found:', categoryNames);
+          console.log('Dynamic category name:', categoryDisplayName);
+        } catch (err) {
+          console.error('Error fetching salon services:', err);
+          setError(err instanceof Error ? err.message : 'Failed to fetch salon services');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
+      // Normal flow - fetch services by category
       if (!categoryName) {
         setError('No category selected');
         setLoading(false);
@@ -54,7 +105,7 @@ export default function ServicesPage() {
     };
 
     fetchServices();
-  }, [categoryName]);
+  }, [categoryName, salonId]);
 
   if (!fontsLoaded) {
     return null;
@@ -62,7 +113,44 @@ export default function ServicesPage() {
 
   // Group services by parent-child relationship
   const groupServices = (services: Service[]) => {
-    // Find main services (those without parentServiceId)
+    // If coming from salon (salonId exists), handle sub-services differently
+    if (salonId) {
+      console.log('Grouping salon services, salonId:', salonId);
+      console.log('Services to group:', services.length);
+      
+      // For salon-specific services, group by their parent services
+      const parentServices = new Map();
+      
+      services.forEach(service => {
+        console.log('Processing service:', service.name, 'parentService:', !!service.parentService);
+        if (service.parentService) {
+          const parentId = service.parentService.id;
+          console.log('Adding to parent:', parentId, service.parentService.name);
+          if (!parentServices.has(parentId)) {
+            parentServices.set(parentId, {
+              ...service.parentService,
+              subServices: []
+            });
+          }
+          parentServices.get(parentId).subServices.push(service);
+        } else {
+          console.log('No parent service, treating as main service');
+          // If no parent service, treat as main service
+          if (!parentServices.has(service.id)) {
+            parentServices.set(service.id, {
+              ...service,
+              subServices: []
+            });
+          }
+        }
+      });
+      
+      const result = Array.from(parentServices.values());
+      console.log('Grouped result:', result.length, 'groups');
+      return result;
+    }
+    
+    // Normal flow - group by parent-child relationship
     const mainServices = services.filter(service => !service.parentServiceId);
     
     // For each main service, find its sub-services
@@ -73,6 +161,11 @@ export default function ServicesPage() {
   };
 
   const groupedServices = groupServices(services);
+  
+  // Debug logging
+  console.log('Services count:', services.length);
+  console.log('Grouped services count:', groupedServices.length);
+  console.log('Grouped services:', groupedServices.map(g => ({ name: g.name, subServicesCount: g.subServices?.length || 0 })));
 
   const handleServicePress = (service: Service) => {
     console.log(`Selected service: ${service.name} (ID: ${service.id})`);
@@ -82,7 +175,9 @@ export default function ServicesPage() {
       params: { 
         serviceId: service.id,
         serviceName: service.name,
-        categoryName: categoryName
+        categoryName: salonId ? dynamicCategoryName : categoryName,
+        // Pass salonId if coming from map to filter saloons
+        ...(salonId && { salonId: salonId })
       }
     });
   };
@@ -95,6 +190,9 @@ export default function ServicesPage() {
         showMenu={true}
         onBackPress={() => router.back()}
       />
+
+      {/* Salon Info Header - Show when coming from map */}
+      
       
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* HERO SECTION with Blob */}
@@ -129,7 +227,7 @@ export default function ServicesPage() {
                     textAlign: "center",
                   }}
                 >
-                  {categoryName || "Services"}
+                  {salonId ? dynamicCategoryName : (categoryName || "Services")}
                 </Text>
               </View>
             </View>
@@ -267,19 +365,6 @@ export default function ServicesPage() {
                                 </Text>
                               )}
                               
-                              {subService.price && (
-                                <Text
-                                  style={{
-                                    fontSize: 16,
-                                    color: darkBrown,
-                                    fontFamily: "Philosopher-Regular",
-                                    opacity: 0.7,
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  €{subService.price}
-                                </Text>
-                              )}
                             </View>
                             {subService.durationMinutes && (
                               <Text

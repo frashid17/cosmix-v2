@@ -25,6 +25,7 @@ function Layout() {
                     <Stack.Screen name="saloons" options={{ headerShown: false }} />
                     <Stack.Screen name="categories" options={{ headerShown: false }} />
                     <Stack.Screen name="checkout" options={{ headerShown: false }} />
+                    <Stack.Screen name="map" options={{ headerShown: false }} />
                     <Stack.Screen name="bookings" options={{ headerShown: false }} />
                     {/* Add other authenticated screens here */}
                 </Stack.Protected>

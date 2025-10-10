@@ -17,6 +17,10 @@
       "expo-web-browser",
       "expo-secure-store"
     ],
+    "android": {
+      "usesCleartextTraffic": true,
+      "networkSecurityConfig": "./network_security_config.xml"
+    },
     "name": "fit-app",
     "slug": "fit-app"
   }

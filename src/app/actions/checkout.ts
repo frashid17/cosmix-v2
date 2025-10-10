@@ -12,8 +12,8 @@ export interface CustomerInfo {
 }
 
 export interface CheckoutResponse {
-  clientSecret: string;
-  sessionId: string;
+  paymentUrl: string;
+  transactionId: string;
   bookingIds: string[];
   amount: number;
 }
@@ -59,7 +59,7 @@ const createCheckoutSession = async (
       const errorText = await response.text();
       console.error('Checkout API error:', response.status, errorText);
       
-      // Handle Stripe service unavailable
+      // Handle Paytrail service unavailable
       if (response.status === 503) {
         try {
           const errorData = JSON.parse(errorText);
@@ -99,7 +99,7 @@ export const initiateCheckout = async (
     
     console.log('Initiating checkout with service IDs:', saloonServiceIds);
     
-    // Create payment intent
+    // Create Paytrail payment
     const paymentData = await createCheckoutSession(saloonServiceIds, customerInfo, authToken);
     
     return paymentData;

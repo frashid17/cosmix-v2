@@ -9,7 +9,6 @@ import { CustomerInfo } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useUser, useAuth } from '@clerk/clerk-expo';
-import { useStripe } from '@stripe/stripe-react-native';
 import BookingCalendar from '../components/BookingCalendar';
 
 // Mock data - replace with your actual data
@@ -60,7 +59,6 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const { user } = useUser();
   const { getToken } = useAuth();
-  const { initPaymentSheet, presentPaymentSheet } = useStripe();
   const params = useLocalSearchParams<{
     saloonId?: string;
     saloonName?: string;
@@ -117,8 +115,8 @@ export default function CheckoutScreen() {
     return null;
   }, [params.saloonId, params.serviceId, params.price, params.durationMinutes, params.saloonName, params.serviceName]);
 
-  const handleSuccess = (sessionId: string) => {
-    console.log('Payment successful:', { sessionId });
+  const handleSuccess = (transactionId: string) => {
+    console.log('Payment successful:', { transactionId });
     setIsProcessingPayment(false);
     
     // Show success message
@@ -162,78 +160,10 @@ export default function CheckoutScreen() {
 
   const handleBookButtonPress = () => {
     if (selectedBookingDate && selectedBookingTime) {
-      // Automatically trigger the actual Stripe payment process
-      // We need to use the CheckoutButton component's logic
-      triggerStripePayment();
+      // Show the CheckoutButton which will handle Paytrail payment
+      setShowBookingCalendar(false);
     } else {
       setShowBookingCalendar(true);
-    }
-  };
-
-  // Function to trigger Stripe payment using CheckoutButton logic
-  const triggerStripePayment = async () => {
-    setIsProcessingPayment(true);
-    
-    try {
-      // Import the checkout action
-      const createCheckoutSession = (await import('../actions/checkout')).default;
-      
-      // Get auth token
-      const token = await getToken();
-      
-      if (!token) {
-        Alert.alert('Error', 'Please sign in to continue');
-        setIsProcessingPayment(false);
-        return;
-      }
-
-      // Create service IDs array for checkout
-      const serviceIds = servicesToDisplay.map(service => 
-        `${params.saloonId}:${params.serviceId}`
-      );
-
-      console.log('Creating checkout session for services:', serviceIds);
-      console.log('Customer info:', customerInfo);
-
-      // Create checkout session
-      const session = await createCheckoutSession(serviceIds, customerInfo, token);
-      
-      if (session.clientSecret) {
-        // Initialize and present Stripe payment sheet
-        const { error: initError } = await initPaymentSheet({
-          merchantDisplayName: 'Cosmix',
-          paymentIntentClientSecret: session.clientSecret,
-        });
-
-        if (initError) {
-          console.error('Payment sheet init error:', initError);
-          Alert.alert('Error', 'Failed to initialize payment');
-          setIsProcessingPayment(false);
-          return;
-        }
-
-        const { error: presentError } = await presentPaymentSheet();
-
-        if (presentError) {
-          console.error('Payment sheet present error:', presentError);
-          if (presentError.code !== 'Canceled') {
-            Alert.alert('Error', 'Payment failed');
-          }
-          setIsProcessingPayment(false);
-          return;
-        }
-
-        // Payment successful
-        handleSuccess(session.sessionId || 'success');
-      } else {
-        console.error('No client secret received from checkout session');
-        Alert.alert('Error', 'Failed to create payment session');
-        setIsProcessingPayment(false);
-      }
-    } catch (error) {
-      console.error('Payment error:', error);
-      handleError(error as Error);
-      setIsProcessingPayment(false);
     }
   };
 
@@ -429,44 +359,44 @@ export default function CheckoutScreen() {
 
         {/* Book Button */}
         <View style={{ marginBottom: 32 }}>
-          <TouchableOpacity
-            onPress={handleBookButtonPress}
-            disabled={!isCustomerInfoComplete || isProcessingPayment}
-            style={{
-              backgroundColor: (isCustomerInfoComplete && !isProcessingPayment) ? '#3C2C1E' : '#D0D0D0',
-              paddingVertical: 16,
-              paddingHorizontal: 32,
-              borderRadius: 12,
-              alignItems: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.2,
-              shadowRadius: 4,
-              elevation: 3,
-              flexDirection: 'row',
-              justifyContent: 'center'
-            }}
-          >
-            {isProcessingPayment && (
-              <ActivityIndicator 
-                size="small" 
-                color="#F5F1EB" 
-                style={{ marginRight: 8 }} 
-              />
-            )}
-            <Text style={{
-              fontSize: 18,
-              fontFamily: 'Philosopher-Bold',
-              color: (isCustomerInfoComplete && !isProcessingPayment) ? '#F5F1EB' : '#999'
-            }}>
-              {isProcessingPayment 
-                ? 'Processing Payment...' 
-                : selectedBookingDate && selectedBookingTime 
-                  ? 'Continue to Payment' 
-                  : 'Book Appointment'
-              }
-            </Text>
-          </TouchableOpacity>
+          {selectedBookingDate && selectedBookingTime ? (
+            <CheckoutButton
+              saloonServices={servicesToDisplay}
+              customerInfo={customerInfo}
+              onSuccess={handleSuccess}
+              onError={handleError}
+              disabled={!isCustomerInfoComplete}
+            >
+              Continue to Payment
+            </CheckoutButton>
+          ) : (
+            <TouchableOpacity
+              onPress={handleBookButtonPress}
+              disabled={!isCustomerInfoComplete}
+              style={{
+                backgroundColor: isCustomerInfoComplete ? '#3C2C1E' : '#D0D0D0',
+                paddingVertical: 16,
+                paddingHorizontal: 32,
+                borderRadius: 12,
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.2,
+                shadowRadius: 4,
+                elevation: 3,
+                flexDirection: 'row',
+                justifyContent: 'center'
+              }}
+            >
+              <Text style={{
+                fontSize: 18,
+                fontFamily: 'Philosopher-Bold',
+                color: isCustomerInfoComplete ? '#F5F1EB' : '#999'
+              }}>
+                Book Appointment
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Show selected appointment info */}
