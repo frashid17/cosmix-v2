@@ -24,22 +24,22 @@ function Layout() {
         tabBarShowLabel: false, // Hide labels for cleaner look
       }}
     >
-      <Tabs.Screen 
-        name="profile" 
+
+<Tabs.Screen 
+        name="index" 
         options={{ 
           headerShown: false,
-          title: "Profile",
+          title: "Home",
           tabBarIcon: ({ focused }) => (
-             (
-              <Ionicons 
-                name="person" 
-                size={30} 
-                color={darkBrown} 
-              />
-            )
+            <Ionicons 
+              name="home-outline" 
+              size={30} 
+              color={darkBrown} 
+            />
           ),
         }} 
       />
+
       
       <Tabs.Screen 
         name="service" 
@@ -57,16 +57,18 @@ function Layout() {
       />
       
       <Tabs.Screen 
-        name="index" 
+        name="profile" 
         options={{ 
           headerShown: false,
-          title: "Home",
+          title: "Profile",
           tabBarIcon: ({ focused }) => (
-            <Ionicons 
-              name="home-outline" 
-              size={30} 
-              color={darkBrown} 
-            />
+             (
+              <Ionicons 
+                name="person" 
+                size={30} 
+                color={darkBrown} 
+              />
+            )
           ),
         }} 
       />

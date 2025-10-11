@@ -75,7 +75,7 @@ const Saloons = () => {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-            {/* Header - Full Width */}
+            {/* Header - Fixed at Top */}
             <Header
                 title="COSMIX"
                 showBack={true}
@@ -83,72 +83,70 @@ const Saloons = () => {
                 onBackPress={() => router.back()}
             />
 
-
-
-            {/* HERO SECTION */}
-            <View style={{ backgroundColor: beige, height: 320 }}>
-                {/* White Box - Centered */}
-                <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                    <View
-                        style={{ 
-                            width: 310, 
-                            height: 200,
-                            backgroundColor: "white",
-                            borderRadius: 24,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            shadowColor: "#000",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.1,
-                            shadowRadius: 4,
-                            elevation: 3,
-                            position: "relative"
-                        }}
-                    >
-                        {/* Title */}
-                        <Text
-                            style={{
-                                fontFamily: "Philosopher-Bold",
-                                fontSize: 40,
-                                color: darkBrown,
-                            }}
-                        >
-                            {salonId ? `${serviceName || "Service"} - ${saloons.length > 0 ? saloons[0].name : "Salon"}` : (categoryName || "Services")}
-                        </Text>
-
-                        {/* Ellipses at bottom */}
-                        <View style={{ 
-                            position: "absolute", 
-                            bottom: 16, 
-                            flexDirection: "row" 
-                        }}>
-                            <View
-                                style={{ 
-                                    width: 11, 
-                                    height: 11,
-                                    backgroundColor: darkBrown,
-                                    borderRadius: 5.5
-                                }}
-                            />
-                            <View
-                                style={{ 
-                                    width: 11, 
-                                    height: 11, 
-                                    marginLeft: 5,
-                                    backgroundColor: darkBrown,
-                                    borderRadius: 5.5
-                                }}
-                            />
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            {/* SCROLLABLE LIST */}
+            {/* SCROLLABLE CONTENT */}
             <ScrollView
                 style={{ flex: 1, backgroundColor: "white" }}
                 contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
             >
+                {/* HERO SECTION */}
+                <View style={{ backgroundColor: beige, height: 320 }}>
+                    {/* White Box - Centered */}
+                    <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                        <View
+                            style={{ 
+                                width: 310, 
+                                height: 200,
+                                backgroundColor: "white",
+                                borderRadius: 24,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 4,
+                                elevation: 3,
+                                position: "relative"
+                            }}
+                        >
+                            {/* Title */}
+                            <Text
+                                style={{
+                                    fontFamily: "Philosopher-Bold",
+                                    fontSize: 40,
+                                    color: darkBrown,
+                                }}
+                            >
+                                {salonId ? `${serviceName || "Service"} ` : (categoryName || "Services")}
+                            </Text>
+
+                            {/* Ellipses at bottom */}
+                            <View style={{ 
+                                position: "absolute", 
+                                bottom: 16, 
+                                flexDirection: "row" 
+                            }}>
+                                <View
+                                    style={{ 
+                                        width: 11, 
+                                        height: 11,
+                                        backgroundColor: darkBrown,
+                                        borderRadius: 5.5
+                                    }}
+                                />
+                                <View
+                                    style={{ 
+                                        width: 11, 
+                                        height: 11, 
+                                        marginLeft: 5,
+                                        backgroundColor: darkBrown,
+                                        borderRadius: 5.5
+                                    }}
+                                />
+                            </View>
+                        </View>
+                    </View>
+                </View>
                 {/* Loading State */}
                 {loading && (
                     <View style={{ alignItems: "center", marginTop: 80 }}>

@@ -48,7 +48,7 @@ export default function Page() {
       // for more info on error handling
       console.error('Google Sign In Error:', JSON.stringify(err, null, 2))
     }
-  }, [])
+  }, [startSSOFlow])
 
   const onApplePress = useCallback(async () => {
     try {
@@ -72,7 +72,7 @@ export default function Page() {
       // for more info on error handling
       console.error('Apple Sign In Error:', JSON.stringify(err, null, 2))
     }
-  }, [])
+  }, [startSSOFlow])
 
   return (
     <View style={{ gap: 12 }}>

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import getSaloonsMap from '../actions/get-saloons-map';
-import { Saloon } from '../types';
+import getServices from '../actions/get-services';
+import { Saloon, Service } from '../types';
 import Header from '../components/Header';
 import SideMenu from '../components/SideMenu';
 
@@ -30,6 +31,12 @@ export default function MapScreen() {
   const [salonsLoading, setSalonsLoading] = useState(false);
   const [selectedSalon, setSelectedSalon] = useState<MapSalon | null>(null);
   const [isMenuVisible, setMenuVisible] = useState(false);
+  const [isSearchVisible, setSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [services, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [webViewRef, setWebViewRef] = useState<WebView | null>(null);
 
   // Load all Philosopher font variants
   const [fontsLoaded] = useFonts({
@@ -99,16 +106,55 @@ export default function MapScreen() {
     }
   }, [userLocation]);
 
+  // Load all services for search
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        setSearchLoading(true);
+        const allServices = await getServices('Kaikki palvelut');
+        setServices(allServices);
+        setFilteredServices(allServices);
+      } catch (error) {
+        console.error('Error loading services:', error);
+        // Try loading without category parameter
+        try {
+          const allServices = await getServices('Kaikki palvelut');
+          setServices(allServices);
+          setFilteredServices(allServices);
+        } catch (error2) {
+          console.error('Error loading services without category:', error2);
+          // Fallback: Extract services from salon data
+          const fallbackServices = extractServicesFromSalons(salons);
+          setServices(fallbackServices);
+          setFilteredServices(fallbackServices);
+        }
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    loadServices();
+  }, []);
+
+  // Extract services from salons when they're loaded (fallback)
+  useEffect(() => {
+    if (salons.length > 0 && services.length === 0) {
+      const fallbackServices = extractServicesFromSalons(salons);
+      if (fallbackServices.length > 0) {
+        setServices(fallbackServices);
+        setFilteredServices(fallbackServices);
+      }
+    }
+  }, [salons]);
+
   const fetchSalons = async () => {
     try {
       setSalonsLoading(true);
-      console.log('Attempting to fetch salons from API...');
       const salonsData = await getSaloonsMap({
         lat: userLocation?.latitude,
         lng: userLocation?.longitude,
         radius: 10
       });
-      console.log('API salons fetched successfully:', salonsData.length);
       
       // Filter out salons without coordinates and check if we have valid salons
       const validSalons = salonsData.filter(salon => 
@@ -117,10 +163,8 @@ export default function MapScreen() {
       );
       
       if (validSalons.length > 0) {
-        console.log('Valid salons with coordinates:', validSalons.length);
         setSalons(validSalons);
       } else {
-        console.log('No salons with valid coordinates, using fallback data');
         // Use fallback data if no valid salons found
         const fallbackSalons = serviceProviders.map(provider => ({
           id: provider.id.toString(),
@@ -195,7 +239,6 @@ export default function MapScreen() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }));
-      console.log('Using fallback salons:', fallbackSalons.length);
       setSalons(fallbackSalons);
     } finally {
       setSalonsLoading(false);
@@ -267,6 +310,95 @@ export default function MapScreen() {
     }
   };
 
+  // Extract services from salon data as fallback
+  const extractServicesFromSalons = (salonData: MapSalon[]): Service[] => {
+    const serviceMap = new Map<string, Service>();
+    
+    salonData.forEach(salon => {
+      // Check if salon has saloonServices
+      if (salon.saloonServices && Array.isArray(salon.saloonServices)) {
+        salon.saloonServices.forEach(saloonService => {
+          if (saloonService.service) {
+            const service = saloonService.service;
+            if (!serviceMap.has(service.id)) {
+              serviceMap.set(service.id, {
+                ...service,
+                isPopular: service.isPopular || false,
+                subServices: service.subServices || [],
+                saloonServices: service.saloonServices || [],
+              });
+            }
+          }
+        });
+      }
+    });
+    
+    return Array.from(serviceMap.values());
+  };
+
+  // Search functionality
+  const handleSearchPress = () => {
+    setSearchVisible(true);
+  };
+
+  const handleSearchQuery = (query: string) => {
+    setSearchQuery(query);
+    if (query.trim() === '') {
+      setFilteredServices(services);
+    } else {
+      const filtered = services.filter(service =>
+        service.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredServices(filtered);
+    }
+  };
+
+  const handleServiceSelect = async (service: Service) => {
+    try {
+      setSearchLoading(true);
+      setSearchVisible(false);
+      
+      // Filter salons that offer this service
+      // For now, we'll show all salons since we don't have service data in MapSalon
+      // In a real implementation, you'd need to fetch salon services or include them in the map data
+      const salonsWithService = salons; // Show all salons for now
+      
+      if (salonsWithService.length > 0) {
+        // Calculate center point of salons with this service
+        const avgLat = salonsWithService.reduce((sum, salon) => sum + salon.latitude, 0) / salonsWithService.length;
+        const avgLng = salonsWithService.reduce((sum, salon) => sum + salon.longitude, 0) / salonsWithService.length;
+        
+        // Send message to WebView to zoom to these salons
+        if (webViewRef) {
+          const message = JSON.stringify({
+            type: 'zoomToService',
+            center: { latitude: avgLat, longitude: avgLng },
+            salons: salonsWithService,
+            serviceName: service.name
+          });
+          webViewRef.postMessage(message);
+        }
+        
+        Alert.alert(
+          'Palvelu löytyi!',
+          `Löytyi ${salonsWithService.length} salon ${service.name} palvelulla. Kartta on keskitetty näihin saloneihin.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Palvelua ei löytynyt',
+          `Valitettavasti kukaan salon ei tarjoa "${service.name}" palvelua tällä hetkellä.`,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error filtering salons by service:', error);
+      Alert.alert('Virhe', 'Palvelun hakemisessa tapahtui virhe.');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   // Generate HTML for the map
   const generateMapHTML = () => {
     const centerLat = userLocation?.latitude || 60.1699;
@@ -328,17 +460,8 @@ export default function MapScreen() {
             color: #D7C3A7;
           }
           .salon-marker {
-            background-color: #423120;
-            border-radius: 20px;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-            border: 2px solid white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+            font-size: 30px;
+            cursor: pointer;
             position: relative;
             overflow: visible;
           }
@@ -383,10 +506,7 @@ export default function MapScreen() {
           // Add salon markers
           const markers = ${JSON.stringify(markers)};
           
-          console.log('All salon markers data:', markers);
-          
           markers.forEach(salon => {
-            console.log('Processing salon:', salon.name, 'coordinates:', salon.lng, salon.lat);
             // Create a container that holds both the marker and label
             const container = document.createElement('div');
             container.style.position = 'relative';
@@ -394,11 +514,11 @@ export default function MapScreen() {
             container.style.flexDirection = 'column';
             container.style.alignItems = 'center';
             
-            // Create the scissor marker
+            // Create the spa marker
             const el = document.createElement('div');
             el.className = 'salon-marker';
             el.style.cursor = 'pointer';
-            el.innerHTML = '✂️';
+            el.innerHTML = '🧖‍♀️';
             
             // Create the label
             const labelEl = document.createElement('div');
@@ -432,8 +552,6 @@ export default function MapScreen() {
             .setLngLat([salon.lng, salon.lat])
             .setPopup(popup)
             .addTo(map);
-            
-            console.log('Created combined marker for salon:', salon.name, 'at coordinates:', salon.lng, salon.lat);
           });
 
           // Listen for messages from React Native
@@ -445,6 +563,29 @@ export default function MapScreen() {
                 zoom: 15,
                 duration: 2000
               });
+            } else if (data.type === 'zoomToService') {
+              // Zoom to salons offering a specific service
+              map.flyTo({
+                center: [data.center.longitude, data.center.latitude],
+                zoom: 14,
+                duration: 2000
+              });
+              
+              // Show a popup with service info
+              setTimeout(() => {
+                const popup = new mapboxgl.Popup({ 
+                  closeButton: true,
+                  closeOnClick: false,
+                  offset: 25
+                })
+                .setLngLat([data.center.longitude, data.center.latitude])
+                .setHTML(
+                  '<div class="popup-title">' + data.serviceName + '</div>' +
+                  '<div class="popup-details">Löytyi ' + data.salons.length + ' salon tällä palvelulla</div>' +
+                  '<div class="popup-details">Salonit: ' + data.salons.map(s => s.name).join(', ') + '</div>'
+                )
+                .addTo(map);
+              }, 2000);
             }
           });
 
@@ -457,6 +598,29 @@ export default function MapScreen() {
                 zoom: 15,
                 duration: 2000
               });
+            } else if (data.type === 'zoomToService') {
+              // Zoom to salons offering a specific service
+              map.flyTo({
+                center: [data.center.longitude, data.center.latitude],
+                zoom: 14,
+                duration: 2000
+              });
+              
+              // Show a popup with service info
+              setTimeout(() => {
+                const popup = new mapboxgl.Popup({ 
+                  closeButton: true,
+                  closeOnClick: false,
+                  offset: 25
+                })
+                .setLngLat([data.center.longitude, data.center.latitude])
+                .setHTML(
+                  '<div class="popup-title">' + data.serviceName + '</div>' +
+                  '<div class="popup-details">Löytyi ' + data.salons.length + ' salon tällä palvelulla</div>' +
+                  '<div class="popup-details">Salonit: ' + data.salons.map(s => s.name).join(', ') + '</div>'
+                )
+                .addTo(map);
+              }, 2000);
             }
           });
         </script>
@@ -473,7 +637,6 @@ export default function MapScreen() {
         // Navigate to services page with salon information
         const salon = salons.find(s => s.id === data.salonId);
         if (salon) {
-          console.log('Navigating to services for salon:', salon.name);
           // Navigate to services page - you can pass salon info as params
           router.push({
             pathname: '/services',
@@ -529,6 +692,7 @@ export default function MapScreen() {
       {/* Map */}
       <View style={styles.mapContainer}>
         <WebView
+          ref={setWebViewRef}
           source={{ html: generateMapHTML() }}
           style={styles.map}
           onMessage={handleWebViewMessage}
@@ -544,6 +708,16 @@ export default function MapScreen() {
             </View>
           )}
         />
+        
+        {/* Floating Search Bar */}
+        <View style={styles.searchContainer}>
+          <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={handleSearchPress}>
+            <Ionicons name="search" size={31} color={darkBrown} style={styles.searchIcon} />
+            <Text style={[styles.searchText, { color: darkBrown }]}>
+              Etsi hoitoja lähelläsi
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Controls */}
@@ -590,6 +764,125 @@ export default function MapScreen() {
             }}
           >
             <SideMenu onClose={() => setMenuVisible(false)} />
+          </View>
+        </View>
+      </Modal>
+
+      {/* Search Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isSearchVisible}
+        onRequestClose={() => setSearchVisible(false)}
+      >
+        <View style={styles.searchModalOverlay}>
+          <View style={styles.searchModalContent}>
+            {/* Search Header */}
+            <View style={styles.searchHeader}>
+              <Text style={[styles.searchTitle, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                Etsi palvelua
+              </Text>
+              <TouchableOpacity onPress={() => setSearchVisible(false)}>
+                <Ionicons name="close" size={24} color={darkBrown} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input */}
+            <View style={styles.searchInputContainer}>
+              <Ionicons name="search" size={20} color={darkBrown} style={styles.searchInputIcon} />
+              <TextInput
+                style={[styles.searchInput, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}
+                placeholder="Kirjoita palvelun nimi..."
+                placeholderTextColor="#999"
+                value={searchQuery}
+                onChangeText={handleSearchQuery}
+                autoFocus={true}
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  if (filteredServices.length > 0) {
+                    handleServiceSelect(filteredServices[0]);
+                  }
+                }}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity 
+                  style={styles.searchButton}
+                  onPress={() => {
+                    if (filteredServices.length > 0) {
+                      handleServiceSelect(filteredServices[0]);
+                    }
+                  }}
+                  disabled={filteredServices.length === 0}
+                >
+                  <Ionicons 
+                    name="arrow-forward" 
+                    size={20} 
+                    color={filteredServices.length > 0 ? darkBrown : "#ccc"} 
+                  />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Search Action Button */}
+            {searchQuery.length > 0 && filteredServices.length > 0 && (
+              <View style={styles.searchActionContainer}>
+                <TouchableOpacity 
+                  style={[styles.searchActionButton, { backgroundColor: darkBrown }]}
+                  onPress={() => {
+                    if (filteredServices.length > 0) {
+                      handleServiceSelect(filteredServices[0]);
+                    }
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.searchActionText, { color: white, fontFamily: 'Philosopher-Bold' }]}>
+                    Hae palvelua
+                  </Text>
+                  <Ionicons name="search" size={20} color={white} style={{ marginLeft: 8 }} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+
+            {/* Services List */}
+            {searchLoading ? (
+              <View style={styles.searchLoadingContainer}>
+                <ActivityIndicator size="large" color={darkBrown} />
+                <Text style={[styles.searchLoadingText, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}>
+                  Ladataan palveluja...
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredServices}
+                keyExtractor={(item) => item.id}
+                style={styles.servicesList}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.serviceItem}
+                    onPress={() => handleServiceSelect(item)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.serviceName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                      {item.name}
+                    </Text>
+                    {item.description && (
+                      <Text style={[styles.serviceDescription, { color: '#666', fontFamily: 'Philosopher-Regular' }]}>
+                        {item.description}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Text style={[styles.emptyText, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}>
+                      {searchQuery ? 'Palvelua ei löytynyt' : 'Aloita kirjoittamalla palvelun nimi'}
+                    </Text>
+                  </View>
+                }
+              />
+            )}
           </View>
         </View>
       </Modal>
@@ -670,5 +963,151 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.8,
+  },
+  searchContainer: {
+    position: 'absolute',
+    bottom: 100,
+    left: 20,
+    right: 20,
+    zIndex: 1000,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#423120',
+    width: 320,
+    height: 80,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  searchIcon: {
+    width: 31,
+    height: 31,
+    marginRight: 12,
+  },
+  searchText: {
+    fontSize: 23,
+    fontFamily: 'Philosopher-Bold',
+    flex: 1,
+  },
+  // Search Modal Styles
+  searchModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  searchModalContent: {
+    backgroundColor: '#F4EDE5',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingTop: 20,
+  },
+  searchHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#D7C3A7',
+  },
+  searchTitle: {
+    fontSize: 24,
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginVertical: 20,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#423120',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  searchInputIcon: {
+    marginRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+  },
+  searchButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  searchActionContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  searchActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  searchActionText: {
+    fontSize: 18,
+  },
+  searchLoadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  searchLoadingText: {
+    marginTop: 10,
+    fontSize: 16,
+  },
+  servicesList: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  serviceItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#D7C3A7',
+  },
+  serviceName: {
+    fontSize: 18,
+    marginBottom: 4,
+  },
+  serviceDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });

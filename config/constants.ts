@@ -19,7 +19,7 @@ if (__DEV__ && !DEV_IP) {
 const getApiBaseUrl = () => {
   if (__DEV__) {
     // Development environment
-    const devIP = DEV_IP || '10.145.204.187'; // fallback IP
+    const devIP = DEV_IP || '192.168.1.145'; // fallback IP
     
     if (Platform.OS === 'android') {
       return `http://${devIP}:${DEV_PORT}/api`; // Android emulator
