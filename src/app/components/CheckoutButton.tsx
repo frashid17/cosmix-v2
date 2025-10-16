@@ -4,12 +4,12 @@ import { Alert, Platform, TouchableOpacity, View, Text, ActivityIndicator } from
 import { initiateCheckout, CustomerInfo, CheckoutResponse } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
 import { useAuth } from '@clerk/clerk-expo';
-import PaytrailPaymentSheet from './PaytrailPaymentSheet';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 interface CheckoutButtonProps {
   saloonServices: SaloonService[];
   customerInfo: CustomerInfo;
-  onSuccess?: (transactionId: string) => void;
+  onSuccess?: (bookingIds: string[]) => void;
   onError?: (error: Error) => void;
   disabled?: boolean;
   children?: React.ReactNode;
@@ -21,12 +21,36 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
   onSuccess,
   onError,
   disabled = false,
-  children = "Proceed to Checkout"
+  children = "Confirm Booking"
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
-  const [paymentData, setPaymentData] = useState<CheckoutResponse | null>(null);
-  const { getToken } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
+  const router = useRouter();
+
+  const resumeIfRedirected = async () => {
+    // Called after returning from sign-in
+    try {
+      const token = await getToken();
+      const result = await initiateCheckout(saloonServices, customerInfo, token || undefined);
+      Alert.alert(
+        'Booking Confirmed! 🎉',
+        result.message || 'Your booking has been confirmed. You will receive a confirmation email shortly. Please remember to pay at the venue.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              onSuccess?.(result.bookingIds);
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Checkout error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
+      Alert.alert('Booking Failed', errorMessage);
+      onError?.(error instanceof Error ? error : new Error(errorMessage));
+    }
+  };
 
   const handleCheckout = async () => {
     if (saloonServices.length === 0) {
@@ -39,50 +63,45 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
       return;
     }
 
+    // If not signed in, go to sign-in and then resume
+    if (!isSignedIn) {
+      router.push({
+        pathname: '/sign-in',
+        params: {
+          redirect: 'checkout',
+        },
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // Get the authentication token
       const token = await getToken();
-      console.log('Auth token obtained in CheckoutButton:', token ? 'Yes' : 'No');
-      console.log('Token preview:', token ? `${token.substring(0, 20)}...` : 'No token');
-      
       const result = await initiateCheckout(saloonServices, customerInfo, token || undefined);
-      
-      // Set payment data and show Paytrail payment sheet
-      setPaymentData(result);
-      setShowPaymentSheet(true);
-      
+      Alert.alert(
+        'Booking Confirmed! 🎉',
+        result.message || 'Your booking has been confirmed. You will receive a confirmation email shortly. Please remember to pay at the venue.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              onSuccess?.(result.bookingIds);
+            }
+          }
+        ]
+      );
     } catch (error) {
       console.error('Checkout error:', error);
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      
-      Alert.alert('Checkout Failed', errorMessage);
+      Alert.alert('Booking Failed', errorMessage);
       onError?.(error instanceof Error ? error : new Error(errorMessage));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePaymentSuccess = (transactionId: string) => {
-    setShowPaymentSheet(false);
-    setPaymentData(null);
-    onSuccess?.(transactionId);
-  };
-
-  const handlePaymentError = (error: Error) => {
-    setShowPaymentSheet(false);
-    setPaymentData(null);
-    onError?.(error);
-  };
-
-  const handlePaymentCancel = () => {
-    setShowPaymentSheet(false);
-    setPaymentData(null);
-  };
-
   return (
-    <>
     <TouchableOpacity
       onPress={handleCheckout}
       disabled={disabled || isLoading}
@@ -104,7 +123,7 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
           <>
             <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 18 }}>
-              Processing...
+              Confirming Booking...
             </Text>
           </>
         ) : (
@@ -114,17 +133,6 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
         )}
       </View>
     </TouchableOpacity>
-
-    {paymentData && (
-      <PaytrailPaymentSheet
-        paymentData={paymentData}
-        visible={showPaymentSheet}
-        onSuccess={handlePaymentSuccess}
-        onError={handlePaymentError}
-        onCancel={handlePaymentCancel}
-      />
-    )}
-    </>
   );
 };
 

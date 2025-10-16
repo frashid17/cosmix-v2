@@ -15,7 +15,7 @@ import { useFonts } from "expo-font";
 import Header from "../../../components/Header";
 
 export default function ProfilePage() {
-  const { signOut } = useAuth();
+  const { signOut, isSignedIn } = useAuth();
   const { user } = useUser();
 
   // Load all Philosopher font variants
@@ -45,7 +45,11 @@ export default function ProfilePage() {
   const handleMenuPress = (menuItem: string) => {
     switch (menuItem) {
       case "Tulevat hoidot":
-        router.push("/bookings");
+        if (!isSignedIn) {
+          router.push("/sign-in");
+        } else {
+          router.push("/bookings");
+        }
         break;
       case "Menneet hoidot":
         Alert.alert("Menneet hoidot", "Past treatments feature coming soon!");
@@ -59,6 +63,9 @@ export default function ProfilePage() {
       case "Kirjaudu ulos":
         handleSignOut();
         break;
+      case "Kirjaudu sisään":
+        router.push("/sign-in");
+        break;
     }
   };
 
@@ -67,7 +74,7 @@ export default function ProfilePage() {
     "Menneet hoidot",
     "Asetukset",
     "Kieli",
-    "Kirjaudu ulos",
+    isSignedIn ? "Kirjaudu ulos" : "Kirjaudu sisään",
   ];
 
   return (
@@ -154,7 +161,7 @@ const styles = StyleSheet.create({
   menuButton: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
-    minHeight: 84,               // ✅ ensures each button is at least 84 tall
+    minHeight: 84,
     paddingHorizontal: 20,
     marginBottom: 16,
     flexDirection: "row",

@@ -12,10 +12,12 @@ export interface CustomerInfo {
 }
 
 export interface CheckoutResponse {
-  paymentUrl: string;
-  transactionId: string;
+  success: boolean;
+  message: string;
   bookingIds: string[];
   amount: number;
+  paymentMethod: string;
+  status: string;
 }
 
 export interface CheckoutError {
@@ -29,7 +31,7 @@ const createCheckoutSession = async (
   authToken?: string
 ): Promise<CheckoutResponse> => {
   try {
-    console.log('Creating checkout session for services:', saloonServiceIds);
+    console.log('Creating checkout session for services (Pay at Venue):', saloonServiceIds);
     console.log('Customer info:', customerInfo);
     console.log('Auth token provided:', authToken ? 'Yes' : 'No');
     
@@ -58,24 +60,11 @@ const createCheckoutSession = async (
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Checkout API error:', response.status, errorText);
-      
-      // Handle Paytrail service unavailable
-      if (response.status === 503) {
-        try {
-          const errorData = JSON.parse(errorText);
-          if (errorData.error === 'Payment service temporarily unavailable') {
-            throw new Error('Payment service is temporarily unavailable. Your booking has been created, but payment processing failed. Please try again later.');
-          }
-        } catch (parseError) {
-          // If we can't parse the error, use the original error
-        }
-      }
-      
       throw new Error(`Checkout failed: ${response.status} ${errorText}`);
     }
     
     const data = await response.json();
-    console.log('Checkout session created successfully:', data);
+    console.log('Checkout session created successfully (Pay at Venue):', data);
     
     return data;
   } catch (error) {
@@ -83,8 +72,6 @@ const createCheckoutSession = async (
     throw error;
   }
 };
-
-// Remove browser redirect function - we'll handle payment in-app
 
 export const initiateCheckout = async (
   saloonServices: SaloonService[],
@@ -97,12 +84,12 @@ export const initiateCheckout = async (
       `${service.saloonId}:${service.serviceId}`
     );
     
-    console.log('Initiating checkout with service IDs:', saloonServiceIds);
+    console.log('Initiating checkout with service IDs (Pay at Venue):', saloonServiceIds);
     
-    // Create Paytrail payment
-    const paymentData = await createCheckoutSession(saloonServiceIds, customerInfo, authToken);
+    // Create booking without payment
+    const bookingData = await createCheckoutSession(saloonServiceIds, customerInfo, authToken);
     
-    return paymentData;
+    return bookingData;
   } catch (error) {
     console.error('Error in initiateCheckout:', error);
     throw error;

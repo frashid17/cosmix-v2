@@ -1,5 +1,5 @@
 import { useSignIn } from "@clerk/clerk-expo";
-import { Link, useRouter } from "expo-router";
+import { Link, useRouter, useLocalSearchParams } from "expo-router";
 import {
   Alert,
   SafeAreaView,
@@ -15,12 +15,20 @@ import { Ionicons } from "@expo/vector-icons";
 export default function Page() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
+  const params = useLocalSearchParams<{ redirect?: string }>();
 
   const [emailAddress, setEmailAddress] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [password, setPassword] = React.useState("");
 
-  // Handle the submission of the sign-in form
+  const redirectTo = () => {
+    let dest = typeof params.redirect === 'string' && params.redirect.length > 0 ? params.redirect : '/';
+    try {
+      dest = decodeURIComponent(dest);
+    } catch {}
+    router.replace(dest);
+  };
+
   const onSignInPress = async () => {
     if (!isLoaded) return;
     if (!emailAddress || !password) {
@@ -30,26 +38,19 @@ export default function Page() {
 
     setIsLoading(true);
 
-    // Start the sign-in process using the email and password provided
     try {
       const signInAttempt = await signIn.create({
         identifier: emailAddress,
         password,
       });
 
-      // If sign-in process is complete, set the created session as active
-      // and redirect the user
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
-        router.replace("/");
+        redirectTo();
       } else {
-        // If the status isn't complete, check why. User might need to
-        // complete further steps.
         console.error(JSON.stringify(signInAttempt, null, 2));
       }
     } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
       console.error(JSON.stringify(err, null, 2));
     } finally {
       setIsLoading(false);
@@ -259,7 +260,7 @@ export default function Page() {
             </Text>
             <View style={{ flex: 1, height: 1, backgroundColor: "#D7C3A7" }} />
           </View>
-          <GoogleSignIn />
+          <GoogleSignIn onSignedIn={redirectTo} />
         </View>
 
         <View

@@ -194,7 +194,7 @@ export default function ServicesPage() {
       {/* Salon Info Header - Show when coming from map */}
       
       
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
         {/* HERO SECTION with Blob */}
         <View style={{ backgroundColor: lightBrown, paddingBottom: 30 }}>
           {/* Blob with title */}
@@ -477,6 +477,8 @@ export default function ServicesPage() {
             </View>
           )}
         </View>
+        {/* Bottom spacer so last card is fully visible above tab bar */}
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );

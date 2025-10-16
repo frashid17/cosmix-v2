@@ -1,5 +1,5 @@
 // src/app/(app)/checkout.tsx
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, Alert, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { SaloonService } from '@/app/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useUser, useAuth } from '@clerk/clerk-expo';
 import BookingCalendar from '../components/BookingCalendar';
+import Header from '../components/Header';
 
 // Mock data - replace with your actual data
 const mockSaloonServices: SaloonService[] = [
@@ -58,7 +59,7 @@ const mockSaloonServices: SaloonService[] = [
 export default function CheckoutScreen() {
   const router = useRouter();
   const { user } = useUser();
-  const { getToken } = useAuth();
+  const { getToken, isSignedIn } = useAuth();
   const params = useLocalSearchParams<{
     saloonId?: string;
     saloonName?: string;
@@ -67,6 +68,8 @@ export default function CheckoutScreen() {
     categoryName?: string;
     price?: string;
     durationMinutes?: string;
+    date?: string;
+    time?: string;
   }>();
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
@@ -79,13 +82,23 @@ export default function CheckoutScreen() {
     notes: ''
   });
 
+  // NEW: keep customerInfo in sync with Clerk user after sign-in
+  useEffect(() => {
+    setCustomerInfo(prev => ({
+      ...prev,
+      name: user?.firstName && user?.lastName 
+        ? `${user.firstName} ${user.lastName}` 
+        : (user?.firstName || prev.name),
+      email: user?.emailAddresses?.[0]?.emailAddress || prev.email,
+      phone: user?.phoneNumbers?.[0]?.phoneNumber || prev.phone,
+    }));
+  }, [user]);
+
   // Booking calendar state
   const [showBookingCalendar, setShowBookingCalendar] = useState(false);
   const [selectedBookingDate, setSelectedBookingDate] = useState<string>('');
   const [selectedBookingTime, setSelectedBookingTime] = useState<string>('');
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-
-
+  const [isProcessingBooking, setIsProcessingBooking] = useState(false);
 
   // Create SaloonService object from params using useMemo to prevent infinite re-renders
   const saloonService = useMemo(() => {
@@ -100,7 +113,6 @@ export default function CheckoutScreen() {
           id: params.saloonId,
           name: params.saloonName || 'Unknown Salon',
           userId: 'user-1', // You might want to get this from the API
- // You might want to get this from the API
           rating: 4.5, // You might want to get this from the API
         },
         service: {
@@ -115,30 +127,30 @@ export default function CheckoutScreen() {
     return null;
   }, [params.saloonId, params.serviceId, params.price, params.durationMinutes, params.saloonName, params.serviceName]);
 
-  const handleSuccess = (transactionId: string) => {
-    console.log('Payment successful:', { transactionId });
-    setIsProcessingPayment(false);
+  // Hydrate selected date/time from URL params if present (e.g., after sign-in redirect)
+  useEffect(() => {
+    const pDate = typeof params.date === 'string' ? params.date : '';
+    const pTime = typeof params.time === 'string' ? params.time : '';
+    if (pDate) setSelectedBookingDate(pDate);
+    if (pTime) setSelectedBookingTime(pTime);
+    if (pDate && pTime) {
+      const bookingDateTime = new Date(`${pDate}T${pTime}:00`);
+      setCustomerInfo(prev => ({ ...prev, bookingTime: bookingDateTime.toISOString() }));
+    }
+  }, [params.date, params.time]);
+
+  const handleSuccess = (bookingIds: string[]) => {
+    console.log('Booking successful:', { bookingIds });
+    setIsProcessingBooking(false);
     
-    // Show success message
-    Alert.alert(
-      'Booking Confirmed! 🎉', 
-      'Your booking has been successfully confirmed. You can view it in your profile.',
-      [
-        {
-          text: 'View My Bookings',
-          onPress: () => {
-            // Clear any navigation state and go to profile
-            router.dismissAll();
-            router.push('/(tabs)/profile');
-          }
-        }
-      ]
-    );
+    // Navigate to profile to view bookings
+    router.dismissAll();
+    router.push('/(tabs)/profile');
   };
 
   const handleError = (error: Error) => {
-    console.error('Checkout error:', error);
-    setIsProcessingPayment(false);
+    console.error('Booking error:', error);
+    setIsProcessingBooking(false);
   };
 
   // Booking calendar handlers
@@ -154,18 +166,17 @@ export default function CheckoutScreen() {
     }));
     
     setShowBookingCalendar(false);
-    
-    // Don't automatically proceed to payment - let user click "Continue to Payment"
   };
 
   const handleBookButtonPress = () => {
     if (selectedBookingDate && selectedBookingTime) {
-      // Show the CheckoutButton which will handle Paytrail payment
       setShowBookingCalendar(false);
     } else {
       setShowBookingCalendar(true);
     }
   };
+
+  // No auto-resume; user explicitly taps the button to open the calendar
 
   // Use the selected saloon service or fallback to mock data
   const servicesToDisplay = saloonService ? [saloonService] : mockSaloonServices;
@@ -175,83 +186,21 @@ export default function CheckoutScreen() {
   // Check if all customer info is filled from Clerk profile
   const isCustomerInfoComplete = customerInfo.name && customerInfo.email;
 
-  // Show loading if we're still waiting for params
-  if (!saloonService && !params.saloonId) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
-        <View style={{ 
-          flex: 1, 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          padding: 24
-        }}>
-          <Text style={{ 
-            fontSize: 24, 
-            fontWeight: 'bold', 
-            color: '#423120',
-            textAlign: 'center'
-          }}>
-            Loading your booking...
-          </Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Allow rendering even without params; fallback services are used
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
       {/* Header */}
-      <View style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 24,
-        paddingTop: 24,
-        paddingBottom: 16,
-        backgroundColor: '#F4EDE5'
-      }}>
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 20,
-            backgroundColor: '#FFFFFF',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 16,
-            shadowColor: '#423120',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 2
-          }}
-        >
-          <Ionicons name="arrow-back" size={20} color="#423120" />
-        </TouchableOpacity>
-        <Text style={{ 
-          fontSize: 28, 
-          fontWeight: 'bold', 
-          color: '#423120',
-          flex: 1
-        }}>
-          Checkout
-        </Text>
-      </View>
+      <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} />
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+        <View style={{ paddingHorizontal: 24, paddingBottom: 24, alignContent: 'center', justifyContent: 'center', marginTop: 24 }}>
+
+       
 
         {/* Selected Services */}
           <View style={{ marginBottom: 24 }}>
-            <Text style={{ 
-              fontSize: 20, 
-              fontWeight: '600', 
-              color: '#423120',
-              marginBottom: 16
-            }}>
-              Your Booking
-            </Text>
-            
+                       
             <View style={{ 
               backgroundColor: '#FFFFFF', 
               borderRadius: 16, 
@@ -266,7 +215,7 @@ export default function CheckoutScreen() {
             }}>
               {servicesToDisplay.map((service, index) => (
                 <View key={index} style={{ 
-                  paddingBottom: index < servicesToDisplay.length - 1 ? 16 : 0,
+                  paddingBottom: 0,
                   borderBottomWidth: index < servicesToDisplay.length - 1 ? 1 : 0,
                   borderBottomColor: '#E0D7CA',
                   marginBottom: index < servicesToDisplay.length - 1 ? 16 : 0
@@ -281,20 +230,15 @@ export default function CheckoutScreen() {
                       }}>
                 {service.service?.name}
                       </Text>
-                      <Text style={{ 
-                        fontSize: 14, 
-                        color: '#423120', 
-                        opacity: 0.7,
-                        marginBottom: 2
-                      }}>
-                        {service.saloon?.name}
-                      </Text>
+                      <Text style={{ fontSize: 14, color: '#423120', opacity: 0.7, fontFamily: 'Philosopher-Regular', marginBottom: 2 }}>
+                          {service.saloon?.name}
+                        </Text>
                       <Text style={{ 
                         fontSize: 12, 
                         color: '#423120', 
                         opacity: 0.6
                       }}>
-                        {service.durationMinutes} minutes
+                     
                       </Text>
                     </View>
                     <Text style={{ 
@@ -302,7 +246,6 @@ export default function CheckoutScreen() {
                       fontWeight: '600', 
                       color: '#423120'
                     }}>
-                ${service.price.toFixed(2)}
                     </Text>
                   </View>
             </View>
@@ -323,7 +266,7 @@ export default function CheckoutScreen() {
                     color: '#423120', 
                     opacity: 0.7
                   }}>
-                    Total Duration:
+                  Duration:
                   </Text>
                   <Text style={{ 
                     fontSize: 14, 
@@ -350,7 +293,7 @@ export default function CheckoutScreen() {
                     fontWeight: 'bold', 
                     color: '#423120'
                   }}>
-                    ${totalPrice.toFixed(2)}
+                    €{totalPrice.toFixed(2)}
                   </Text>
                 </View>
               </View>
@@ -360,21 +303,61 @@ export default function CheckoutScreen() {
         {/* Book Button */}
         <View style={{ marginBottom: 32 }}>
           {selectedBookingDate && selectedBookingTime ? (
-            <CheckoutButton
-              saloonServices={servicesToDisplay}
-              customerInfo={customerInfo}
-              onSuccess={handleSuccess}
-              onError={handleError}
-              disabled={!isCustomerInfoComplete}
-            >
-              Continue to Payment
-            </CheckoutButton>
+            isSignedIn ? (
+              <CheckoutButton
+                saloonServices={servicesToDisplay}
+                customerInfo={customerInfo}
+                onSuccess={handleSuccess}
+                onError={handleError}
+                disabled={!isCustomerInfoComplete}
+              >
+                Confirm Booking
+              </CheckoutButton>
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  // Build redirect back to checkout with all current params + selected date/time
+                  const search = new URLSearchParams({
+                    ...(params.saloonId ? { saloonId: String(params.saloonId) } : {}),
+                    ...(params.saloonName ? { saloonName: String(params.saloonName) } : {}),
+                    ...(params.serviceId ? { serviceId: String(params.serviceId) } : {}),
+                    ...(params.serviceName ? { serviceName: String(params.serviceName) } : {}),
+                    ...(params.categoryName ? { categoryName: String(params.categoryName) } : {}),
+                    ...(params.price ? { price: String(params.price) } : {}),
+                    ...(params.durationMinutes ? { durationMinutes: String(params.durationMinutes) } : {}),
+                    date: selectedBookingDate,
+                    time: selectedBookingTime,
+                  }).toString();
+                  const redirectPath = `/(app)/checkout?${search}`;
+                  router.push({ pathname: '/sign-in', params: { redirect: encodeURIComponent(redirectPath) } });
+                }}
+                style={{
+                  backgroundColor: '#423120',
+                  paddingVertical: 16,
+                  paddingHorizontal: 32,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 3,
+                  flexDirection: 'row',
+                  justifyContent: 'center'
+                }}
+              >
+                <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
+                  Sign in to continue
+                </Text>
+              </TouchableOpacity>
+            )
           ) : (
             <TouchableOpacity
-              onPress={handleBookButtonPress}
-              disabled={!isCustomerInfoComplete}
+              onPress={() => {
+                handleBookButtonPress();
+              }}
               style={{
-                backgroundColor: isCustomerInfoComplete ? '#3C2C1E' : '#D0D0D0',
+                backgroundColor: '#423120',
                 paddingVertical: 16,
                 paddingHorizontal: 32,
                 borderRadius: 12,
@@ -388,12 +371,8 @@ export default function CheckoutScreen() {
                 justifyContent: 'center'
               }}
             >
-              <Text style={{
-                fontSize: 18,
-                fontFamily: 'Philosopher-Bold',
-                color: isCustomerInfoComplete ? '#F5F1EB' : '#999'
-              }}>
-                Book Appointment
+              <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
+                Select Date & Time
               </Text>
             </TouchableOpacity>
           )}

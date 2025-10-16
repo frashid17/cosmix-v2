@@ -19,27 +19,26 @@ function Layout() {
     return (
         <View style={{ flex: 1 }}>
             <Stack>
+                {/* Public routes */}
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="services" options={{ headerShown: false }} />
+                <Stack.Screen name="saloons" options={{ headerShown: false }} />
+                <Stack.Screen name="categories" options={{ headerShown: false }} />
+                <Stack.Screen name="checkout" options={{ headerShown: false }} />
+                <Stack.Screen name="map" options={{ headerShown: false }} />
+
+                {/* Auth-only routes */}
                 <Stack.Protected guard={isSignedIn}>
-                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                    <Stack.Screen name="services" options={{ headerShown: false }} />
-                    <Stack.Screen name="saloons" options={{ headerShown: false }} />
-                    <Stack.Screen name="categories" options={{ headerShown: false }} />
-                    <Stack.Screen name="checkout" options={{ headerShown: false }} />
-                    <Stack.Screen name="map" options={{ headerShown: false }} />
                     <Stack.Screen name="bookings" options={{ headerShown: false }} />
-                    {/* Add other authenticated screens here */}
                 </Stack.Protected>
 
-                <Stack.Protected guard={!isSignedIn}>
-                    <Stack.Screen name="sign-in" options={{ headerShown: false }}/>
-                    <Stack.Screen name="sign-up" options={{ headerShown: false }}/>
-                </Stack.Protected>    
+                {/* Auth screens */}
+                <Stack.Screen name="sign-in" options={{ headerShown: false }}/>
+                <Stack.Screen name="sign-up" options={{ headerShown: false }}/>
             </Stack>
             
-            {/* Show TabBar only for authenticated users and on specific screens */}
-            {isSignedIn && (
-                <TabBar />
-            )}
+            {/* Show TabBar for everyone */}
+            <TabBar />
         </View>
     )
 }

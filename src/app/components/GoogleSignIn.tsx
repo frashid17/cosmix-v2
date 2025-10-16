@@ -7,76 +7,54 @@ import { Ionicons } from '@expo/vector-icons'
 
 export const useWarmUpBrowser = () => {
   useEffect(() => {
-    // Preloads the browser for Android devices to reduce authentication load time
-    // See: https://docs.expo.dev/guides/authentication/#improving-user-experience
     void WebBrowser.warmUpAsync()
     return () => {
-      // Cleanup: closes browser when component unmounts
       void WebBrowser.coolDownAsync()
     }
   }, [])
 }
 
-// Handle any pending authentication sessions
 WebBrowser.maybeCompleteAuthSession()
 
-export default function Page() {
+export default function GoogleSignIn({ onSignedIn }: { onSignedIn?: () => void }) {
   useWarmUpBrowser()
 
-  // Use the `useSSO()` hook to access the `startSSOFlow()` method
   const { startSSOFlow } = useSSO()
 
   const onGooglePress = useCallback(async () => {
     try {
-      // Start the Google authentication process
-      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+      const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_google',
         redirectUrl: AuthSession.makeRedirectUri(),
       })
 
-      // If sign in was successful, set the active session
       if (createdSessionId) {
         setActive!({ session: createdSessionId })
-      } else {
-        // If there is no `createdSessionId`,
-        // there are missing requirements, such as MFA
-        // Use the `signIn` or `signUp` returned from `startSSOFlow`
-        // to handle next steps
+        onSignedIn?.()
       }
     } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
       console.error('Google Sign In Error:', JSON.stringify(err, null, 2))
     }
-  }, [startSSOFlow])
+  }, [startSSOFlow, onSignedIn])
 
   const onApplePress = useCallback(async () => {
     try {
-      // Start the Apple authentication process
-      const { createdSessionId, setActive, signIn, signUp } = await startSSOFlow({
+      const { createdSessionId, setActive } = await startSSOFlow({
         strategy: 'oauth_apple',
         redirectUrl: AuthSession.makeRedirectUri(),
       })
 
-      // If sign in was successful, set the active session
       if (createdSessionId) {
         setActive!({ session: createdSessionId })
-      } else {
-        // If there is no `createdSessionId`,
-        // there are missing requirements, such as MFA
-        // Use the `signIn` or `signUp` returned from `startSSOFlow`
-        // to handle next steps
+        onSignedIn?.()
       }
     } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
       console.error('Apple Sign In Error:', JSON.stringify(err, null, 2))
     }
-  }, [startSSOFlow])
+  }, [startSSOFlow, onSignedIn])
 
   return (
     <View style={{ gap: 12 }}>
-      {/* Apple Sign In Button */}
       <TouchableOpacity
         onPress={onApplePress}
         style={{
@@ -105,7 +83,6 @@ export default function Page() {
         </View>
       </TouchableOpacity>
 
-      {/* Google Sign In Button */}
       <TouchableOpacity
         onPress={onGooglePress}
         style={{

@@ -1,242 +1,263 @@
-import React, { useState } from "react";
-import { 
-  SafeAreaView, 
-  Text, 
-  View, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image,
-  TextInput,
-  FlatList
-} from "react-native";
-import AntDesign from "@expo/vector-icons/AntDesign";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import React, { useEffect, useState, useRef } from "react";
+import { SafeAreaView, View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Animated, Easing, ActivityIndicator } from "react-native";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
+import Header from "../../components/Header";
+import SideMenu from "../../components/SideMenu";
+import { useFonts } from "expo-font";
+import getCategories from "../../actions/get-categories";
+import { Category } from "../../types";
 
 export default function ServicesPage() {
-  const [activeCategory, setActiveCategory] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [isMenuVisible, setMenuVisible] = useState(false);
 
-  const categories = [
-    { id: "all", name: "All", color: "#423120" },
-    { id: "massage", name: "Massage", color: "#D7C3A7" },
-    { id: "facial", name: "Facial", color: "#E0D7CA" },
-    { id: "body", name: "Body", color: "#968469" },
-    { id: "nails", name: "Nails", color: "#F4EDE5" },
-  ];
+  const [fontsLoaded] = useFonts({
+    'Philosopher-Regular': require("../../assets/fonts/Philosopher-Regular.ttf"),
+    'Philosopher-Bold': require("../../assets/fonts/Philosopher-Bold.ttf"),
+    'Philosopher-Italic': require("../../assets/fonts/Philosopher-Italic.ttf"),
+    'Philosopher-BoldItalic': require("../../assets/fonts/Philosopher-BoldItalic.ttf"),
+  });
 
-  const services = [
-    {
-      id: 1,
-      name: "Swedish Massage",
-      category: "Massage Therapy",
-      price: 80,
-      originalPrice: 100,
-      duration: 60,
-      rating: 4.9,
-      reviews: 124,
-      isPopular: true,
-      image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=300&h=200&fit=crop",
-      benefits: ["Stress Relief", "Muscle Relaxation", "Improved Circulation"]
-    },
-    {
-      id: 2,
-      name: "Deep Cleansing Facial",
-      category: "Facial Treatment",
-      price: 65,
-      duration: 45,
-      rating: 4.8,
-      reviews: 89,
-      image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=300&h=200&fit=crop",
-      benefits: ["Deep Cleansing", "Pore Minimizing", "Skin Brightening"]
-    },
-    {
-      id: 3,
-      name: "Hot Stone Therapy",
-      category: "Massage Therapy",
-      price: 95,
-      duration: 75,
-      rating: 4.9,
-      reviews: 156,
-      isPopular: true,
-      image: "https://images.unsplash.com/photo-1596755389378-c31d21fd1273?w=300&h=200&fit=crop",
-      benefits: ["Deep Relaxation", "Pain Relief", "Stress Reduction"]
-    },
-  ];
+  const darkBrown = "#423120";
+  const lightBeige = "#F4EDE5";
+  const chipBeige = "#D7C3A7";
+
+  // Popular categories (home-provided API)
+  const [popular, setPopular] = useState<string[]>([]);
+
+  // All categories for search
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [catLoading, setCatLoading] = useState<boolean>(false);
+  const [catError, setCatError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPopular = async () => {
+      try {
+        const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL || "https://cosmix-admin.vercel.app";
+        const res = await fetch(`${API_BASE}/api/public/categories?popular=true&global=true`);
+        const data = await res.json();
+        const names: string[] = Array.isArray(data) ? data.map((c: any) => c.name).filter(Boolean) : [];
+        setPopular(names);
+      } catch (e) {
+        console.warn("Failed to load popular categories", e);
+      }
+    };
+    fetchPopular();
+  }, []);
+
+  // Fetch all categories for search
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        setCatLoading(true);
+        setCatError(null);
+        const data = await getCategories();
+        setCategories(data);
+      } catch (err) {
+        setCatError(err instanceof Error ? err.message : 'Failed to fetch categories');
+      } finally {
+        setCatLoading(false);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  const onChipPress = (name: string) => {
+    router.push({ pathname: "/services", params: { categoryName: name } });
+  };
+
+  const filteredCategoryNames = query.trim().length === 0
+    ? []
+    : categories
+        .map((c) => c.name)
+        .filter(Boolean)
+        .filter((name) => name.toLowerCase().includes(query.trim().toLowerCase()));
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <Header />
-      <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-      <CategoryFilter 
-        categories={categories} 
-        activeCategory={activeCategory} 
-        setActiveCategory={setActiveCategory} 
-      />
-      <ServicesList services={services} />
+    <SafeAreaView className="flex-1" style={{ backgroundColor: lightBeige }}>
+      {/* Fixed header to match Home */}
+      <Header showBack={true} onMenuPress={() => setMenuVisible(true)} onBackPress={() => router.back()} />
+
+      {/* Side menu modal */}
+      <Modal visible={isMenuVisible} animationType="slide" transparent={false} onRequestClose={() => setMenuVisible(false)}>
+        <SideMenu onClose={() => setMenuVisible(false)} />
+      </Modal>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <View className="px-5 pt-6">
+          {/* Search bar - same style as in Map */}
+          <View style={{ alignItems: "center" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: "#FFFFFF",
+                borderRadius: 25,
+                borderWidth: 1,
+                borderColor: darkBrown,
+                width: 320,
+                height: 80,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3.84,
+                elevation: 5,
+              }}
+            >
+              <Ionicons name="search" size={20} color={darkBrown} style={{ marginRight: 12 }} />
+              <TextInput
+                style={{ flex: 1, fontSize: 23, fontFamily: 'Philosopher-Bold', color: darkBrown }}
+                value={query}
+                onChangeText={setQuery}
+                placeholder="Etsi hoitoja..."
+                placeholderTextColor="#999"
+                returnKeyType="search"
+              />
+            </View>
+          </View>
+
+          {/* When searching: show matching categories only */}
+          {query.trim().length > 0 ? (
+            <View style={{ marginTop: 20 }}>
+              {catLoading ? (
+                <View style={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                  <ActivityIndicator size="large" color={darkBrown} />
+                  <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Regular', marginTop: 10 }}>
+                    Ladataan kategorioita...
+                  </Text>
+                </View>
+              ) : filteredCategoryNames.length > 0 ? (
+                <View>
+                  {/* Render results in the same 2-per-row layout */}
+                  {chunkArray(filteredCategoryNames, 2).map((row, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
+                      {row.map((name) => (
+                        <Chip key={name} label={name} onPress={() => onChipPress(name)} color={chipBeige} textColor={darkBrown} />
+                      ))}
+                      {row.length === 1 && (
+                        <View style={{ width: 147 }} />
+                      )}
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={{ alignItems: 'center', marginTop: 10 }}>
+                  <Text style={{ fontFamily: 'Philosopher-Bold', color: darkBrown, fontSize: 16 }}>
+                    Not found
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <>
+              {/* Section title */}
+              <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Bold', fontSize: 20 }} className="mt-8">
+                Suosituimmat palvelut
+              </Text>
+
+              {/* Chips grid for popular */}
+              <View className="mt-5">
+                <View className="flex-row justify-between mb-5 px-2">
+                  {popular.slice(0, 2).map((name) => (
+                    <Chip key={name} label={name} onPress={() => onChipPress(name)} color={chipBeige} textColor={darkBrown} />
+                  ))}
+                </View>
+                {popular.length > 2 && (
+                  <View className="flex-row justify-center mb-5">
+                    <Chip label={popular[2]} onPress={() => onChipPress(popular[2])} color={chipBeige} textColor={darkBrown} />
+                  </View>
+                )}
+                <View className="flex-row justify-between mb-5 px-2">
+                  {popular.slice(3, 5).map((name) => (
+                    <Chip key={name} label={name} onPress={() => onChipPress(name)} color={chipBeige} textColor={darkBrown} />
+                  ))}
+                </View>
+                {popular.length > 5 && (
+                  <View className="flex-row justify-center">
+                    <Chip label={popular[5]} onPress={() => onChipPress(popular[5])} color={chipBeige} textColor={darkBrown} />
+                  </View>
+                )}
+              </View>
+            </>
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-function Header() {
-  return (
-    <View className="px-6 py-4 bg-[#F4EDE5]">
-      <View className="flex-row mt-7 items-center justify-between">
-        <View>
-          <Text className="text-[#423120] text-2xl font-bold font-[Philosopher]">
-            Our Services
-          </Text>
-          <Text className="text-[#968469] font-[Philosopher]">
-            Choose your perfect treatment
-          </Text>
-        </View>
-        <TouchableOpacity className="bg-white p-3 rounded-full shadow-sm">
-          <MaterialIcons name="filter-list" size={24} color="#423120" />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
 }
 
-function SearchBar({ searchQuery, setSearchQuery }: any) {
-  return (
-    <View className="px-6 py-4">
-      <View className="bg-[#F4EDE5] rounded-2xl flex-row items-center px-4 py-3">
-        <AntDesign name="search1" size={20} color="#968469" />
-        <TextInput
-          className="flex-1 ml-3 font-[Philosopher] text-[#423120]"
-          placeholder="Search services..."
-          placeholderTextColor="#968469"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-    </View>
-  );
-}
+function Chip({ label, onPress, color, textColor }: { label: string; onPress: () => void; color: string; textColor: string }) {
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [textWidth, setTextWidth] = useState(0);
+  const translateX = useRef(new Animated.Value(0)).current;
 
-function CategoryFilter({ categories, activeCategory, setActiveCategory }: any) {
+  const H_PADDING = 16; // internal horizontal padding so text doesn't touch edges
+  const effectiveWidth = Math.max(0, containerWidth - H_PADDING * 2);
+  const shouldScroll = textWidth > effectiveWidth && effectiveWidth > 0;
+
+  useEffect(() => {
+    let loop: Animated.CompositeAnimation | null = null;
+    if (shouldScroll) {
+      // Start centered if possible, then animate to left and back
+      translateX.setValue(0);
+      const distance = textWidth - effectiveWidth;
+      loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(translateX, {
+            toValue: -distance,
+            duration: Math.min(14000, 5000 + distance * 30),
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateX, {
+            toValue: 0,
+            duration: 1000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      loop.start();
+    }
+    return () => {
+      if (loop) loop.stop();
+    };
+  }, [shouldScroll, textWidth, effectiveWidth, translateX]);
+
   return (
-    <View className="px-6 mb-4">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {categories.map((category) => (
-          <TouchableOpacity
-            key={category.id}
-            onPress={() => setActiveCategory(category.id)}
-            className={`mr-3 px-6 py-3 rounded-full ${
-              activeCategory === category.id 
-                ? 'bg-[#423120]' 
-                : 'bg-[#F4EDE5]'
-            }`}
+    <TouchableOpacity
+      onPress={onPress}
+      style={{ backgroundColor: color, width: 147, height: 45 }}
+      className="rounded-full items-center justify-center"
+    >
+      <View
+        style={{ width: "100%", overflow: "hidden", alignItems: "center", paddingHorizontal: H_PADDING }}
+        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+      >
+        <Animated.View style={{ transform: [{ translateX: shouldScroll ? translateX : 0 }], alignItems: "center" }}>
+          <Text
+            onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
+            numberOfLines={1}
+            style={{ color: textColor, fontFamily: 'Philosopher-Bold', fontSize: 15, textAlign: 'center' }}
           >
-            <Text 
-              className={`font-[Philosopher] font-bold ${
-                activeCategory === category.id 
-                  ? 'text-white' 
-                  : 'text-[#423120]'
-              }`}
-            >
-              {category.name}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-function ServicesList({ services }: any) {
-  const renderService = ({ item }: any) => (
-    <TouchableOpacity className="mx-6 mb-6">
-      <View className="bg-white rounded-3xl shadow-lg overflow-hidden border border-[#F4EDE5]">
-        <View className="relative">
-          <Image 
-            source={{ uri: item.image }}
-            className="w-full h-48"
-            resizeMode="cover"
-          />
-          <TouchableOpacity className="absolute top-4 right-4 bg-white/90 p-2 rounded-full">
-            <AntDesign name="hearto" size={20} color="#423120" />
-          </TouchableOpacity>
-          {item.originalPrice && (
-            <View className="absolute bottom-4 right-4 bg-red-500 px-2 py-1 rounded-full">
-              <Text className="text-white text-xs font-bold font-[Philosopher]">
-                SAVE ${item.originalPrice - item.price}
-              </Text>
-            </View>
-          )}
-        </View>
-        
-        <View className="p-6">
-          <View className="flex-row items-start justify-between mb-2">
-            <View className="flex-1">
-              <Text className="text-[#423120] text-lg font-bold font-[Philosopher] mb-1">
-                {item.name}
-              </Text>
-              <Text className="text-[#968469] font-[Philosopher]">
-                {item.category}
-              </Text>
-            </View>
-            <View className="items-end">
-              <View className="flex-row items-center">
-                {item.originalPrice && (
-                  <Text className="text-[#968469] text-sm font-[Philosopher] line-through mr-2">
-                    ${item.originalPrice}
-                  </Text>
-                )}
-                <Text className="text-[#423120] text-xl font-bold font-[Philosopher]">
-                  ${item.price}
-                </Text>
-              </View>
-              <Text className="text-[#968469] text-sm font-[Philosopher]">
-                {item.duration} minutes
-              </Text>
-            </View>
-          </View>
-          
-          <View className="flex-row items-center mb-3">
-            <View className="flex-row items-center mr-4">
-              <AntDesign name="star" size={16} color="#FFD700" />
-              <Text className="text-[#423120] font-[Philosopher] ml-1">
-                {item.rating}
-              </Text>
-              <Text className="text-[#968469] font-[Philosopher] ml-1">
-                ({item.reviews} reviews)
-              </Text>
-            </View>
-          </View>
-          
-          <View className="mb-4">
-            <Text className="text-[#423120] font-bold font-[Philosopher] mb-2">
-              Benefits:
-            </Text>
-            <View className="flex-row flex-wrap">
-              {item.benefits.map((benefit: string, index: number) => (
-                <View key={index} className="bg-[#E0D7CA] px-3 py-1 rounded-full mr-2 mb-2">
-                  <Text className="text-[#423120] text-xs font-[Philosopher]">
-                    {benefit}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-          
-          <TouchableOpacity className="bg-[#423120] py-4 rounded-2xl">
-            <Text className="text-white text-center font-bold font-[Philosopher]">
-              Book This Service
-            </Text>
-          </TouchableOpacity>
-        </View>
+            {label}
+          </Text>
+        </Animated.View>
       </View>
     </TouchableOpacity>
-  );
-
-  return (
-    <FlatList
-      data={services}
-      renderItem={renderService}
-      keyExtractor={(item) => item.id.toString()}
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 20 }}
-    />
   );
 }
