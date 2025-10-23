@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, SafeAreaView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator, SafeAreaView, Modal } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import getCategories from "../actions/get-categories";
 import { Category } from "../types";
 import Header from "../components/Header";
+import SideMenu from "../components/SideMenu";
 
 const Categories: React.FC = () => {
   const router = useRouter();
@@ -13,6 +14,7 @@ const Categories: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMenuVisible, setMenuVisible] = useState(false);
 
   const buttonMargin = 6;
   const buttonBorderRadius = 30;
@@ -151,6 +153,7 @@ const Categories: React.FC = () => {
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
+        onMenuPress={() => setMenuVisible(true)}
       />
 
       {/* Content with padding */}
@@ -238,6 +241,27 @@ const Categories: React.FC = () => {
           </View>
         )}
       </View>
+
+      {/* Modal for the side menu */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isMenuVisible}
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: '#F4EDE5',
+              alignSelf: 'flex-end',
+            }}
+          >
+            <SideMenu onClose={() => setMenuVisible(false)} />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };

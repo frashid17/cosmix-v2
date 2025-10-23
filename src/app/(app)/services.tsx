@@ -1,6 +1,6 @@
 // src/app/(app)/services.tsx
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
+import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from 'expo-font';
 import Svg, { Path } from "react-native-svg";
@@ -9,6 +9,7 @@ import getServicesByCategory from "../actions/get-services";
 import getServicesBySalon from "../actions/get-services-by-salon";
 import { Service } from "../types";
 import Header from "../components/Header";
+import SideMenu from "../components/SideMenu";
 
 // Colors
 const darkBrown = "#423120";
@@ -28,6 +29,7 @@ export default function ServicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dynamicCategoryName, setDynamicCategoryName] = useState<string>('');
+  const [isMenuVisible, setMenuVisible] = useState(false);
   
   const [fontsLoaded] = useFonts({
     'Philosopher-Regular': require("../assets/fonts/Philosopher-Regular.ttf"),
@@ -189,6 +191,7 @@ export default function ServicesPage() {
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
+        onMenuPress={() => setMenuVisible(true)}
       />
 
       {/* Salon Info Header - Show when coming from map */}
@@ -480,6 +483,27 @@ export default function ServicesPage() {
         {/* Bottom spacer so last card is fully visible above tab bar */}
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Modal for the side menu */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isMenuVisible}
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: '#F4EDE5',
+              alignSelf: 'flex-end',
+            }}
+          >
+            <SideMenu onClose={() => setMenuVisible(false)} />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

@@ -1,6 +1,6 @@
 // src/app/(app)/checkout.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Alert, SafeAreaView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Alert, SafeAreaView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,10 @@ import { CheckoutButton } from '../components/CheckoutButton';
 import { CustomerInfo } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useUser, useAuth } from '@clerk/clerk-expo';
 import BookingCalendar from '../components/BookingCalendar';
 import Header from '../components/Header';
+import SideMenu from '../components/SideMenu';
+import useAuthStore from '@/store/auth.store';
 
 // Mock data - replace with your actual data
 const mockSaloonServices: SaloonService[] = [
@@ -58,8 +59,7 @@ const mockSaloonServices: SaloonService[] = [
 
 export default function CheckoutScreen() {
   const router = useRouter();
-  const { user } = useUser();
-  const { getToken, isSignedIn } = useAuth();
+  const { user, isAuthenticated } = useAuthStore();
   const params = useLocalSearchParams<{
     saloonId?: string;
     saloonName?: string;
@@ -73,25 +73,22 @@ export default function CheckoutScreen() {
   }>();
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: user?.firstName && user?.lastName 
-      ? `${user.firstName} ${user.lastName}` 
-      : user?.firstName || '',
-    email: user?.emailAddresses?.[0]?.emailAddress || '',
-    phone: user?.phoneNumbers?.[0]?.phoneNumber || '',
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: '',
     bookingTime: new Date().toISOString(),
     notes: ''
   });
 
-  // NEW: keep customerInfo in sync with Clerk user after sign-in
+  // Keep customerInfo in sync with Appwrite user after sign-in
   useEffect(() => {
-    setCustomerInfo(prev => ({
-      ...prev,
-      name: user?.firstName && user?.lastName 
-        ? `${user.firstName} ${user.lastName}` 
-        : (user?.firstName || prev.name),
-      email: user?.emailAddresses?.[0]?.emailAddress || prev.email,
-      phone: user?.phoneNumbers?.[0]?.phoneNumber || prev.phone,
-    }));
+    if (user) {
+      setCustomerInfo(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+      }));
+    }
   }, [user]);
 
   // Booking calendar state
@@ -99,6 +96,7 @@ export default function CheckoutScreen() {
   const [selectedBookingDate, setSelectedBookingDate] = useState<string>('');
   const [selectedBookingTime, setSelectedBookingTime] = useState<string>('');
   const [isProcessingBooking, setIsProcessingBooking] = useState(false);
+  const [isMenuVisible, setMenuVisible] = useState(false);
 
   // Create SaloonService object from params using useMemo to prevent infinite re-renders
   const saloonService = useMemo(() => {
@@ -183,7 +181,7 @@ export default function CheckoutScreen() {
   const totalPrice = servicesToDisplay.reduce((sum, service) => sum + service.price, 0);
   const totalDuration = servicesToDisplay.reduce((sum, service) => sum + service.durationMinutes, 0);
 
-  // Check if all customer info is filled from Clerk profile
+  // Check if all customer info is filled from Appwrite profile
   const isCustomerInfoComplete = customerInfo.name && customerInfo.email;
 
   // Allow rendering even without params; fallback services are used
@@ -191,7 +189,7 @@ export default function CheckoutScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
       {/* Header */}
-      <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} />
+      <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} />
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         <View style={{ paddingHorizontal: 24, paddingBottom: 24, alignContent: 'center', justifyContent: 'center', marginTop: 24 }}>
@@ -303,7 +301,7 @@ export default function CheckoutScreen() {
         {/* Book Button */}
         <View style={{ marginBottom: 32 }}>
           {selectedBookingDate && selectedBookingTime ? (
-            isSignedIn ? (
+            isAuthenticated ? (
               <CheckoutButton
                 saloonServices={servicesToDisplay}
                 customerInfo={customerInfo}
@@ -419,6 +417,27 @@ export default function CheckoutScreen() {
       saloonId={params.saloonId}
       serviceId={params.serviceId}
     />
+
+    {/* Modal for the side menu */}
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={isMenuVisible}
+      onRequestClose={() => setMenuVisible(false)}
+    >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+        <View
+          style={{
+            width: '100%',
+            height: '100%',
+            backgroundColor: '#F4EDE5',
+            alignSelf: 'flex-end',
+          }}
+        >
+          <SideMenu onClose={() => setMenuVisible(false)} />
+        </View>
+      </View>
+    </Modal>
     </SafeAreaView>
   );
 }

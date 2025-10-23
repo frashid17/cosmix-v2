@@ -1,7 +1,6 @@
 // src/app/actions/get-bookings.ts
 import { Booking } from "@/app/types";
 import { API_ENDPOINTS } from "@/config/constants";
-import { useAuth } from '@clerk/clerk-expo';
 
 export const getBookings = async (authToken?: string, userId?: string, userEmail?: string): Promise<Booking[]> => {
     try {

@@ -56,7 +56,7 @@ export const SalonMapView: React.FC<SalonMapViewProps> = ({
   const fetchSalons = async () => {
     try {
       setLoading(true);
-      const baseUrl = 'http://localhost:3000'; // Replace with your admin API URL
+      const baseUrl = 'https://cosmix-admin.vercel.app'; // Production API URL
       const url = userLocation
         ? `${baseUrl}/api/saloons/map?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=10`
         : `${baseUrl}/api/saloons/map`;

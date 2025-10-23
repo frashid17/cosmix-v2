@@ -1,12 +1,12 @@
 // src/app/(app)/saloons.tsx
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image } from "react-native";
+import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useFonts } from "expo-font";
 import getSaloonsByService, { SaloonData } from "../actions/get-saloons-by-service";
 import getSalonById from "../actions/get-salon-by-id";
 import Header from "../components/Header";
+import SideMenu from "../components/SideMenu";
 
 const darkBrown = "#3C2C1E";
 const beige = "#D9C7AF";
@@ -24,12 +24,9 @@ const Saloons = () => {
     const [saloons, setSaloons] = useState<SaloonData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isMenuVisible, setMenuVisible] = useState(false);
 
-    // Load custom fonts
-    const [fontsLoaded] = useFonts({
-        "Philosopher-Regular": require("../assets/fonts/Philosopher-Regular.ttf"),
-        "Philosopher-Bold": require("../assets/fonts/Philosopher-Bold.ttf"),
-    });
+    // Fonts are loaded globally in root _layout.tsx
 
     // Fetch saloons when component mounts
     useEffect(() => {
@@ -69,9 +66,7 @@ const Saloons = () => {
     }, [serviceId, salonId]);
 
     // Render nothing until fonts are loaded to prevent style flashing
-    if (!fontsLoaded) {
-        return null;
-    }
+    // (Fonts are loaded globally, so no check needed here)
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
@@ -81,6 +76,7 @@ const Saloons = () => {
                 showBack={true}
                 showMenu={true}
                 onBackPress={() => router.back()}
+                onMenuPress={() => setMenuVisible(true)}
             />
 
             {/* SCROLLABLE CONTENT */}
@@ -402,6 +398,27 @@ const Saloons = () => {
                     </>
                 )}
             </ScrollView>
+
+            {/* Modal for the side menu */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isMenuVisible}
+                onRequestClose={() => setMenuVisible(false)}
+            >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+                    <View
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            backgroundColor: '#F4EDE5',
+                            alignSelf: 'flex-end',
+                        }}
+                    >
+                        <SideMenu onClose={() => setMenuVisible(false)} />
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };

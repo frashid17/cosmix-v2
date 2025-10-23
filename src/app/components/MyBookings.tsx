@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Booking } from '@/app/types';
 import getBookings from '../actions/get-bookings';
 import { getSalon, SalonDetails } from '../actions/get-salon';
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import useAuthStore from '@/store/auth.store';
 
 interface MyBookingsProps {
   onBookingPress?: (booking: Booking) => void;
@@ -16,8 +16,7 @@ const MyBookings: React.FC<MyBookingsProps> = ({ onBookingPress }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [salonDetails, setSalonDetails] = useState<Record<string, SalonDetails>>({});
-  const { getToken } = useAuth();
-  const { user } = useUser();
+  const { user } = useAuthStore();
 
   // Fallback salon names for known salon IDs
   const knownSalons: Record<string, string> = {
@@ -28,32 +27,23 @@ const MyBookings: React.FC<MyBookingsProps> = ({ onBookingPress }) => {
   };
 
   useEffect(() => {
-    if (user?.id) {
-      console.log('User ID changed, fetching bookings for:', user.id);
+    if (user?.$id) {
+      console.log('User ID changed, fetching bookings for:', user.$id);
       fetchBookings();
     }
-  }, [user?.id]);
+  }, [user?.$id]);
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const token = await getToken();
-      const userId = user?.id; // Get the current user's ID
-      console.log('Current user ID (external):', userId);
-      console.log('Current user ID (internal):', user?.publicMetadata?.userId || user?.privateMetadata?.userId);
-      console.log('Full user object keys:', Object.keys(user || {}));
-      console.log('User metadata:', user?.publicMetadata, user?.privateMetadata);
-      
-      // Try to get the internal user ID that matches the booking format
-      const internalUserId = user?.publicMetadata?.userId || user?.privateMetadata?.userId || userId;
-      console.log('Using user ID for filtering:', internalUserId);
-      
-      const userEmail = user?.emailAddresses?.[0]?.emailAddress;
+      const userId = user?.$id;
+      const userEmail = user?.email;
+      console.log('Current user ID:', userId);
       console.log('User email for matching:', userEmail);
       
-      const data = await getBookings(token || undefined, internalUserId, userEmail);
+      const data = await getBookings(undefined, userId, userEmail);
       console.log('Raw bookings data received:', JSON.stringify(data, null, 2));
       console.log('Number of bookings:', data.length);
       
@@ -307,8 +297,7 @@ const MyBookings: React.FC<MyBookingsProps> = ({ onBookingPress }) => {
           <TouchableOpacity onPress={async () => {
             console.log('DEBUG: Fetching ALL bookings (no user filter)');
             try {
-              const token = await getToken();
-              const allData = await getBookings(token || undefined); // No user ID
+              const allData = await getBookings(undefined); // No user ID
               console.log('DEBUG: All bookings (no filter):', JSON.stringify(allData, null, 2));
               Alert.alert('Debug Info', `Found ${allData.length} total bookings in system`);
             } catch (err) {

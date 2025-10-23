@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { Alert, Platform, TouchableOpacity, View, Text, ActivityIndicator } from 'react-native';
 import { initiateCheckout, CustomerInfo, CheckoutResponse } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
-import { useAuth } from '@clerk/clerk-expo';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import useAuthStore from '@/store/auth.store';
 
 interface CheckoutButtonProps {
   saloonServices: SaloonService[];
@@ -24,33 +24,8 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
   children = "Confirm Booking"
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { isSignedIn, getToken } = useAuth();
+  const { isAuthenticated } = useAuthStore();
   const router = useRouter();
-
-  const resumeIfRedirected = async () => {
-    // Called after returning from sign-in
-    try {
-      const token = await getToken();
-      const result = await initiateCheckout(saloonServices, customerInfo, token || undefined);
-      Alert.alert(
-        'Booking Confirmed! 🎉',
-        result.message || 'Your booking has been confirmed. You will receive a confirmation email shortly. Please remember to pay at the venue.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              onSuccess?.(result.bookingIds);
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Checkout error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      Alert.alert('Booking Failed', errorMessage);
-      onError?.(error instanceof Error ? error : new Error(errorMessage));
-    }
-  };
 
   const handleCheckout = async () => {
     if (saloonServices.length === 0) {
@@ -64,7 +39,7 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
     }
 
     // If not signed in, go to sign-in and then resume
-    if (!isSignedIn) {
+    if (!isAuthenticated) {
       router.push({
         pathname: '/sign-in',
         params: {
@@ -77,8 +52,7 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
     setIsLoading(true);
 
     try {
-      const token = await getToken();
-      const result = await initiateCheckout(saloonServices, customerInfo, token || undefined);
+      const result = await initiateCheckout(saloonServices, customerInfo, undefined);
       Alert.alert(
         'Booking Confirmed! 🎉',
         result.message || 'Your booking has been confirmed. You will receive a confirmation email shortly. Please remember to pay at the venue.',

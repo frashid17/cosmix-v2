@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useFonts } from 'expo-font';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import getSaloonsMap from '../actions/get-saloons-map';
@@ -37,14 +36,6 @@ export default function MapScreen() {
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [webViewRef, setWebViewRef] = useState<WebView | null>(null);
-
-  // Load all Philosopher font variants
-  const [fontsLoaded] = useFonts({
-    'Philosopher-Regular': require('../assets/fonts/Philosopher-Regular.ttf'),
-    'Philosopher-Bold': require('../assets/fonts/Philosopher-Bold.ttf'),
-    'Philosopher-Italic': require('../assets/fonts/Philosopher-Italic.ttf'),
-    'Philosopher-BoldItalic': require('../assets/fonts/Philosopher-BoldItalic.ttf'),
-  });
 
   // Color scheme
   const darkBrown = "#423120";
@@ -665,7 +656,7 @@ export default function MapScreen() {
     }
   };
 
-  if (!fontsLoaded || loading) {
+  if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: white }]}>
         <View style={styles.loadingContainer}>

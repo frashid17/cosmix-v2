@@ -2,10 +2,8 @@
 import { Tabs } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Image } from "react-native";
-import { useUser } from "@clerk/clerk-expo";
 
 function Layout() {
-  const { user } = useUser();
   const tabBackground = "#D7C3A7";
   const darkBrown = "#423120";
   
@@ -62,13 +60,11 @@ function Layout() {
           headerShown: false,
           title: "Profile",
           tabBarIcon: ({ focused }) => (
-             (
               <Ionicons 
                 name="person" 
                 size={30} 
                 color={darkBrown} 
               />
-            )
           ),
         }} 
       />

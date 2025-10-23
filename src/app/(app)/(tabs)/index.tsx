@@ -4,7 +4,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState, useEffect } from "react";
 import Svg, { Path } from "react-native-svg";
 import { useRouter } from "expo-router";
-import { useFonts } from "expo-font";
 import SideMenu from '../../components/SideMenu';
 import getCategories from '../../actions/get-categories';
 import { Category } from '../../types';
@@ -17,14 +16,6 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [heroText, setHeroText] = useState("Palvelut nyt!");
-
-  // Load all Philosopher font variants
-  const [fontsLoaded] = useFonts({
-    'Philosopher-Regular': require("../../assets/fonts/Philosopher-Regular.ttf"),
-    'Philosopher-Bold': require("../../assets/fonts/Philosopher-Bold.ttf"),
-    'Philosopher-Italic': require("../../assets/fonts/Philosopher-Italic.ttf"),
-    'Philosopher-BoldItalic': require("../../assets/fonts/Philosopher-BoldItalic.ttf"),
-  });
 
   // New color scheme based on provided HEX codes
   const darkBrown = "#423120";
@@ -62,15 +53,6 @@ export default function Page() {
 
     return () => clearInterval(interval);
   }, []);
-
-  // Don't render if fonts aren't loaded
-  if (!fontsLoaded) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: white, justifyContent: 'center', alignItems: 'center' }}>
-        <Text>Loading fonts...</Text>
-      </SafeAreaView>
-    );
-  }
 
   const items = [
     {
@@ -214,9 +196,17 @@ export default function Page() {
             }}
           >
             {items.map((item, idx) => (
-              <View
+              <TouchableOpacity
                 key={idx}
                 style={{ marginBottom: 24, width: "48%", alignItems: "center" }}
+                onPress={() => {
+                  // Navigate to services with the specific service type
+                  router.push({
+                    pathname: "/services",
+                    params: { categoryName: item.label }
+                  });
+                }}
+                activeOpacity={0.8}
               >
                 <View style={{ position: "absolute", top: 45 }}>
                   <Svg width={160} height={120} viewBox="0 0 200 150">
@@ -248,7 +238,7 @@ export default function Page() {
                 >
                   {item.label}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -374,7 +364,7 @@ export default function Page() {
         {/* LOGIN & ENTREPRENEURS */}
         <View style={{ backgroundColor: lightBrown }} className="py-8">
           <View className="flex-row" style={{ justifyContent: "center", gap: 49 }}>
-            <View
+            <TouchableOpacity
               style={{
                 backgroundColor: veryLightBeige,
                 width: 122,
@@ -384,12 +374,14 @@ export default function Page() {
                 justifyContent: "center",
                 alignItems: "center",
               }}
+              onPress={() => router.push("/sign-in")}
+              activeOpacity={0.8}
             >
               <Text style={{ color: darkBrown, fontSize: 25, fontFamily: "Philosopher-Bold", textAlign: "center" }}>
                 Kirjaudu sisään
               </Text>
-            </View>
-            <View
+            </TouchableOpacity>
+            <TouchableOpacity
               style={{
                 backgroundColor: veryLightBeige,
                 width: 122,
@@ -399,11 +391,16 @@ export default function Page() {
                 justifyContent: "center",
                 alignItems: "center",
               }}
+              onPress={() => {
+                // Could navigate to entrepreneurs page or external link
+                console.log('Navigate to entrepreneurs section');
+              }}
+              activeOpacity={0.8}
             >
               <Text style={{ color: darkBrown, fontSize: 25, fontFamily: "Philosopher-Bold", textAlign: "center" }}>
                 Yrittäjille
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -417,7 +414,31 @@ export default function Page() {
           ].map((row, rowIdx) => (
             <View key={rowIdx} className="flex-row justify-between" style={{ marginBottom: 20 }}>
               {row.map((link, colIdx) => (
-                <TouchableOpacity key={colIdx} style={{ width: "48%", justifyContent: "center" }}>
+                <TouchableOpacity 
+                  key={colIdx} 
+                  style={{ width: "48%", justifyContent: "center" }}
+                  onPress={() => {
+                    // Handle footer navigation
+                    switch(link) {
+                      case "Etusivu":
+                        router.push("/");
+                        break;
+                      case "Palvelut":
+                        router.push("/services");
+                        break;
+                      case "Ajanvaraus":
+                        router.push("/booking");
+                        break;
+                      case "Tili":
+                        router.push("/profile");
+                        break;
+                      default:
+                        console.log(`Navigate to: ${link}`);
+                        break;
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
                   <Text
                     style={{
                       color: darkBrown,

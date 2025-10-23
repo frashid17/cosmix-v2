@@ -1,9 +1,10 @@
 // src/app/types.ts
 export interface User {
   id: string;
-  clerkId: string;
+  accountId: string; // Appwrite account ID
   email: string;
   name?: string;
+  avatar?: string;
   createdAt?: string;
   updatedAt?: string;
 }

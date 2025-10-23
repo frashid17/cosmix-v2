@@ -9,14 +9,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { useAuth, useUser } from "@clerk/clerk-expo";
 import { getBookings } from "../actions/get-bookings";
 import { Booking } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 import { API_ENDPOINTS } from "../../../config/constants";
 import { router } from "expo-router";
 import Header from "../components/Header";
-import { useFonts } from "expo-font";
+import useAuthStore from "@/store/auth.store";
 
 const beige = "#D9C7AF";
 const darkBrown = "#423120";
@@ -74,38 +73,21 @@ export default function BookingsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [salonNames, setSalonNames] = useState<Record<string, string>>({});
-  const { getToken } = useAuth();
-  const { user } = useUser();
+  const { user } = useAuthStore();
 
-  // Load all Philosopher font variants
-  const [fontsLoaded] = useFonts({
-    'Philosopher-Regular': require("../assets/fonts/Philosopher-Regular.ttf"),
-    'Philosopher-Bold': require("../assets/fonts/Philosopher-Bold.ttf"),
-    'Philosopher-Italic': require("../assets/fonts/Philosopher-Italic.ttf"),
-    'Philosopher-BoldItalic': require("../assets/fonts/Philosopher-BoldItalic.ttf"),
-  });
-
-  // Don't render if fonts aren't loaded
-  if (!fontsLoaded) {
-    return (
-      <View style={{ flex: 1, backgroundColor: "#FFFFFF", justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ fontFamily: "Philosopher-Regular", color: "#423120" }}>Loading fonts...</Text>
-      </View>
-    );
-  }
+  // Fonts are loaded globally in root _layout.tsx
 
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const token = await getToken();
-      const userId = user?.id;
-      const userEmail = user?.emailAddresses?.[0]?.emailAddress;
+      const userId = user?.$id;
+      const userEmail = user?.email;
       
-      console.log("Fetching bookings with token:", token ? "Yes" : "No");
+      console.log("Fetching bookings for user");
       console.log("User ID:", userId);
       console.log("User Email:", userEmail);
       
-      const data = await getBookings(token || undefined, userId, userEmail);
+      const data = await getBookings(undefined, userId, userEmail);
       console.log("Bookings data received:", data);
       setBookings(data);
       
@@ -227,7 +209,7 @@ export default function BookingsScreen() {
               lineHeight: 30,
             }}>
               Tervetuloa,{"\n"}
-              {user?.firstName}!
+              {user?.name?.split(' ')[0] || 'User'}!
             </Text>
           </View>
         </View>

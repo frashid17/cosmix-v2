@@ -1,4 +1,3 @@
-import { useAuth, useUser } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import {
@@ -8,47 +7,26 @@ import {
   TouchableOpacity,
   View,
   StyleSheet,
-  ScrollView
+  ScrollView,
+  Modal,
 } from "react-native";
 import { router } from "expo-router";
-import { useFonts } from "expo-font";
 import Header from "../../../components/Header";
+import SideMenu from "../../../components/SideMenu";
+import useAuthStore from "@/store/auth.store";
+import { signOut } from "@/lib/appwrite";
 
 export default function ProfilePage() {
-  const { signOut, isSignedIn } = useAuth();
-  const { user } = useUser();
+  const { user, isAuthenticated, setUser, setIsAuthenticated } = useAuthStore();
+  const [isMenuVisible, setMenuVisible] = React.useState(false);
 
-  // Load all Philosopher font variants
-  const [fontsLoaded] = useFonts({
-    'Philosopher-Regular': require("../../../assets/fonts/Philosopher-Regular.ttf"),
-    'Philosopher-Bold': require("../../../assets/fonts/Philosopher-Bold.ttf"),
-    'Philosopher-Italic': require("../../../assets/fonts/Philosopher-Italic.ttf"),
-    'Philosopher-BoldItalic': require("../../../assets/fonts/Philosopher-BoldItalic.ttf"),
-  });
-
-  // Don't render if fonts aren't loaded
-  if (!fontsLoaded) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF", justifyContent: 'center', alignItems: 'center' }}>
-        <Text style={{ fontFamily: "Philosopher-Regular", color: "#423120" }}>Loading fonts...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  const handleSignOut = () => {
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Sign Out", style: "destructive", onPress: () => signOut() },
-    ]);
-  };
-
-  const handleMenuPress = (menuItem: string) => {
+  const handleMenuPress = async (menuItem: string) => {
     switch (menuItem) {
       case "Tulevat hoidot":
-        if (!isSignedIn) {
-          router.push("/sign-in");
-        } else {
+        if (isAuthenticated) {
           router.push("/bookings");
+        } else {
+          router.push("/sign-in");
         }
         break;
       case "Menneet hoidot":
@@ -60,22 +38,38 @@ export default function ProfilePage() {
       case "Kieli":
         Alert.alert("Kieli", "Language settings feature coming soon!");
         break;
-      case "Kirjaudu ulos":
-        handleSignOut();
-        break;
       case "Kirjaudu sisään":
         router.push("/sign-in");
+        break;
+      case "Kirjaudu ulos":
+        try {
+          await signOut();
+          setUser(null);
+          setIsAuthenticated(false);
+          Alert.alert("Success", "You have been signed out");
+          router.replace("/");
+        } catch (error) {
+          Alert.alert("Error", "Failed to sign out");
+        }
         break;
     }
   };
 
-  const menuItems = [
-    "Tulevat hoidot",
-    "Menneet hoidot",
-    "Asetukset",
-    "Kieli",
-    isSignedIn ? "Kirjaudu ulos" : "Kirjaudu sisään",
-  ];
+  const menuItems = isAuthenticated
+    ? [
+        "Tulevat hoidot",
+        "Menneet hoidot",
+        "Asetukset",
+        "Kieli",
+        "Kirjaudu ulos",
+      ]
+    : [
+        "Tulevat hoidot",
+        "Menneet hoidot",
+        "Asetukset",
+        "Kieli",
+        "Kirjaudu sisään",
+      ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -85,6 +79,7 @@ export default function ProfilePage() {
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
+        onMenuPress={() => setMenuVisible(true)}
       />
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -93,7 +88,7 @@ export default function ProfilePage() {
           <View style={styles.archContainer}>
             <Text style={styles.welcomeText}>
               Tervetuloa,{"\n"}
-              {user?.firstName || "Sarah"}!
+              {isAuthenticated && user ? user.name.split(' ')[0] : 'Käyttäjä'}!
             </Text>
           </View>
         </View>
@@ -108,12 +103,35 @@ export default function ProfilePage() {
               activeOpacity={0.7}
             >
               <Text style={styles.menuButtonText}>{item}</Text>
-              <Ionicons name="arrow-forward" size={20} width={35} color="#423120" />
+              <Ionicons name="arrow-forward" size={20} color="#423120" />
             </TouchableOpacity>
           ))}
         </View>
 
+        {/* Bottom Spacer */}
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Modal for the side menu */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isMenuVisible}
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <View
+            style={{
+              width: '100%',
+              height: '100%',
+              backgroundColor: '#F4EDE5',
+              alignSelf: 'flex-end',
+            }}
+          >
+            <SideMenu onClose={() => setMenuVisible(false)} />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -121,12 +139,12 @@ export default function ProfilePage() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFFFFF", // white base background
+    backgroundColor: "#FFFFFF",
   },
 
   // WELCOME SECTION
   headerContainer: {
-    backgroundColor: "#D7C3A7", // tan top section
+    backgroundColor: "#D7C3A7",
     paddingTop: 20,
     paddingBottom: 40,
     alignItems: "center",
