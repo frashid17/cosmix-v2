@@ -85,7 +85,7 @@ export default function SignIn() {
           {/* Email Field */}
           <View style={{ marginBottom: 20 }}>
             <Text style={{ 
-              fontSize: 16, 
+              fontSize: 19, 
               color: '#423120', 
               marginBottom: 8,
               fontFamily: 'Philosopher-Bold'
@@ -116,7 +116,7 @@ export default function SignIn() {
           {/* Password Field */}
           <View>
             <Text style={{ 
-              fontSize: 16, 
+              fontSize: 19, 
               color: '#423120', 
               marginBottom: 8,
               fontFamily: 'Philosopher-Bold'

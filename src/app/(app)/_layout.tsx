@@ -11,6 +11,7 @@ function Layout() {
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="services" options={{ headerShown: false }} />
                 <Stack.Screen name="saloons" options={{ headerShown: false }} />
+                <Stack.Screen name="salon-sector" options={{ headerShown: false }} />
                 <Stack.Screen name="categories" options={{ headerShown: false }} />
                 <Stack.Screen name="checkout" options={{ headerShown: false }} />
                 <Stack.Screen name="map" options={{ headerShown: false }} />

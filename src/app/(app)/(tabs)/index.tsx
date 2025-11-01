@@ -2,7 +2,6 @@
 import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, Image, Modal, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState, useEffect } from "react";
-import Svg, { Path } from "react-native-svg";
 import { useRouter } from "expo-router";
 import SideMenu from '../../components/SideMenu';
 import getCategories from '../../actions/get-categories';
@@ -57,7 +56,7 @@ export default function Page() {
   const items = [
     {
       label: "Gua Sha hoidot",
-      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533723/pexels-cottonbro-3737599_1_qnzthw.png",
+      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png",
     },
     {
       label: "Ripsienpidennykset",
@@ -65,11 +64,11 @@ export default function Page() {
     },
     {
       label: "Hieronnat",
-      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533708/AdobeStock_169329470_hte0yt.png",
+      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png",
     },
     {
       label: "Kynsihoidot",
-      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533708/AdobeStock_248196993_1_azoalh.png",
+      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png",
     },
   ];
 
@@ -82,11 +81,8 @@ export default function Page() {
     return result;
   };
 
-  // Prepare categories for display (first 11 categories + "Lisää")
-  const displayCategories = [
-    ...categories.slice(0, 11).map(cat => cat.name),
-    "Lisää"
-  ];
+  // Prepare categories for display (all categories)
+  const displayCategories = categories.map(cat => cat.name);
 
   // Chunk into rows of 2
   const categoryRows = chunkArray(displayCategories, 2);
@@ -100,7 +96,34 @@ export default function Page() {
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
         {/* Hero Section */}
         <View style={{ backgroundColor: lightBrown }} className="px-4 py-6">
-          <TouchableOpacity
+          <View style={{ position: "relative", borderRadius: 20, height: 300, alignItems: "center", justifyContent: "center" }}>
+            {/* Background vectors (left/right) - behind the hero card */}
+            <Image
+              source={require("../../../../assets/vector-left.png")}
+              style={{
+                position: "absolute",
+                top: 70,
+                left: -55,
+                width: 220,
+                height: 220,
+                opacity: 0.9,
+              }}
+              resizeMode="contain"
+            />
+            <Image
+              source={require("../../../../assets/vector-right.png")}
+              style={{
+                position: "absolute",
+                top: -2,
+                right: -60,
+                width: 220,
+                height: 210,
+                opacity: 0.9,
+              }}
+              resizeMode="contain"
+            />
+
+            <TouchableOpacity
             style={{
               borderRadius: 20,
               overflow: "hidden",
@@ -117,7 +140,7 @@ export default function Page() {
                 uri: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533724/AdobeStock_130939808_cq1whi.png",
               }}
               style={{
-                width: 327,
+                width: 300,
                 height: 213,
                 borderRadius: 20,
               }}
@@ -172,6 +195,7 @@ export default function Page() {
               />
             </View>
           </TouchableOpacity>
+          </View>
         </View>
 
         {/* POPULAR SERVICES */}
@@ -208,14 +232,11 @@ export default function Page() {
                 }}
                 activeOpacity={0.8}
               >
-                <View style={{ position: "absolute", top: 45 }}>
-                  <Svg width={160} height={120} viewBox="0 0 200 150">
-                    <Path
-                      d="M50,20 C90,-10 170,20 150,80 C140,110 70,130 30,90 C-10,50 10,50 50,20 Z"
-                      fill={veryLightBeige}
-                    />
-                  </Svg>
-                </View>
+                <Image
+                  source={require("../../../../assets/group.png")}
+                  style={{ position: "absolute", top: 30, width: 200, height: 210 }}
+                  resizeMode="contain"
+                />
 
                 <Image
                   source={{ uri: item.img }}
@@ -229,7 +250,7 @@ export default function Page() {
                 <Text
                   style={{
                     textAlign: "center",
-                    marginTop: 10,
+                    marginTop: 5,
                     color: darkBrown,
                     fontFamily: "Philosopher-Bold",
                     fontSize: 15,
@@ -245,16 +266,27 @@ export default function Page() {
 
         {/* TAGLINE */}
         <View style={{ backgroundColor: lightBrown }} className="py-3">
-          <Text
-            style={{
-              textAlign: "center",
-              color: darkBrown,
-              fontFamily: "Philosopher-Bold",
-              fontSize: 20,
-            }}
-          >
-            Hemmottelu, jonka ansaitset.
-          </Text>
+          <View style={{ position: "relative", height: 77, alignItems: "center", justifyContent: "center" }}>
+            <Image
+              source={require("../../../../assets/wed.png")}
+              style={{ position: "absolute",top: -130, width: 300, height: 330, opacity: 1 }}
+              resizeMode="contain"
+              onError={(e) => {
+                console.warn('Failed to load wed.png', e.nativeEvent?.error);
+              }}
+            />
+            <Text
+              style={{
+                textAlign: "center",
+                color: darkBrown,
+                fontFamily: "Philosopher-Bold",
+                fontSize: 20,
+                paddingHorizontal: 16,
+              }}
+            >
+              Hemmottelu, jonka ansaitset.
+            </Text>
+          </View>
         </View>
 
         {/* CATEGORIES */}
@@ -316,28 +348,24 @@ export default function Page() {
           {!loading && !error && (
             <View className="mt-4">
               {categoryRows.map((row, rowIdx) => (
-                <View key={rowIdx} style={{ flexDirection: "row", justifyContent: "center", gap: 51, marginBottom: 20 }}>
+                <View key={rowIdx} style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
                   {row.map((categoryName, colIdx) => (
                     <TouchableOpacity
                       key={colIdx}
                       style={{
                         backgroundColor: lightBrown,
-                        width: 127,
-                        height: 47,
-                        borderRadius: 30,
+                        width: 160,
+                        height: 45,
+                        borderRadius: 24,
                         justifyContent: "center",
                         alignItems: "center",
                       }}
                       onPress={() => {
-                        if (categoryName === "Lisää") {
-                          router.push("/categories");
-                        } else {
-                          // Navigate to services page with category name
-                          router.push({
-                            pathname: "/services",
-                            params: { categoryName }
-                          });
-                        }
+                        // Navigate to services page with category name
+                        router.push({
+                          pathname: "/services",
+                          params: { categoryName }
+                        });
                       }}
                     >
                       <Text
@@ -345,7 +373,7 @@ export default function Page() {
                           color: darkBrown,
                           textAlign: "center",
                           fontFamily: "Philosopher-Bold",
-                          fontSize: 15,
+                          fontSize: 14,
                           paddingHorizontal: 8,
                         }}
                         numberOfLines={1}
@@ -355,8 +383,31 @@ export default function Page() {
                       </Text>
                     </TouchableOpacity>
                   ))}
+                  {row.length === 1 && <View style={{ width: 160 }} />}
                 </View>
               ))}
+              {/* "Lisaa" button centered below all categories */}
+              <View style={{ width: "100%", alignItems: "center", marginTop: 8 }}>
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: lightBrown,
+                    borderRadius: 24,
+                    paddingVertical: 10,
+                    paddingHorizontal: 28,
+                  }}
+                  onPress={() => router.push("/categories")}
+                >
+                  <Text
+                    style={{
+                      color: darkBrown,
+                      fontFamily: "Philosopher-Bold",
+                      fontSize: 16,
+                    }}
+                  >
+                    Lisaa
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
         </View>

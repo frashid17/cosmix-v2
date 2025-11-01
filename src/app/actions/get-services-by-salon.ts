@@ -20,6 +20,10 @@ const getServicesBySalon = async (salonId: string): Promise<Service[]> => {
         
         const data = await res.json();
         console.log('Salon services fetched successfully:', data.length, 'items');
+        console.log('First service sample:', JSON.stringify(data[0], null, 2));
+        
+        // Ensure each service has its saloonServices array populated
+        // The API should return services with saloonServices included
         return data;
     } catch (error) {
         console.error('Error in getServicesBySalon:', error);

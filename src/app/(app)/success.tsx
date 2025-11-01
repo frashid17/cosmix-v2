@@ -16,13 +16,13 @@ export default function SuccessScreen() {
   }>();
 
   const handleViewBookings = () => {
-    router.dismissAll();
-    router.push('/(tabs)/profile');
+    // Use replace to avoid navigation stack issues
+    router.replace('/(tabs)/profile');
   };
 
   const handleBookAnother = () => {
-    router.dismissAll();
-    router.push('/(tabs)/');
+    // Use replace to navigate to home without popping stack
+    router.replace('/(tabs)/');
   };
 
   const totalAmount = params.totalAmount ? parseFloat(params.totalAmount) : 0;

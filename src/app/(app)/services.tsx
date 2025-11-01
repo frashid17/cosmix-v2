@@ -1,9 +1,8 @@
 // src/app/(app)/services.tsx
 import React, { useState, useEffect } from "react";
-import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Modal } from "react-native";
+import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Modal, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from 'expo-font';
-import Svg, { Path } from "react-native-svg";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import getServicesByCategory from "../actions/get-services";
 import getServicesBySalon from "../actions/get-services-by-salon";
@@ -15,7 +14,6 @@ import SideMenu from "../components/SideMenu";
 const darkBrown = "#423120";
 const lightBrown = "#D7C3A7";
 const veryLightBeige = "#FFFF";
-const blobFill = "#E9DCCC";
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -30,6 +28,9 @@ export default function ServicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [dynamicCategoryName, setDynamicCategoryName] = useState<string>('');
   const [isMenuVisible, setMenuVisible] = useState(false);
+  
+  // Store pricing info for salon services (serviceId -> { price, durationMinutes })
+  const [salonServicePricing, setSalonServicePricing] = useState<Map<string, { price: number; durationMinutes: number }>>(new Map());
   
   const [fontsLoaded] = useFonts({
     'Philosopher-Regular': require("../assets/fonts/Philosopher-Regular.ttf"),
@@ -58,24 +59,70 @@ export default function ServicesPage() {
   // Fetch services when component mounts
   useEffect(() => {
     const fetchServices = async () => {
-      // If coming from map (has salonId), fetch services for that specific salon
+      // If coming from salon-sector (has salonId), fetch services for that specific salon
       if (salonId) {
         try {
           setLoading(true);
           setError(null);
           const data = await getServicesBySalon(salonId);
-          setServices(data);
           
-          // Extract category names from the services
-          const categoryNames = extractCategoryNames(data);
-          const categoryDisplayName = categoryNames.length > 0 
-            ? categoryNames.join(', ') 
-            : 'Palvelut';
-          setDynamicCategoryName(categoryDisplayName);
+          // Extract pricing info from saloonServices and store in map
+          const pricingMap = new Map<string, { price: number; durationMinutes: number }>();
+          data.forEach(service => {
+            // Check if service has saloonServices array
+            if (service.saloonServices && service.saloonServices.length > 0) {
+              const salonServiceInfo = service.saloonServices.find(ss => ss.saloonId === salonId);
+              if (salonServiceInfo) {
+                pricingMap.set(service.id, {
+                  price: salonServiceInfo.price,
+                  durationMinutes: salonServiceInfo.durationMinutes
+                });
+                console.log(`Pricing from saloonServices for ${service.name}:`, salonServiceInfo.price, salonServiceInfo.durationMinutes);
+              }
+            } else {
+              // API might return services with pricing directly as properties
+              // Check if the service object itself has price and durationMinutes
+              const serviceAny = service as any;
+              if (serviceAny.price !== undefined && serviceAny.durationMinutes !== undefined) {
+                pricingMap.set(service.id, {
+                  price: serviceAny.price,
+                  durationMinutes: serviceAny.durationMinutes
+                });
+                console.log(`Pricing from service object for ${service.name}:`, serviceAny.price, serviceAny.durationMinutes);
+              } else {
+                console.warn(`No pricing info found for service: ${service.name} (ID: ${service.id})`);
+              }
+            }
+          });
+          setSalonServicePricing(pricingMap);
+          console.log('Salon service pricing map size:', pricingMap.size);
+          console.log('Salon service pricing map:', Object.fromEntries(pricingMap));
           
-          console.log('Fetched services for salon:', salonId, data);
-          console.log('Category names found:', categoryNames);
-          console.log('Dynamic category name:', categoryDisplayName);
+          // Filter by category if categoryName is provided (coming from salon-sector category click)
+          let filteredData = data;
+          if (categoryName) {
+            filteredData = data.filter(service => 
+              service.category?.name === categoryName || 
+              service.parentService?.category?.name === categoryName
+            );
+            console.log('Filtered services by category:', categoryName, filteredData.length, 'of', data.length);
+          }
+          
+          setServices(filteredData);
+          
+          // Set dynamic category name - use categoryName if provided, otherwise extract from services
+          if (categoryName) {
+            setDynamicCategoryName(categoryName);
+          } else {
+            const categoryNames = extractCategoryNames(filteredData);
+            const categoryDisplayName = categoryNames.length > 0 
+              ? categoryNames.join(', ') 
+              : 'Palvelut';
+            setDynamicCategoryName(categoryDisplayName);
+          }
+          
+          console.log('Fetched services for salon:', salonId, filteredData);
+          console.log('Category name:', categoryName || 'All');
         } catch (err) {
           console.error('Error fetching salon services:', err);
           setError(err instanceof Error ? err.message : 'Failed to fetch salon services');
@@ -171,15 +218,56 @@ export default function ServicesPage() {
 
   const handleServicePress = (service: Service) => {
     console.log(`Selected service: ${service.name} (ID: ${service.id})`);
-    // Navigate to saloons page with serviceId and serviceName
+    console.log('Current salonId:', salonId);
+    console.log('Current salonName:', salonName);
+    console.log('Salon service pricing map size:', salonServicePricing.size);
+    
+    // If coming from a salon, navigate directly to checkout
+    if (salonId) {
+      // Get pricing info from our pricing map
+      const pricingInfo = salonServicePricing.get(service.id);
+      
+      console.log('Found pricing info:', pricingInfo);
+      
+      if (pricingInfo) {
+        console.log(`✅ Navigating directly to checkout for salon: ${salonName}`);
+        router.push({
+          pathname: "/(app)/checkout",
+          params: { 
+            saloonId: salonId,
+            saloonName: salonName || 'Salon',
+            serviceId: service.id,
+            serviceName: service.name,
+            categoryName: categoryName || dynamicCategoryName || 'Service',
+            price: pricingInfo.price.toString(),
+            durationMinutes: pricingInfo.durationMinutes.toString()
+          }
+        });
+        return;
+      } else {
+        console.warn('⚠️ No pricing info found for this service, falling back to saloons page');
+        // Fallback to saloons page
+        router.push({
+          pathname: "/(app)/saloons",
+          params: { 
+            serviceId: service.id,
+            serviceName: service.name,
+            categoryName: categoryName || dynamicCategoryName || 'Service',
+            salonId: salonId
+          }
+        });
+        return;
+      }
+    }
+    
+    // Normal flow - Navigate to saloons page with serviceId and serviceName
+    console.log('Normal flow - navigating to saloons page');
     router.push({
       pathname: "/(app)/saloons",
       params: { 
         serviceId: service.id,
         serviceName: service.name,
-        categoryName: salonId ? dynamicCategoryName : categoryName,
-        // Pass salonId if coming from map to filter saloons
-        ...(salonId && { salonId: salonId })
+        categoryName: categoryName
       }
     });
   };
@@ -198,19 +286,17 @@ export default function ServicesPage() {
       
       
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
-        {/* HERO SECTION with Blob */}
+        {/* HERO SECTION with background image */}
         <View style={{ backgroundColor: lightBrown, paddingBottom: 30 }}>
-          {/* Blob with title */}
           <View style={{ alignItems: "center", marginTop: 20 }}>
-            <View style={{ position: "relative", width: 300, height: 200 }}>
-              <Svg width="100%" height="100%" viewBox="0 0 600 400">
-                <Path
-                  d="M100,200 C150,99 100,50 450,100 C600,150 550,300 400,350 C250,380 80,300 100,200 Z"
-                  fill={blobFill}
-                />
-              </Svg>
+            <View style={{ position: "relative", width: 320, height: 200, borderRadius: 24, overflow: "hidden" }}>
+              <Image
+                source={require("../../../assets/Vector-2.png")}
+                style={{ width: "100%", height: "100%" }}
+                resizeMode="contain"
+              />
 
-              {/* Title centered inside blob */}
+              {/* Title centered over image */}
               <View
                 style={{
                   position: "absolute",
@@ -228,9 +314,10 @@ export default function ServicesPage() {
                     color: "#423120",
                     fontFamily: "Philosopher-Bold",
                     textAlign: "center",
+                    paddingHorizontal: 20,
                   }}
                 >
-                  {salonId ? dynamicCategoryName : (categoryName || "Services")}
+                  {salonId ? (salonName || "Salon") : (categoryName || "Services")}
                 </Text>
               </View>
             </View>
