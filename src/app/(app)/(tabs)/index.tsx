@@ -354,8 +354,8 @@ export default function Page() {
                       key={colIdx}
                       style={{
                         backgroundColor: lightBrown,
-                        width: 160,
-                        height: 45,
+                        width: 127,
+                        height: 47,
                         borderRadius: 24,
                         justifyContent: "center",
                         alignItems: "center",

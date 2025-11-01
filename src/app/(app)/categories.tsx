@@ -60,7 +60,7 @@ const Categories: React.FC = () => {
         margin: buttonMargin,
         alignItems: "center",
         justifyContent: "center",
-        height: 100,
+        height: 88,
         ...style,
       }}
       onPress={() => {
