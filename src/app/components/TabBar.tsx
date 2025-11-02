@@ -2,6 +2,7 @@
 import { View, TouchableOpacity } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter, usePathname } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const darkBrown = "#423120";
 const tabBackground = "#D7C3A7";
@@ -9,6 +10,7 @@ const tabBackground = "#D7C3A7";
 export default function TabBar() {
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
 
   const tabs = [
     {
@@ -35,13 +37,9 @@ export default function TabBar() {
   return (
     <View
       style={{
-        flexDirection: "row",
         backgroundColor: tabBackground,
-        borderTopColor: "#E5E7EB",
-        borderTopWidth: 1,
-        height: 60,
-        justifyContent: "space-around",
-        alignItems: "center",
+        borderTopWidth: 0,
+        paddingBottom: insets.bottom,
         position: "absolute",
         bottom: 0,
         left: 0,
@@ -49,24 +47,33 @@ export default function TabBar() {
         zIndex: 1000,
       }}
     >
-      {tabs.map((tab) => (
-        <TouchableOpacity
-          key={tab.name}
-          onPress={() => router.push(tab.route as any)}
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 8,
-            opacity: isActive(tab.route) ? 1 : 0.6,
-          }}
-        >
-          <Ionicons
-            name={tab.icon as any}
-            size={30}
-            color={darkBrown}
-          />
-        </TouchableOpacity>
-      ))}
+      <View
+        style={{
+          flexDirection: "row",
+          height: 60,
+          justifyContent: "space-around",
+          alignItems: "center",
+        }}
+      >
+        {tabs.map((tab) => (
+          <TouchableOpacity
+            key={tab.name}
+            onPress={() => router.push(tab.route as any)}
+            style={{
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 8,
+              opacity: isActive(tab.route) ? 1 : 0.6,
+            }}
+          >
+            <Ionicons
+              name={tab.icon as any}
+              size={30}
+              color={darkBrown}
+            />
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
   );
 }

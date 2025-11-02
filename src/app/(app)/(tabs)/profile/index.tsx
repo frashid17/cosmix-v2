@@ -33,10 +33,17 @@ export default function ProfilePage() {
         Alert.alert("Menneet hoidot", "Past treatments feature coming soon!");
         break;
       case "Asetukset":
-        Alert.alert("Asetukset", "Settings feature coming soon!");
+        if (isAuthenticated) {
+          router.push("/profile-edit");
+        } else {
+          Alert.alert("Kirjaudu sisään", "Sinun täytyy kirjautua sisään päästäksesi asetuksiin", [
+            { text: "Peruuta", style: "cancel" },
+            { text: "Kirjaudu", onPress: () => router.push("/sign-in") }
+          ]);
+        }
         break;
       case "Kieli":
-        Alert.alert("Kieli", "Language settings feature coming soon!");
+        router.push("/language");
         break;
       case "Kirjaudu sisään":
         router.push("/sign-in");

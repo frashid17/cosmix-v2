@@ -2,6 +2,7 @@
 import { View, Text, TouchableOpacity, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface HeaderProps {
   title?: string;
@@ -23,6 +24,7 @@ export default function Header({
   onBackPress 
 }: HeaderProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -42,28 +44,13 @@ export default function Header({
     <View
       style={{
         backgroundColor: white,
-        // OPTION 1: Remove border completely
-        // borderBottomWidth: 0,
-        
-        // OPTION 2: Make border very subtle/blended
         borderBottomWidth: 0.5,
-        borderBottomColor: '#f8f8f8', // Very light, almost white
-        
-        // OPTION 3: Use gradient-like shadow instead of hard border
-        // borderBottomWidth: 0,
-        // elevation: 1,
-        // shadowColor: '#000',
-        // shadowOffset: { width: 0, height: 2 },
-        // shadowOpacity: 0.05,
-        // shadowRadius: 4,
-        
-        // Current shadow (you can keep or remove)
+        borderBottomColor: '#f8f8f8',
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 2,
-        
         width: width,
         alignSelf: 'stretch',
         flexDirection: "row",
@@ -71,14 +58,19 @@ export default function Header({
         justifyContent: "center",
         paddingHorizontal: 16,
         paddingVertical: 2,
-        paddingTop: 30,
+        paddingTop: Math.max(30, insets.top + 10), // Use safe area top inset
       }}
     >
       {/* Back Button (left side) */}
       {showBack && (
         <TouchableOpacity
           onPress={handleBackPress}
-          style={{ position: "absolute", left: 16, zIndex: 10, marginTop: 25 }}
+          style={{ 
+            position: "absolute", 
+            left: 16, 
+            zIndex: 10, 
+            top: Math.max(25, insets.top + 5) // Position relative to safe area
+          }}
         >
           <Ionicons name="arrow-back" size={28} color={darkBrown} />
         </TouchableOpacity>
@@ -94,6 +86,7 @@ export default function Header({
           textAlign: 'center',
           flex: 1,
           marginHorizontal: 40,
+          paddingTop: Math.max(0, insets.top - 20), // Adjust title position based on safe area
         }}
         numberOfLines={1}
         ellipsizeMode="tail"
@@ -109,7 +102,7 @@ export default function Header({
             position: "absolute", 
             right: 16, 
             zIndex: 10, 
-            marginTop: 25,
+            top: Math.max(25, insets.top + 5), // Position relative to safe area
             width: 40,
             alignItems: "center",
             justifyContent: "center"

@@ -14,8 +14,7 @@ function Layout() {
         tabBarInactiveTintColor: tabBackground,
         tabBarStyle: {
           backgroundColor: tabBackground,
-          borderTopColor: "#E5E7EB", // gray-200 equivalent
-          borderTopWidth: 1,
+          borderTopWidth: 0,
           paddingVertical: 12,
           height: 60,
         },

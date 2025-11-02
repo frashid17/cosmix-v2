@@ -20,7 +20,7 @@ const Categories: React.FC = () => {
   const buttonBorderRadius = 30;
   const baseButtonColor = "#D7C3A7";
   const baseTextColor = "#423120";
-  const baseFontSize = 16;
+  const baseFontSize = 18;
   const basePaddingVertical = 14;
   const basePaddingHorizontal = 24;
 
@@ -101,8 +101,13 @@ const Categories: React.FC = () => {
       { flex1: 2, flex2: 1.2 },
     ];
 
+    // Calculate total number of rows to determine if this is the last row
+    const totalPairs = Math.ceil(categories.length / 2);
+
     while (currentIndex < categories.length) {
       const remainingCategories = categories.length - currentIndex;
+      const currentRowNumber = Math.floor(currentIndex / 2) + 1;
+      const isLastRow = currentRowNumber === totalPairs && remainingCategories === 2;
 
       if (remainingCategories === 1) {
         rows.push(
@@ -114,8 +119,15 @@ const Categories: React.FC = () => {
         );
         currentIndex++;
       } else {
-        const patternIndex = Math.floor(currentIndex / 2) % layoutPatterns.length;
-        const pattern = layoutPatterns[patternIndex];
+        // For the last row, use narrow-wide pattern (1, 2)
+        // For other rows, use the cycling pattern
+        let pattern;
+        if (isLastRow) {
+          pattern = { flex1: 1, flex2: 2 };
+        } else {
+          const patternIndex = Math.floor(currentIndex / 2) % layoutPatterns.length;
+          pattern = layoutPatterns[patternIndex];
+        }
 
         rows.push(
           <View key={`row-${currentIndex}`} style={{ flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
@@ -162,16 +174,7 @@ const Categories: React.FC = () => {
         {loading && (
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
             <ActivityIndicator size="large" color={baseTextColor} />
-            <Text
-              style={{
-                marginTop: 10,
-                fontFamily: "PhilosopherBold",
-                fontSize: 16,
-                color: baseTextColor,
-              }}
-            >
-              Loading categories...
-            </Text>
+  
           </View>
         )}
 

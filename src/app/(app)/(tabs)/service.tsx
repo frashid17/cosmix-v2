@@ -6,9 +6,10 @@ import Header from "../../components/Header";
 import SideMenu from "../../components/SideMenu";
 import { useFonts } from "expo-font";
 import getCategories from "../../actions/get-categories";
-import { Category } from "../../types";
+import { Category, Service } from "../../types";
 import { Salon } from "../../../../types/salon";
 import getSaloonsMap from "../../actions/get-saloons-map";
+import { API_ENDPOINTS } from "@/config/constants";
 
 export default function ServicesPage() {
   const router = useRouter();
@@ -27,32 +28,70 @@ export default function ServicesPage() {
   const chipBeige = "#D7C3A7";
 
   // Popular categories (home-provided API)
-  const [popular, setPopular] = useState<string[]>([]);
+  const [popularCategories, setPopularCategories] = useState<Category[]>([]);
+  const [popularLoading, setPopularLoading] = useState<boolean>(false);
 
   // All categories for search
   const [categories, setCategories] = useState<Category[]>([]);
   const [catLoading, setCatLoading] = useState<boolean>(false);
   const [catError, setCatError] = useState<string | null>(null);
 
+  // All services for search (including sub-services)
+  const [allServices, setAllServices] = useState<Service[]>([]);
+  const [servicesLoading, setServicesLoading] = useState<boolean>(false);
+  const [servicesError, setServicesError] = useState<string | null>(null);
+
   // Salons for search
   const [salons, setSalons] = useState<Salon[]>([]);
   const [salonLoading, setSalonLoading] = useState<boolean>(false);
   const [salonError, setSalonError] = useState<string | null>(null);
-  const [searchType, setSearchType] = useState<'category' | 'salon'>('category');
+  const [searchType, setSearchType] = useState<'category' | 'salon' | 'service'>('category');
 
+  // Fetch popular categories
   useEffect(() => {
     const fetchPopular = async () => {
       try {
-        const API_BASE = process.env.EXPO_PUBLIC_API_BASE_URL || "https://cosmix-admin.vercel.app";
-        const res = await fetch(`${API_BASE}/api/public/categories?popular=true&global=true`);
+        setPopularLoading(true);
+        const res = await fetch(`${API_ENDPOINTS.CATEGORIES}?popular=true&global=true`);
         const data = await res.json();
-        const names: string[] = Array.isArray(data) ? data.map((c: any) => c.name).filter(Boolean) : [];
-        setPopular(names);
+        const categoriesData: Category[] = Array.isArray(data) ? data.filter(Boolean) : [];
+        setPopularCategories(categoriesData);
       } catch (e) {
         console.warn("Failed to load popular categories", e);
+      } finally {
+        setPopularLoading(false);
       }
     };
     fetchPopular();
+  }, []);
+
+  // Fetch all services (including sub-services) for search
+  useEffect(() => {
+    const loadAllServices = async () => {
+      try {
+        setServicesLoading(true);
+        setServicesError(null);
+        const res = await fetch(API_ENDPOINTS.SERVICES, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (!res.ok) {
+          throw new Error(`Failed to fetch services: ${res.status} ${res.statusText}`);
+        }
+        
+        const data = await res.json();
+        setAllServices(data);
+      } catch (err) {
+        setServicesError(err instanceof Error ? err.message : 'Failed to fetch services');
+      } finally {
+        setServicesLoading(false);
+      }
+    };
+    loadAllServices();
   }, []);
 
   // Fetch all categories for search
@@ -112,24 +151,32 @@ export default function ServicesPage() {
       return;
     }
     
-    // Check if query matches salon names more than categories
+    // Check salon matches
     const salonMatches = salons.filter(s => 
       s.name.toLowerCase().includes(q) || 
       s.address?.toLowerCase().includes(q) ||
       s.shortIntro?.toLowerCase().includes(q)
     ).length;
     
+    // Check category matches
     const categoryMatches = categories.filter(c => 
       c.name.toLowerCase().includes(q)
     ).length;
     
-    // If we have salon matches and fewer category matches, assume salon search
-    if (salonMatches > 0 && salonMatches >= categoryMatches) {
+    // Check service/sub-service matches
+    const serviceMatches = allServices.filter(s => 
+      s.name.toLowerCase().includes(q)
+    ).length;
+    
+    // Priority: salon > service > category
+    if (salonMatches > 0 && salonMatches >= categoryMatches && salonMatches >= serviceMatches) {
       setSearchType('salon');
+    } else if (serviceMatches > 0) {
+      setSearchType('service');
     } else {
       setSearchType('category');
     }
-  }, [query, salons, categories]);
+  }, [query, salons, categories, allServices]);
 
   const filteredCategoryNames = query.trim().length === 0
     ? []
@@ -148,6 +195,29 @@ export default function ServicesPage() {
           salon.shortIntro?.toLowerCase().includes(q)
         );
       });
+
+  // Filter services (including sub-services) - only sub-services (those with parentServiceId)
+  const filteredServices = query.trim().length === 0
+    ? []
+    : allServices.filter((service) => {
+        const q = query.trim().toLowerCase();
+        return (
+          service.name.toLowerCase().includes(q) &&
+          service.parentServiceId // Only show sub-services (services that have a parent)
+        );
+      });
+
+  const onServicePress = (service: Service) => {
+    // Navigate to saloons page with serviceId to show salons that provide this service
+    router.push({
+      pathname: "/saloons",
+      params: {
+        serviceId: service.id,
+        serviceName: service.name,
+        categoryName: service.category?.name || "",
+      },
+    });
+  };
 
   if (!fontsLoaded) {
     return null;
@@ -191,21 +261,21 @@ export default function ServicesPage() {
                 style={{ flex: 1, fontSize: 23, fontFamily: 'Philosopher-Bold', color: darkBrown }}
                 value={query}
                 onChangeText={setQuery}
-                placeholder="Etsi salonki"
+                placeholder="Etsi hoitoja..."
                 placeholderTextColor="#999"
                 returnKeyType="search"
               />
             </View>
           </View>
 
-          {/* When searching: show matching salon names or categories */}
+          {/* When searching: show matching salon names, services, or categories */}
           {query.trim().length > 0 ? (
             <View style={{ marginTop: 20 }}>
-              {(catLoading || salonLoading) ? (
+              {(catLoading || salonLoading || servicesLoading) ? (
                 <View style={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                   <ActivityIndicator size="large" color={darkBrown} />
                   <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Regular', marginTop: 10 }}>
-                    {searchType === 'salon' ? 'Ladataan salonkeja...' : 'Ladataan kategorioita...'}
+                    {searchType === 'salon' ? 'Ladataan salonkeja...' : searchType === 'service' ? 'Ladataan palveluja...' : 'Ladataan kategorioita...'}
                   </Text>
                 </View>
               ) : searchType === 'salon' && filteredSalons.length > 0 ? (
@@ -218,6 +288,26 @@ export default function ServicesPage() {
                           key={salon.id} 
                           label={salon.name} 
                           onPress={() => onSalonPress(salon)} 
+                          color={chipBeige} 
+                          textColor={darkBrown} 
+                        />
+                      ))}
+                      {row.length === 1 && (
+                        <View style={{ width: 147 }} />
+                      )}
+                    </View>
+                  ))}
+                </View>
+              ) : searchType === 'service' && filteredServices.length > 0 ? (
+                <View>
+                  {/* Sub-Services as Chips */}
+                  {chunkArray(filteredServices, 2).map((row, idx) => (
+                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
+                      {row.map((service) => (
+                        <Chip 
+                          key={service.id} 
+                          label={service.name} 
+                          onPress={() => onServicePress(service)} 
                           color={chipBeige} 
                           textColor={darkBrown} 
                         />
@@ -245,7 +335,7 @@ export default function ServicesPage() {
               ) : (
                 <View style={{ alignItems: 'center', marginTop: 10 }}>
                   <Text style={{ fontFamily: 'Philosopher-Bold', color: darkBrown, fontSize: 16 }}>
-                    Not found
+                    Ei löytynyt
                   </Text>
                 </View>
               )}
@@ -254,90 +344,90 @@ export default function ServicesPage() {
             <>
               {/* Section title */}
               <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Bold', fontSize: 20 }} className="mt-8">
-                Suosituimmat salongit
+                Suosituimmat palvelut
               </Text>
 
-              {/* All Salons - 2-1-2-1 pattern */}
+              {/* Popular Categories - 2-1-2-1 pattern */}
               <View className="mt-5">
-                {salonLoading ? (
+                {popularLoading ? (
                   <View style={{ alignItems: 'center', justifyContent: 'center', padding: 20 }}>
                     <ActivityIndicator size="large" color={darkBrown} />
                   </View>
-                ) : salons.length > 0 ? (
+                ) : popularCategories.length > 0 ? (
                   <>
-                    {/* First row - 2 salons */}
-                    {salons.length > 0 && (
+                    {/* First row - 2 categories */}
+                    {popularCategories.length > 0 && (
                       <View className="flex-row justify-between mb-5 px-2">
-                        {salons.slice(0, 2).map((salon) => (
+                        {popularCategories.slice(0, 2).map((category) => (
                           <Chip 
-                            key={salon.id} 
-                            label={salon.name} 
-                            onPress={() => onSalonPress(salon)} 
+                            key={category.id} 
+                            label={category.name} 
+                            onPress={() => onChipPress(category.name)} 
                             color={chipBeige} 
                             textColor={darkBrown} 
                           />
                         ))}
-                        {salons.length === 1 && <View style={{ width: 147 }} />}
+                        {popularCategories.length === 1 && <View style={{ width: 147 }} />}
                       </View>
                     )}
                     
-                    {/* Second row - 1 salon centered */}
-                    {salons.length > 2 && (
+                    {/* Second row - 1 category centered */}
+                    {popularCategories.length > 2 && (
                       <View className="flex-row justify-center mb-5">
                         <Chip 
-                          label={salons[2].name} 
-                          onPress={() => onSalonPress(salons[2])} 
+                          label={popularCategories[2].name} 
+                          onPress={() => onChipPress(popularCategories[2].name)} 
                           color={chipBeige} 
                           textColor={darkBrown} 
                         />
                       </View>
                     )}
                     
-                    {/* Third row - 2 salons */}
-                    {salons.length > 3 && (
+                    {/* Third row - 2 categories */}
+                    {popularCategories.length > 3 && (
                       <View className="flex-row justify-between mb-5 px-2">
-                        {salons.slice(3, 5).map((salon) => (
+                        {popularCategories.slice(3, 5).map((category) => (
                           <Chip 
-                            key={salon.id} 
-                            label={salon.name} 
-                            onPress={() => onSalonPress(salon)} 
+                            key={category.id} 
+                            label={category.name} 
+                            onPress={() => onChipPress(category.name)} 
                             color={chipBeige} 
                             textColor={darkBrown} 
                           />
                         ))}
-                        {salons.length === 4 && <View style={{ width: 147 }} />}
+                        {popularCategories.length === 4 && <View style={{ width: 147 }} />}
                       </View>
                     )}
                     
-                    {/* Fourth row - 1 salon centered */}
-                    {salons.length > 5 && (
+                    {/* Fourth row - 1 category centered */}
+                    {popularCategories.length > 5 && (
                       <View className="flex-row justify-center mb-5">
                         <Chip 
-                          label={salons[5].name} 
-                          onPress={() => onSalonPress(salons[5])} 
+                          label={popularCategories[5].name} 
+                          onPress={() => onChipPress(popularCategories[5].name)} 
                           color={chipBeige} 
                           textColor={darkBrown} 
                         />
                       </View>
                     )}
                     
-                    {/* Continue pattern for remaining salons */}
-                    {salons.length > 6 && salons.slice(6).map((salon, idx) => {
+                    {/* Continue pattern for remaining categories */}
+                    {popularCategories.length > 6 && popularCategories.slice(6).map((category, idx) => {
                       const position = idx % 3;
                       if (position === 0) {
-                        const nextSalon = salons[6 + idx + 1];
+                        const nextCategory = popularCategories[6 + idx + 1];
                         return (
-                          <View key={salon.id} className="flex-row justify-between mb-5 px-2">
+                          <View key={category.id} className="flex-row justify-between mb-5 px-2">
                             <Chip 
-                              label={salon.name} 
-                              onPress={() => onSalonPress(salon)} 
+                              label={category.name} 
+                              onPress={() => onChipPress(category.name)} 
                               color={chipBeige} 
                               textColor={darkBrown} 
                             />
-                            {nextSalon ? (
+                            {nextCategory ? (
                               <Chip 
-                                label={nextSalon.name} 
-                                onPress={() => onSalonPress(nextSalon)} 
+                                label={nextCategory.name} 
+                                onPress={() => onChipPress(nextCategory.name)} 
                                 color={chipBeige} 
                                 textColor={darkBrown} 
                               />
@@ -348,10 +438,10 @@ export default function ServicesPage() {
                         );
                       } else if (position === 2) {
                         return (
-                          <View key={salon.id} className="flex-row justify-center mb-5">
+                          <View key={category.id} className="flex-row justify-center mb-5">
                             <Chip 
-                              label={salon.name} 
-                              onPress={() => onSalonPress(salon)} 
+                              label={category.name} 
+                              onPress={() => onChipPress(category.name)} 
                               color={chipBeige} 
                               textColor={darkBrown} 
                             />
@@ -363,7 +453,7 @@ export default function ServicesPage() {
                   </>
                 ) : (
                   <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Regular', textAlign: 'center', marginTop: 10 }}>
-                    No salons available
+                    No popular categories available
                   </Text>
                 )}
               </View>

@@ -5,6 +5,7 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import useAuthStore from "@/store/auth.store";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -36,8 +37,10 @@ export default function Layout() {
   }
 
   return (
-    <GluestackUIProvider mode="light">
-      <Slot />
-    </GluestackUIProvider>
+    <SafeAreaProvider>
+      <GluestackUIProvider mode="light">
+        <Slot />
+      </GluestackUIProvider>
+    </SafeAreaProvider>
   );
 }

@@ -84,14 +84,7 @@ export default function SignIn() {
         }}>
           {/* Email Field */}
           <View style={{ marginBottom: 20 }}>
-            <Text style={{ 
-              fontSize: 19, 
-              color: '#423120', 
-              marginBottom: 8,
-              fontFamily: 'Philosopher-Bold'
-            }}>
-              sähköposti
-            </Text>
+           
             <TextInput
               autoCapitalize="none"
               value={emailAddress}
@@ -115,14 +108,7 @@ export default function SignIn() {
 
           {/* Password Field */}
           <View>
-            <Text style={{ 
-              fontSize: 19, 
-              color: '#423120', 
-              marginBottom: 8,
-              fontFamily: 'Philosopher-Bold'
-            }}>
-              Salasana
-            </Text>
+           
             <TextInput
               value={password}
               placeholder="Salasanasyötä salasana"

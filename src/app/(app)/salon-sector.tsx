@@ -122,13 +122,39 @@ const SalonSector = () => {
                 showsVerticalScrollIndicator={false}
             >
                 {/* HERO SECTION */}
-                <View style={{ backgroundColor: beige, height: 320 }}>
+                <View style={{ backgroundColor: beige, height: 320, position: "relative" }}>
+                    {/* Background vectors (left/right) - behind the hero card */}
+                    <Image
+                        source={require("../../../assets/vector-left.png")}
+                        style={{
+                            position: "absolute",
+                            top: 97,
+                            left: -45,
+                            width: 220,
+                            height: 200,
+                            opacity: 0.9,
+                        }}
+                        resizeMode="contain"
+                    />
+                    <Image
+                        source={require("../../../assets/vector-right.png")}
+                        style={{
+                            position: "absolute",
+                            top: 18,
+                            right: -45,
+                            width: 220,
+                            height: 200,
+                            opacity: 0.9,
+                        }}
+                        resizeMode="contain"
+                    />
+                    
                     {/* White Box - Centered */}
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <View
                             style={{ 
-                                width: 310, 
-                                height: 200,
+                                width: 300, 
+                                height: 195,
                                 backgroundColor: "white",
                                 borderRadius: 24,
                                 alignItems: "center",
@@ -151,7 +177,7 @@ const SalonSector = () => {
                                     paddingHorizontal: 16
                                 }}
                             >
-                                {salonName || salon?.name || "Salon"}
+                                {salonName || salon?.name || "Salon"} Salonki
                             </Text>
 
                             {/* Ellipses at bottom */}
@@ -212,7 +238,7 @@ const SalonSector = () => {
                                 marginTop: 10,
                             }}
                         >
-                            Loading salon...
+                            
                         </Text>
                     </View>
                 )}
@@ -316,24 +342,7 @@ const SalonSector = () => {
                                 }}
                             >
                                 <View style={{ marginTop: 40 }}>
-                                    <View style={{ paddingHorizontal: 16 }}>
-                                        <Text
-                                            style={{
-                                                fontFamily: "Philosopher-Bold",
-                                                fontSize: 20,
-                                                color: darkBrown,
-                                                marginTop: 28
-                                            }}
-                                        >
-                                            {salon.name}
-                                        </Text>
-                                    </View>
-
-                                    <View style={{ 
-                                        borderBottomWidth: 1, 
-                                        marginTop: 8, 
-                                        borderBottomColor: beige 
-                                    }} />
+                                  
 
                                     <View style={{ paddingHorizontal: 16 }}>
                                         <Text
@@ -346,6 +355,11 @@ const SalonSector = () => {
                                         >
                                             {salon.shortIntro || 'No description'}
                                         </Text>
+                                        <View style={{ 
+                                        borderBottomWidth: 1, 
+                                        marginTop: 8, 
+                                        borderBottomColor: beige 
+                                    }} />
                                         <Text
                                             style={{
                                                 fontFamily: "Philosopher-Bold",
@@ -356,6 +370,11 @@ const SalonSector = () => {
                                         >
                                             Location: {salon.address || 'Not specified'}
                                         </Text>
+                                        <View style={{ 
+                                        borderBottomWidth: 1, 
+                                        marginTop: 8, 
+                                        borderBottomColor: beige 
+                                    }} />
 
                                         <View style={{ 
                                             flexDirection: "row", 

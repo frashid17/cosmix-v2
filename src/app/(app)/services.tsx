@@ -13,6 +13,7 @@ import SideMenu from "../components/SideMenu";
 // Colors
 const darkBrown = "#423120";
 const lightBrown = "#D7C3A7";
+const beige = "#D9C7AF";
 const veryLightBeige = "#FFFF";
 
 export default function ServicesPage() {
@@ -286,43 +287,151 @@ export default function ServicesPage() {
       
       
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
-        {/* HERO SECTION with background image */}
-        <View style={{ backgroundColor: lightBrown, paddingBottom: 30 }}>
-          <View style={{ alignItems: "center", marginTop: 20 }}>
-            <View style={{ position: "relative", width: 320, height: 200, borderRadius: 24, overflow: "hidden" }}>
-              <Image
-                source={require("../../../assets/Vector-2.png")}
-                style={{ width: "100%", height: "100%" }}
-                resizeMode="contain"
-              />
-
-              {/* Title centered over image */}
+        {/* HERO SECTION - Conditional rendering based on flow */}
+        {salonId ? (
+          // Hero section when coming from salon-sector (salon-selector)
+          <View style={{ backgroundColor: beige, height: 320, position: "relative" }}>
+            {/* Background vectors (left/right) - behind the hero card */}
+            <Image
+              source={require("../../../assets/vector-left.png")}
+              style={{
+                position: "absolute",
+                top: 97,
+                left: -45,
+                width: 220,
+                height: 200,
+                opacity: 0.9,
+              }}
+              resizeMode="contain"
+            />
+            <Image
+              source={require("../../../assets/vector-right.png")}
+              style={{
+                position: "absolute",
+                top: 18,
+                right: -45,
+                width: 220,
+                height: 200,
+                opacity: 0.9,
+              }}
+              resizeMode="contain"
+            />
+            
+            {/* White Box - Centered */}
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
               <View
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
+                style={{ 
+                  width: 300, 
+                  height: 195,
+                  backgroundColor: "white",
+                  borderRadius: 24,
                   alignItems: "center",
                   justifyContent: "center",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 3,
+                  position: "relative"
                 }}
               >
+                {/* Title */}
                 <Text
                   style={{
-                    fontSize: 40,
-                    color: "#423120",
                     fontFamily: "Philosopher-Bold",
+                    fontSize: 40,
+                    color: darkBrown,
                     textAlign: "center",
-                    paddingHorizontal: 20,
+                    paddingHorizontal: 16
                   }}
                 >
-                  {salonId ? (salonName || "Salon") : (categoryName || "Services")}
+                  {(salonName || "Salon") + " Salonki"}
                 </Text>
+
+                {/* Ellipses at bottom */}
+                <View style={{ 
+                  position: "absolute", 
+                  bottom: 16, 
+                  flexDirection: "row" 
+                }}>
+                  <View
+                    style={{ 
+                      width: 11, 
+                      height: 11,
+                      backgroundColor: darkBrown,
+                      borderRadius: 5.5
+                    }}
+                  />
+                  <View
+                    style={{ 
+                      width: 11, 
+                      height: 11, 
+                      marginLeft: 5,
+                      backgroundColor: darkBrown,
+                      borderRadius: 5.5
+                    }}
+                  />
+                  <View
+                    style={{ 
+                      width: 11, 
+                      height: 11, 
+                      marginLeft: 5,
+                      backgroundColor: darkBrown,
+                      borderRadius: 5.5
+                    }}
+                  />
+                  <View
+                    style={{ 
+                      width: 11, 
+                      height: 11, 
+                      marginLeft: 5,
+                      backgroundColor: darkBrown,
+                      borderRadius: 5.5
+                    }}
+                  />
+                </View>
               </View>
             </View>
           </View>
-        </View>
+        ) : (
+          // Normal hero section
+          <View style={{ backgroundColor: lightBrown, paddingBottom: 30 }}>
+            <View style={{ alignItems: "center", marginTop: 20 }}>
+              <View style={{ position: "relative", width: 320, height: 200, borderRadius: 24, overflow: "hidden" }}>
+                <Image
+                  source={require("../../../assets/Vector-2.png")}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="contain"
+                />
+
+                {/* Title centered over image */}
+                <View
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 40,
+                      color: "#423120",
+                      fontFamily: "Philosopher-Bold",
+                      textAlign: "center",
+                      paddingHorizontal: 20,
+                    }}
+                  >
+                    {categoryName || "Services"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Content with padding */}
         <View style={{ paddingHorizontal: 20 }}>
@@ -338,7 +447,7 @@ export default function ServicesPage() {
                   color: darkBrown,
                 }}
               >
-                Loading services...
+                
               </Text>
             </View>
           )}
