@@ -3,6 +3,7 @@ import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, Image, Modal, A
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SideMenu from '../../components/SideMenu';
 import getCategories from '../../actions/get-categories';
 import { Category } from '../../types';
@@ -10,6 +11,7 @@ import Header from "../../components/Header";
 
 export default function Page() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -456,7 +458,7 @@ export default function Page() {
         </View>
 
         {/* FOOTER LINKS */}
-        <View className="py-6 px-4">
+        <View className="py-6 px-4" style={{ paddingBottom: 24 + 60 + insets.bottom }}>
           {[
             ["Käyttöehdot", "Palvelut"],
             ["Meistä", "Etusivu"],

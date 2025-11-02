@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import { WebView } from 'react-native-webview';
 import getSaloonsMap from '../actions/get-saloons-map';
@@ -23,6 +24,7 @@ const MAPBOX_TOKEN = 'pk.eyJ1IjoibHVuYXJsb2JzdGVyIiwiYSI6ImNtZ2p0c3dpYzBrOXUya3F
 
 export default function MapScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [locationPermission, setLocationPermission] = useState(false);
@@ -701,7 +703,7 @@ export default function MapScreen() {
         />
         
         {/* Floating Search Bar */}
-        <View style={styles.searchContainer}>
+        <View style={[styles.searchContainer, { bottom: 100 + insets.bottom }]}>
           <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={handleSearchPress}>
             <Ionicons name="search" size={31} color={darkBrown} style={styles.searchIcon} />
             <Text style={[styles.searchText, { color: darkBrown }]}>

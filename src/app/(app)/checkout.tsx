@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, ScrollView, Alert, SafeAreaView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '@/components/ui/button';
 import { CheckoutButton } from '../components/CheckoutButton';
 import { CustomerInfo } from '../actions/checkout';
@@ -59,6 +60,7 @@ const mockSaloonServices: SaloonService[] = [
 
 export default function CheckoutScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { user, isAuthenticated } = useAuthStore();
   const params = useLocalSearchParams<{
     saloonId?: string;
@@ -191,7 +193,7 @@ export default function CheckoutScreen() {
       {/* Header */}
       <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} />
 
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}>
         <View style={{ paddingHorizontal: 24, paddingBottom: 24, alignContent: 'center', justifyContent: 'center', marginTop: 24 }}>
 
        

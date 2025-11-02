@@ -10,6 +10,7 @@ import {
   Dimensions 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '@/config/constants';
 
 const { width } = Dimensions.get('window');
@@ -37,6 +38,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
   saloonId,
   serviceId
 }) => {
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [availabilityData, setAvailabilityData] = useState<{[date: string]: string[]}>({});
@@ -164,15 +166,16 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
           justifyContent: 'space-between',
           paddingHorizontal: 20,
           paddingVertical: 16,
+          paddingTop: Math.max(16, insets.top + 10),
           borderBottomWidth: 1,
           borderBottomColor: '#E5DCC8',
           backgroundColor: 'white'
         }}>
-          <TouchableOpacity onPress={onClose}>
+          <TouchableOpacity onPress={onClose} style={{ top: Math.max(0, insets.top - 20) }}>
             <Ionicons name="close" size={24} color={darkBrown} />
           </TouchableOpacity>
           
-          <View style={{ alignItems: 'center' }}>
+          <View style={{ alignItems: 'center', paddingTop: Math.max(0, insets.top - 20) }}>
             <Text style={{
               fontSize: 18,
               fontFamily: 'Philosopher-Bold',
@@ -488,6 +491,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
         {/* Confirm Button */}
         <View style={{
           padding: 20,
+          paddingBottom: Math.max(30, 20 + insets.bottom + 10),
           backgroundColor: 'white',
           borderTopWidth: 1,
           borderTopColor: '#E5DCC8'
