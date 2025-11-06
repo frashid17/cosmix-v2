@@ -67,7 +67,12 @@ const Categories: React.FC = () => {
         console.log(`Selected category: ${category.name} (ID: ${category.id})`);
         router.push({
           pathname: "services",
-          params: { categoryName: category.name }
+          params: { 
+            categoryName: category.name,
+            // Pass a UI variant flag for special categories like Hiukset
+            ...(category.name.toLowerCase() === 'hiukset' ? { uiVariant: 'hiukset' } : {}),
+            ...(category.name.toLowerCase() === 'karvanpoistot' ? { uiVariant: 'karvanpoistot' } : {})
+          }
         });
       }}
     >
@@ -135,7 +140,7 @@ const Categories: React.FC = () => {
               category={categories[currentIndex]}
               style={{
                 flex: pattern.flex1,
-                minWidth: (width * (pattern.flex1 / (pattern.flex1 + pattern.flex2)) * 0.85) - (buttonMargin * 2),
+                minWidth: (width * (pattern.flex1 / (pattern.flex1 + pattern.flex2)) * 0.94) - (buttonMargin * 2),
                 maxWidth: "auto"
               }}
             />
@@ -144,7 +149,7 @@ const Categories: React.FC = () => {
                 category={categories[currentIndex + 1]}
                 style={{
                   flex: pattern.flex2,
-                  minWidth: (width * (pattern.flex2 / (pattern.flex1 + pattern.flex2)) * 0.85) - (buttonMargin * 2),
+                  minWidth: (width * (pattern.flex2 / (pattern.flex1 + pattern.flex2)) * 0.9) - (buttonMargin * 2),
                   maxWidth: "auto"
                 }}
               />
@@ -221,7 +226,7 @@ const Categories: React.FC = () => {
 
         {/* Categories List with Custom Layout */}
         {!loading && !error && (
-          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 10 }}>
+          <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 10, marginLeft: -5 }}>
             <View style={{ flexDirection: "column", alignItems: "center", paddingBottom: 20 }}>
               {createCategoryRows()}
             </View>

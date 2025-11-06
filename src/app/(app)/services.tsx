@@ -1,5 +1,5 @@
 // src/app/(app)/services.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Modal, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from 'expo-font';
@@ -18,13 +18,16 @@ const veryLightBeige = "#FFFF";
 
 export default function ServicesPage() {
   const router = useRouter();
-  const { categoryName, salonId, salonName } = useLocalSearchParams<{ 
+  const { categoryName, salonId, salonName, uiVariant, subCategory } = useLocalSearchParams<{ 
     categoryName: string;
     salonId?: string;
     salonName?: string;
+    uiVariant?: string;
+    subCategory?: string;
   }>();
   
   const [services, setServices] = useState<Service[]>([]);
+  const [hiuksetSub, setHiuksetSub] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dynamicCategoryName, setDynamicCategoryName] = useState<string>('');
@@ -157,6 +160,12 @@ export default function ServicesPage() {
     fetchServices();
   }, [categoryName, salonId]);
 
+  useEffect(() => {
+    if (uiVariant === 'hiukset' && typeof subCategory === 'string') {
+      setHiuksetSub(subCategory);
+    }
+  }, [uiVariant, subCategory]);
+
   if (!fontsLoaded) {
     return null;
   }
@@ -211,6 +220,15 @@ export default function ServicesPage() {
   };
 
   const groupedServices = groupServices(services);
+
+  // For Hiukset: when a subcategory is selected, only show that parent group
+  const hiuksetGroups = useMemo(() => {
+    if (uiVariant === 'hiukset' && !salonId && hiuksetSub) {
+      const target = hiuksetSub.toLowerCase();
+      return groupedServices.filter(g => (g.name || '').toLowerCase() === target);
+    }
+    return groupedServices;
+  }, [groupedServices, uiVariant, salonId, hiuksetSub]);
   
   // Debug logging
   console.log('Services count:', services.length);
@@ -272,6 +290,126 @@ export default function ServicesPage() {
       }
     });
   };
+
+  // Hiukset custom helpers
+  const HIUKSET_SUBCATS = [
+    'Hiusten leikkauspalvelut',
+    'Hiusten värjäyspalvelut',
+    'Leikkaus ja värjäys',
+    'Kampaukset',
+    'Hoidot',
+    'Hiustenpidennykset',
+    'Permanantti',
+    'Letit',
+  ];
+
+  const renderHiuksetSubList = () => (
+    <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+      {HIUKSET_SUBCATS.map((label) => (
+        <TouchableOpacity
+          key={label}
+          onPress={() => router.push({ pathname: '/services', params: { categoryName, uiVariant: 'hiukset', subCategory: label } })}
+          style={{
+            backgroundColor: 'white',
+            borderWidth: 2,
+            borderColor: lightBrown,
+            borderRadius: 30,
+            width: 330,
+            minHeight: 84,
+            alignSelf: 'center',
+            paddingVertical: 12,
+            paddingHorizontal: 16,
+            marginBottom: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Bold', fontSize: 18 }} numberOfLines={1}>{label}</Text>
+          <Ionicons name="arrow-forward" size={22} color={darkBrown} />
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const filterHiuksetBySub = (list: Service[], sub?: string) => {
+    if (!sub) return list;
+    const s = sub.toLowerCase();
+    const filtered = list.filter(svc =>
+      (svc.parentService?.name && svc.parentService.name.toLowerCase() === s) ||
+      (svc.name && svc.name.toLowerCase().includes(s.split(' ')[0]))
+    );
+    return filtered.length ? filtered : list;
+  };
+
+  // Karvanpoistot: sections per parent group with title, description, and two-column sub-service grid
+  const renderKarvanpoistotSections = () => (
+    <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+      {(groupedServices as any[]).map((g: any) => {
+        const subs = (g.subServices || []).filter((s: any) => !!s?.name);
+        const rows: any[] = [];
+        for (let i = 0; i < subs.length; i += 2) rows.push(subs.slice(i, i + 2));
+        return (
+          <View key={g.id || g.name} style={{ marginBottom: 24 }}>
+            {/* Section Title */}
+            {g.name ? (
+              <Text style={{ textAlign: 'center', color: darkBrown, fontFamily: 'Philosopher-Bold', fontSize: 30, marginBottom: 6 }}>
+                {g.name}
+              </Text>
+            ) : null}
+            {/* Optional description under title */}
+            {g.description ? (
+              <Text style={{ textAlign: 'center', color: darkBrown, fontSize: 15, opacity: 0.7, fontFamily: 'Philosopher-Regular', marginBottom: 12 }}>
+                {g.description}
+              </Text>
+            ) : null}
+            {/* Two-column grid of sub-services */}
+            {rows.map((row, idx) => (
+              <View key={idx} style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 12 }}>
+                {row.map((s: any) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    onPress={() => {
+                      if (s.id) {
+                        router.push({
+                          pathname: '/(app)/saloons',
+                          params: {
+                            serviceId: s.id,
+                            serviceName: s.name,
+                            categoryName: categoryName,
+                          }
+                        });
+                      } else {
+                        // Fallback: keep old behavior if id missing
+                        router.push({ pathname: '/services', params: { categoryName, uiVariant: 'karvanpoistot', subCategory: s.name } });
+                      }
+                    }}
+                    style={{
+                      backgroundColor: 'white',
+                      borderWidth: 3,
+                      borderColor: lightBrown,
+                      borderRadius: 24,
+                      width: 160,
+                      minHeight: 90,
+                      paddingVertical: 10,
+                      paddingHorizontal: 10,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginHorizontal: 10,
+                    }}
+                  >
+                    <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Bold', fontSize: 16, textAlign: 'center' }} numberOfLines={2}>
+                      {s.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ))}
+          </View>
+        );
+      })}
+    </View>
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: veryLightBeige }}>
@@ -495,8 +633,24 @@ export default function ServicesPage() {
           {/* SERVICE CATEGORIES */}
           {!loading && !error && (
             <View>
-              {groupedServices.length > 0 ? (
-                groupedServices.map((service, idx) => (
+              {/* Hiukset landing (no sub chosen) */}
+              {uiVariant === 'hiukset' && !salonId && !hiuksetSub && renderHiuksetSubList()}
+              {/* Karvanpoistot landing sections */}
+              {uiVariant === 'karvanpoistot' && !salonId && !subCategory && renderKarvanpoistotSections()}
+
+              {(uiVariant !== 'hiukset' || !!hiuksetSub || !!salonId) && (uiVariant !== 'karvanpoistot' || !!subCategory || !!salonId) && (
+                (uiVariant === 'karvanpoistot' && !salonId && subCategory ? hiuksetGroups : hiuksetGroups).length > 0 ? (
+                  (uiVariant === 'karvanpoistot' && !salonId && subCategory ? hiuksetGroups : hiuksetGroups)
+                  .map((service) => ({
+                    ...service,
+                    subServices: (uiVariant === 'hiukset' && !salonId)
+                      ? filterHiuksetBySub(service.subServices || [], hiuksetSub)
+                      : (uiVariant === 'karvanpoistot' && !salonId && subCategory)
+                        ? (service.subServices || []).filter(svc => (svc.name || '').toLowerCase() === String(subCategory).toLowerCase())
+                        : service.subServices,
+                  }))
+                  .filter((service) => (service.subServices?.length || 0) > 0)
+                  .map((service, idx) => (
                   <View
                     key={service.id}
                     style={{
@@ -659,25 +813,28 @@ export default function ServicesPage() {
                     )}
                   </View>
                 ))
-              ) : (
+                ) : (
                 <View style={{ flex: 1, justifyContent: "center", alignItems: "center", marginTop: 50 }}>
-                  <Text
-                    style={{
-                      fontFamily: "Philosopher-Bold",
-                      fontSize: 18,
-                      color: darkBrown,
-                      textAlign: "center",
-                    }}
-                  >
-                    No services found for {categoryName}
-                  </Text>
-                </View>
+                    <Text
+                      style={{
+                        fontFamily: "Philosopher-Bold",
+                        fontSize: 18,
+                        color: darkBrown,
+                        textAlign: "center",
+                      }}
+                    >
+                    No services found for {String(hiuksetSub || subCategory || categoryName)}
+                    </Text>
+                  </View>
+                )
               )}
             </View>
           )}
         </View>
         {/* Bottom spacer so last card is fully visible above tab bar */}
-        <View style={{ height: 40 }} />
+        {(uiVariant !== 'hiukset' || !!hiuksetSub || !!salonId) && (uiVariant !== 'karvanpoistot' || !!subCategory || !!salonId) && (
+          <View style={{ height: 40 }} />
+        )}
       </ScrollView>
 
       {/* Modal for the side menu */}
