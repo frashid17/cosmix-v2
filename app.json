@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Cosmix Beauty",
-    "slug": "cosmix-beauty",
+    "name": "Cosmix",
+    "slug": "cosmix",
     "version": "1.0.0",
     "scheme": "cosmix",
     "userInterfaceStyle": "automatic",
@@ -56,9 +56,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "03c93672-a42c-4e79-8ee6-d4c20e5c441c"
+        "projectId": "b7d9e6b1-8d8c-4c39-a93a-3a63428866dd"
       }
     },
-    "owner": "lunareclipse"
+    "owner": "pkoooo"
   }
 }

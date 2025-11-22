@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +36,7 @@ export default function MapScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState<Service[]>([]);
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
+  const [filteredSalons, setFilteredSalons] = useState<MapSalon[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [webViewRef, setWebViewRef] = useState<WebView | null>(null);
 
@@ -104,30 +105,30 @@ export default function MapScreen() {
     const loadServices = async () => {
       try {
         setSearchLoading(true);
-        const allServices = await getServices('Kaikki palvelut');
-        setServices(allServices);
-        setFilteredServices(allServices);
-      } catch (error) {
-        console.error('Error loading services:', error);
-        // Try loading without category parameter
-        try {
-          const allServices = await getServices('Kaikki palvelut');
-          setServices(allServices);
-          setFilteredServices(allServices);
-        } catch (error2) {
-          console.error('Error loading services without category:', error2);
-          // Fallback: Extract services from salon data
-          const fallbackServices = extractServicesFromSalons(salons);
+        // Fetch all services by getting all categories first, then their services
+        // Or use a different endpoint if available
+        // For now, extract from salon data as fallback
+        const fallbackServices = extractServicesFromSalons(salons);
+        if (fallbackServices.length > 0) {
           setServices(fallbackServices);
           setFilteredServices(fallbackServices);
         }
+      } catch (error) {
+        console.error('Error loading services:', error);
+        // Fallback: Extract services from salon data
+        const fallbackServices = extractServicesFromSalons(salons);
+        setServices(fallbackServices);
+        setFilteredServices(fallbackServices);
       } finally {
         setSearchLoading(false);
       }
     };
 
-    loadServices();
-  }, []);
+    // Only load services after salons are loaded
+    if (salons.length > 0) {
+      loadServices();
+    }
+  }, [salons]);
 
   // Extract services from salons when they're loaded (fallback)
   useEffect(() => {
@@ -303,6 +304,41 @@ export default function MapScreen() {
     }
   };
 
+  // Just center the map on salon (used by search button)
+  const centerMapOnSalon = (salon: MapSalon) => {
+    if (webViewRef) {
+      const message = JSON.stringify({
+        type: 'centerOnLocation',
+        latitude: salon.latitude,
+        longitude: salon.longitude,
+      });
+      webViewRef.postMessage(message);
+    }
+    setSearchVisible(false);
+  };
+
+  // Navigate to salon-sector page (used when clicking salon in list)
+  const navigateToSalonSector = (salon: MapSalon) => {
+    // First center the map
+    if (webViewRef) {
+      const message = JSON.stringify({
+        type: 'centerOnLocation',
+        latitude: salon.latitude,
+        longitude: salon.longitude,
+      });
+      webViewRef.postMessage(message);
+    }
+    setSearchVisible(false);
+    // Then navigate to salon-sector page to show categories for this salon
+    router.push({
+      pathname: "/salon-sector",
+      params: {
+        salonId: salon.id,
+        salonName: salon.name
+      }
+    });
+  };
+
   // Extract services from salon data as fallback
   const extractServicesFromSalons = (salonData: MapSalon[]): Service[] => {
     const serviceMap = new Map<string, Service>();
@@ -336,14 +372,40 @@ export default function MapScreen() {
 
   const handleSearchQuery = (query: string) => {
     setSearchQuery(query);
-    if (query.trim() === '') {
+    const normalize = (s: string) => (s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}+/gu, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const q = normalize(query);
+    if (q.length === 0) {
       setFilteredServices(services);
-    } else {
-      const filtered = services.filter(service =>
-        service.name.toLowerCase().includes(query.toLowerCase())
-      );
-      setFilteredServices(filtered);
+      setFilteredSalons([]);
+      return;
     }
+    // Services filter
+    const svc = services.filter(service => normalize(service.name).includes(q));
+    setFilteredServices(svc);
+    // Salons filter with scoring
+    const tokens = q.split(' ').filter(Boolean);
+    const sal = salons
+      .map((s) => {
+        const name = normalize(s.name);
+        const addr = normalize(s.address || '');
+        const hay = `${name} ${addr}`;
+        let score = 0;
+        for (const t of tokens) {
+          if (name.startsWith(t)) score += 3;
+          else if (name.includes(t)) score += 2;
+          else if (hay.includes(t)) score += 1;
+        }
+        return { s, score };
+      })
+      .filter(x => x.score > 0)
+      .sort((a,b) => b.score - a.score)
+      .map(x => x.s);
+    setFilteredSalons(sal);
   };
 
   const handleServiceSelect = async (service: Service) => {
@@ -526,10 +588,7 @@ export default function MapScreen() {
 
             const popup = new mapboxgl.Popup({ offset: 25 })
               .setHTML(\`
-                <div class="popup-title">\${salon.name}</div>
-                <div class="popup-details">Arvio: \${salon.rating.toFixed(1)}/5 (\${salon.reviewCount} arvostelua)</div>
-                <div class="popup-details">Palvelut: \${salon.services}</div>
-                <div class="popup-details">Osoite: \${salon.address}</div>
+                
                 <div style="margin-top: 12px;">
                   <button class="popup-button" onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type: 'viewServices', salonId: '\${salon.id}', salonName: '\${salon.name}'}))" style="width: 100%;">
                     Katso palvelut
@@ -713,33 +772,6 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* Controls */}
-      <View style={styles.controls}>
-        <TouchableOpacity
-          style={[styles.controlButton, { backgroundColor: white }]}
-          onPress={centerOnUserLocation}
-          disabled={!userLocation}
-        >
-          <Ionicons
-            name="locate"
-            size={24}
-            color={userLocation ? darkBrown : "#ccc"}
-          />
-        </TouchableOpacity>
-      </View>
-
-      {/* Service Count */}
-      <View style={[styles.serviceCount, { backgroundColor: 'rgba(255, 255, 255, 0.9)' }]}>
-        <Text style={[styles.serviceCountText, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
-          {salonsLoading ? 'Ladataan...' : `${salons.length} palveluntarjoajaa löytyi`}
-        </Text>
-        {salons.length === 0 && !salonsLoading && (
-          <Text style={[styles.serviceCountText, { color: darkBrown, fontFamily: 'Philosopher-Regular', fontSize: 12, marginTop: 2 }]}>
-            Näytetään esimerkkitiedot
-          </Text>
-        )}
-      </View>
-
       {/* Modal for the side menu */}
       <Modal
         animationType="slide"
@@ -768,8 +800,13 @@ export default function MapScreen() {
         visible={isSearchVisible}
         onRequestClose={() => setSearchVisible(false)}
       >
-        <View style={styles.searchModalOverlay}>
-          <View style={styles.searchModalContent}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === 'android' ? insets.bottom : 0}
+        >
+          <View style={styles.searchModalOverlay}>
+            <View style={[styles.searchModalContent, { paddingBottom: insets.bottom + 20 }]}>
             {/* Search Header */}
             <View style={styles.searchHeader}>
               <Text style={[styles.searchTitle, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
@@ -792,7 +829,9 @@ export default function MapScreen() {
                 autoFocus={true}
                 returnKeyType="search"
                 onSubmitEditing={() => {
-                  if (filteredServices.length > 0) {
+                  if (filteredSalons.length > 0) {
+                    centerMapOnSalon(filteredSalons[0]);
+                  } else if (filteredServices.length > 0) {
                     handleServiceSelect(filteredServices[0]);
                   }
                 }}
@@ -801,43 +840,28 @@ export default function MapScreen() {
                 <TouchableOpacity 
                   style={styles.searchButton}
                   onPress={() => {
-                    if (filteredServices.length > 0) {
+                    if (filteredSalons.length > 0) {
+                      centerMapOnSalon(filteredSalons[0]);
+                    } else if (filteredServices.length > 0) {
                       handleServiceSelect(filteredServices[0]);
                     }
                   }}
-                  disabled={filteredServices.length === 0}
+                  disabled={filteredSalons.length === 0 && filteredServices.length === 0}
                 >
                   <Ionicons 
                     name="arrow-forward" 
                     size={20} 
-                    color={filteredServices.length > 0 ? darkBrown : "#ccc"} 
+                    color={(filteredSalons.length > 0 || filteredServices.length > 0) ? darkBrown : "#ccc"} 
                   />
                 </TouchableOpacity>
               )}
             </View>
 
             {/* Search Action Button */}
-            {searchQuery.length > 0 && filteredServices.length > 0 && (
-              <View style={styles.searchActionContainer}>
-                <TouchableOpacity 
-                  style={[styles.searchActionButton, { backgroundColor: darkBrown }]}
-                  onPress={() => {
-                    if (filteredServices.length > 0) {
-                      handleServiceSelect(filteredServices[0]);
-                    }
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.searchActionText, { color: white, fontFamily: 'Philosopher-Bold' }]}>
-                    Hae palvelua
-                  </Text>
-                  <Ionicons name="search" size={20} color={white} style={{ marginLeft: 8 }} />
-                </TouchableOpacity>
-              </View>
-            )}
+           
 
 
-            {/* Services List */}
+            {/* Salons and Services List */}
             {searchLoading ? (
               <View style={styles.searchLoadingContainer}>
                 <ActivityIndicator size="large" color={darkBrown} />
@@ -847,30 +871,53 @@ export default function MapScreen() {
               </View>
             ) : (
               <FlatList
-                data={filteredServices}
-                keyExtractor={(item) => item.id}
+                data={[
+                  ...filteredSalons.map(s => ({ type: 'salon', key: `salon-${s.id}`, salon: s })),
+                  ...filteredServices.map(s => ({ type: 'service', key: `service-${s.id}`, service: s })),
+                ]}
+                keyExtractor={(item) => item.key}
                 style={styles.servicesList}
+                contentContainerStyle={{ paddingBottom: 20 }}
                 showsVerticalScrollIndicator={false}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.serviceItem}
-                    onPress={() => handleServiceSelect(item)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.serviceName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
-                      {item.name}
-                    </Text>
-                    {item.description && (
-                      <Text style={[styles.serviceDescription, { color: '#666', fontFamily: 'Philosopher-Regular' }]}>
-                        {item.description}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => {
+                  const it: any = item;
+                  return it.type === 'salon' ? (
+                    <TouchableOpacity
+                      style={styles.serviceItem}
+                      onPress={() => navigateToSalonSector(it.salon)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.serviceName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                        {it.salon.name}
                       </Text>
-                    )}
-                  </TouchableOpacity>
-                )}
+                      {it.salon.address ? (
+                        <Text style={[styles.serviceDescription, { color: '#666', fontFamily: 'Philosopher-Regular' }]}> 
+                          {it.salon.address}
+                        </Text>
+                      ) : null}
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.serviceItem}
+                      onPress={() => handleServiceSelect(it.service)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.serviceName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                        {it.service.name}
+                      </Text>
+                      {it.service.description && (
+                        <Text style={[styles.serviceDescription, { color: '#666', fontFamily: 'Philosopher-Regular' }]}> 
+                          {it.service.description}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                }}
                 ListEmptyComponent={
                   <View style={styles.emptyContainer}>
                     <Text style={[styles.emptyText, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}>
-                      {searchQuery ? 'Palvelua ei löytynyt' : 'Aloita kirjoittamalla palvelun nimi'}
+                      {searchQuery ? 'Ei tuloksia – kokeile toista hakusanaa' : 'Aloita kirjoittamalla palvelun tai salon nimen'}
                     </Text>
                   </View>
                 }
@@ -878,6 +925,7 @@ export default function MapScreen() {
             )}
           </View>
         </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

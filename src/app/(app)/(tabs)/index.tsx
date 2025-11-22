@@ -83,8 +83,8 @@ export default function Page() {
     return result;
   };
 
-  // Prepare categories for display (all categories)
-  const displayCategories = categories.map(cat => cat.name);
+  // Prepare categories for display (all categories - keep full objects)
+  const displayCategories = categories;
 
   // Chunk into rows of 2
   const categoryRows = chunkArray(displayCategories, 2);
@@ -225,13 +225,7 @@ export default function Page() {
               <TouchableOpacity
                 key={idx}
                 style={{ marginBottom: 24, width: "48%", alignItems: "center" }}
-                onPress={() => {
-                  // Navigate to services with the specific service type
-                  router.push({
-                    pathname: "/services",
-                    params: { categoryName: item.label }
-                  });
-                }}
+                
                 activeOpacity={0.8}
               >
                 <Image
@@ -351,12 +345,12 @@ export default function Page() {
             <View className="mt-4">
               {categoryRows.map((row, rowIdx) => (
                 <View key={rowIdx} style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 16 }}>
-                  {row.map((categoryName, colIdx) => (
+                  {row.map((category, colIdx) => (
                     <TouchableOpacity
                       key={colIdx}
                       style={{
                         backgroundColor: lightBrown,
-                        width: 127,
+                        width: 138,
                         height: 47,
                         borderRadius: 24,
                         justifyContent: "center",
@@ -364,9 +358,15 @@ export default function Page() {
                       }}
                       onPress={() => {
                         // Navigate to services page with category name
+                        // Match the same navigation logic as categories page
                         router.push({
                           pathname: "/services",
-                          params: { categoryName }
+                          params: { 
+                            categoryName: category.name,
+                            // Pass a UI variant flag for special categories like Hiukset and Karvanpoistot
+                            ...(category.name.toLowerCase() === 'hiukset' ? { uiVariant: 'hiukset' } : {}),
+                            ...(category.name.toLowerCase() === 'karvanpoistot' ? { uiVariant: 'karvanpoistot' } : {})
+                          }
                         });
                       }}
                     >
@@ -375,13 +375,13 @@ export default function Page() {
                           color: darkBrown,
                           textAlign: "center",
                           fontFamily: "Philosopher-Bold",
-                          fontSize: 14,
+                          fontSize: 15,
                           paddingHorizontal: 8,
                         }}
                         numberOfLines={1}
                         ellipsizeMode="tail"
                       >
-                        {categoryName}
+                        {category.name}
                       </Text>
                     </TouchableOpacity>
                   ))}

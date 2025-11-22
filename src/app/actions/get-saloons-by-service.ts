@@ -57,9 +57,15 @@ export interface SaloonData {
   images?: string[];
 }
 
-const getSaloonsByService = async (serviceId: string): Promise<SaloonData[]> => {
+const getSaloonsByService = async (serviceId: string, workType?: string): Promise<SaloonData[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/public/services/${serviceId}`, {
+    // Build URL with optional workType query parameter
+    let url = `${API_BASE_URL}/public/services/${serviceId}`;
+    if (workType) {
+      url += `?workType=${encodeURIComponent(workType)}`;
+    }
+    
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',

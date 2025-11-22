@@ -181,7 +181,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
               fontFamily: 'Philosopher-Bold',
               color: darkBrown
             }}>
-              Book Appointment
+              Ajoittaa
             </Text>
             <Text style={{
               fontSize: 14,
@@ -205,7 +205,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
               color: darkBrown,
               marginBottom: 16
             }}>
-              Select Date
+              Valitse Päivämäärä
             </Text>
             
             <ScrollView 
@@ -303,7 +303,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
                 color: darkBrown,
                 marginBottom: 16
               }}>
-                Select Time
+                Valitse Aika
               </Text>
               
               {loading ? (
@@ -319,7 +319,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
                     color: darkBrown,
                     opacity: 0.7
                   }}>
-                    Loading available times...
+                    Ladataan vapaat ajat...
                   </Text>
                 </View>
               ) : isClosed ? (
@@ -412,80 +412,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
               )}
             </View>
           )}
-
-          {/* Selected Appointment Summary */}
-          {selectedDate && selectedTime && (
-            <View style={{
-              margin: 20,
-              padding: 20,
-              backgroundColor: 'white',
-              borderRadius: 16,
-              borderWidth: 2,
-              borderColor: accentGold,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              elevation: 5
-            }}>
-              <Text style={{
-                fontSize: 18,
-                fontFamily: 'Philosopher-Bold',
-                color: darkBrown,
-                marginBottom: 12,
-                textAlign: 'center'
-              }}>
-                Appointment Summary
-              </Text>
-              
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginBottom: 8
-              }}>
-                <Ionicons name="calendar-outline" size={20} color={accentGold} />
-                <Text style={{
-                  fontSize: 16,
-                  fontFamily: 'Philosopher-Regular',
-                  color: darkBrown,
-                  marginLeft: 8
-                }}>
-                  {formatDate(new Date(selectedDate)).day}, {formatDate(new Date(selectedDate)).date} {formatDate(new Date(selectedDate)).month}
-                </Text>
-              </View>
-              
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                marginBottom: 16
-              }}>
-                <Ionicons name="time-outline" size={20} color={accentGold} />
-                <Text style={{
-                  fontSize: 16,
-                  fontFamily: 'Philosopher-Regular',
-                  color: darkBrown,
-                  marginLeft: 8
-                }}>
-                  {selectedTime}
-                </Text>
-              </View>
-              
-              <View style={{
-                flexDirection: 'row',
-                alignItems: 'center'
-              }}>
-                <Ionicons name="business-outline" size={20} color={accentGold} />
-                <Text style={{
-                  fontSize: 16,
-                  fontFamily: 'Philosopher-Regular',
-                  color: darkBrown,
-                  marginLeft: 8
-                }}>
-                  {salonName}
-                </Text>
-              </View>
-            </View>
-          )}
         </ScrollView>
 
         {/* Confirm Button */}
@@ -516,7 +442,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
               fontFamily: 'Philosopher-Bold',
               color: selectedDate && selectedTime ? 'white' : '#999'
             }}>
-              Confirm Booking
+              Vahvista aikataulu
             </Text>
           </TouchableOpacity>
         </View>

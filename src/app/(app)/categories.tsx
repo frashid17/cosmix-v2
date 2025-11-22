@@ -101,7 +101,7 @@ const Categories: React.FC = () => {
     const layoutPatterns = [
       { flex1: 1.5, flex2: 1 },
       { flex1: 1.1, flex2: 2 },
-      { flex1: 1.8, flex2: 1 },
+      { flex1: 1.7, flex2: 1.2 }, // Row 3: Increased flex2 for "Kynnet" box
       { flex1: 1.2, flex2: 2 },
       { flex1: 2, flex2: 1.2 },
     ];

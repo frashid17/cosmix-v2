@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderWidth: 1,
+    borderWidth: 3,
     borderColor: "#D7C3A7",
   },
   menuButtonText: {

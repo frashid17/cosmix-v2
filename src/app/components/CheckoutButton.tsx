@@ -97,7 +97,7 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
           <>
             <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 18 }}>
-              Confirming Booking...
+            Vahvistetaan aikataulua...
             </Text>
           </>
         ) : (

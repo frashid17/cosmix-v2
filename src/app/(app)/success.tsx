@@ -50,7 +50,7 @@ export default function SuccessScreen() {
             textAlign: 'center',
             marginBottom: 8
           }}>
-            Booking Confirmed! 🎉
+            Varausaikataulut 🎉
           </Text>
           <Text style={{
             fontSize: 16,
@@ -83,7 +83,7 @@ export default function SuccessScreen() {
             marginBottom: 16,
             textAlign: 'center'
           }}>
-            Booking Details
+            Varaustiedot
           </Text>
 
           {params.saloonName && (

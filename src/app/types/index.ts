@@ -24,10 +24,13 @@ export interface Category {
   services?: Service[];
 }
 
+export type ServiceWorkType = 'UUDET' | 'POISTO' | 'HUOLTO';
+
 export interface Service {
   id: string;
   name: string;
   description?: string;
+  workTypes?: ServiceWorkType[];
   categoryId: string;
   parentServiceId?: string;
   isPopular: boolean;

@@ -36,6 +36,11 @@ export default function ServicesPage() {
   // Store pricing info for salon services (serviceId -> { price, durationMinutes })
   const [salonServicePricing, setSalonServicePricing] = useState<Map<string, { price: number; durationMinutes: number }>>(new Map());
   
+  // Track which service has work types displayed
+  const [selectedServiceWithWorkTypes, setSelectedServiceWithWorkTypes] = useState<Service | null>(null);
+  // Track which parent service is selected (for salon services)
+  const [selectedParentServiceId, setSelectedParentServiceId] = useState<string | null>(null);
+  
   const [fontsLoaded] = useFonts({
     'Philosopher-Regular': require("../assets/fonts/Philosopher-Regular.ttf"),
     'Philosopher-Bold': require("../assets/fonts/Philosopher-Bold.ttf"),
@@ -70,9 +75,57 @@ export default function ServicesPage() {
           setError(null);
           const data = await getServicesBySalon(salonId);
           
+          // Normalize workTypes field (handle both camelCase and snake_case from API)
+          const normalizedData = data.map((service: any) => {
+            // Normalize workTypes - check both camelCase and snake_case
+            const workTypes = service.workTypes || service.work_types || service.WorkTypes;
+            
+            // Also normalize parentService workTypes if it exists
+            let normalizedParentService = service.parentService;
+            if (service.parentService) {
+              const parentWorkTypes = service.parentService.workTypes || service.parentService.work_types || service.parentService.WorkTypes;
+              normalizedParentService = {
+                ...service.parentService,
+                workTypes: parentWorkTypes && Array.isArray(parentWorkTypes) ? parentWorkTypes : undefined,
+              };
+            }
+            
+            return {
+              ...service,
+              workTypes: workTypes && Array.isArray(workTypes) ? workTypes : undefined,
+              parentService: normalizedParentService,
+            };
+          });
+          
+          console.log('Normalized salon services with workTypes:', normalizedData.map(s => ({
+            name: s.name,
+            workTypes: s.workTypes,
+            parentService: s.parentService ? {
+              name: s.parentService.name,
+              workTypes: s.parentService.workTypes
+            } : null,
+            category: s.category?.name,
+            categoryId: s.categoryId
+          })));
+          
+          // For services in "Kynnet" category, if they don't have workTypes, add them
+          // This is a fallback since salon API might not return workTypes
+          normalizedData.forEach((service: any, index: number) => {
+            const isKynnet = service.category?.name === 'Kynnet' || service.categoryId === '1dca56ac-d3b1-4e3c-986e-ad9b11aa6794';
+            const needsWorkTypes = !service.workTypes || (Array.isArray(service.workTypes) && service.workTypes.length === 0);
+            
+            if (isKynnet && needsWorkTypes) {
+              normalizedData[index] = {
+                ...service,
+                workTypes: ['UUDET', 'POISTO', 'HUOLTO']
+              };
+              console.log(`✅ Added default workTypes to ${service.name} (Kynnet category)`);
+            }
+          });
+          
           // Extract pricing info from saloonServices and store in map
           const pricingMap = new Map<string, { price: number; durationMinutes: number }>();
-          data.forEach(service => {
+          normalizedData.forEach(service => {
             // Check if service has saloonServices array
             if (service.saloonServices && service.saloonServices.length > 0) {
               const salonServiceInfo = service.saloonServices.find(ss => ss.saloonId === salonId);
@@ -103,19 +156,28 @@ export default function ServicesPage() {
           console.log('Salon service pricing map:', Object.fromEntries(pricingMap));
           
           // Filter by category if categoryName is provided (coming from salon-sector category click)
-          let filteredData = data;
-          if (categoryName) {
-            filteredData = data.filter(service => 
+          // Skip filtering if categoryName is "Kaikki palvelut" (it's just a heading, not a real category)
+          let filteredData = normalizedData;
+          if (categoryName && categoryName !== 'Kaikki palvelut') {
+            filteredData = normalizedData.filter(service => 
               service.category?.name === categoryName || 
               service.parentService?.category?.name === categoryName
             );
-            console.log('Filtered services by category:', categoryName, filteredData.length, 'of', data.length);
+            console.log('Filtered services by category:', categoryName, filteredData.length, 'of', normalizedData.length);
           }
+          
+          // Log services after normalization to verify workTypes are present
+          console.log('Services after normalization (first 3):', normalizedData.slice(0, 3).map(s => ({
+            name: s.name,
+            workTypes: s.workTypes,
+            category: s.category?.name
+          })));
           
           setServices(filteredData);
           
           // Set dynamic category name - use categoryName if provided, otherwise extract from services
-          if (categoryName) {
+          // Never use "Kaikki palvelut" as it's just a heading, not a category
+          if (categoryName && categoryName !== 'Kaikki palvelut') {
             setDynamicCategoryName(categoryName);
           } else {
             const categoryNames = extractCategoryNames(filteredData);
@@ -147,8 +209,41 @@ export default function ServicesPage() {
         setLoading(true);
         setError(null);
         const data = await getServicesByCategory(categoryName);
-        setServices(data);
-        console.log('Fetched services for category:', categoryName, data);
+        
+        // Normalize workTypes field (handle both camelCase and snake_case from API)
+        const normalizedData = data.map((service: any) => {
+          // Normalize workTypes - check both camelCase and snake_case
+          const workTypes = service.workTypes || service.work_types || service.WorkTypes;
+          return {
+            ...service,
+            workTypes: workTypes && Array.isArray(workTypes) ? workTypes : undefined,
+            // Also normalize sub-services if they exist
+            subServices: service.subServices ? service.subServices.map((sub: any) => {
+              const subWorkTypes = sub.workTypes || sub.work_types || sub.WorkTypes;
+              return {
+                ...sub,
+                workTypes: subWorkTypes && Array.isArray(subWorkTypes) ? subWorkTypes : undefined
+              };
+            }) : undefined
+          };
+        });
+        
+        setServices(normalizedData);
+        console.log('Fetched services for category:', categoryName, normalizedData);
+        // Log workTypes for debugging
+        normalizedData.forEach((service: Service) => {
+          if (service.workTypes && service.workTypes.length > 0) {
+            console.log(`✅ Service "${service.name}" has workTypes:`, service.workTypes);
+          }
+          // Also check sub-services
+          if (service.subServices) {
+            service.subServices.forEach((sub: Service) => {
+              if (sub.workTypes && sub.workTypes.length > 0) {
+                console.log(`✅ Sub-service "${sub.name}" has workTypes:`, sub.workTypes);
+              }
+            });
+          }
+        });
       } catch (err) {
         console.error('Error fetching services:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch services');
@@ -181,7 +276,7 @@ export default function ServicesPage() {
       const parentServices = new Map();
       
       services.forEach(service => {
-        console.log('Processing service:', service.name, 'parentService:', !!service.parentService);
+        console.log('Processing service:', service.name, 'parentService:', !!service.parentService, 'workTypes:', service.workTypes);
         if (service.parentService) {
           const parentId = service.parentService.id;
           console.log('Adding to parent:', parentId, service.parentService.name);
@@ -191,7 +286,11 @@ export default function ServicesPage() {
               subServices: []
             });
           }
-          parentServices.get(parentId).subServices.push(service);
+          // Make sure we preserve workTypes when pushing to subServices
+          parentServices.get(parentId).subServices.push({
+            ...service,
+            workTypes: service.workTypes // Explicitly preserve workTypes
+          });
         } else {
           console.log('No parent service, treating as main service');
           // If no parent service, treat as main service
@@ -235,11 +334,205 @@ export default function ServicesPage() {
   console.log('Grouped services count:', groupedServices.length);
   console.log('Grouped services:', groupedServices.map(g => ({ name: g.name, subServicesCount: g.subServices?.length || 0 })));
 
+  // Render parent services as boxes (for salon services)
+  const renderParentServices = () => {
+    if (!salonId || groupedServices.length === 0) return null;
+    
+    return (
+      <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
+        {groupedServices.map((parentService) => (
+          <TouchableOpacity
+            key={parentService.id}
+            activeOpacity={0.7}
+            style={{
+              backgroundColor: "white",
+              borderRadius: 30,
+              borderWidth: 3,
+              borderColor: lightBrown,
+              width: 330,
+              minHeight: 84,
+              justifyContent: "center",
+              marginBottom: 12,
+              alignSelf: "center",
+              paddingVertical: 12,
+            }}
+            onPress={() => setSelectedParentServiceId(parentService.id)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16 }}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontSize: 20,
+                    color: darkBrown,
+                    fontFamily: "Philosopher-Bold",
+                  }}
+                >
+                  {parentService.name}
+                </Text>
+                {parentService.subServices && parentService.subServices.length > 0 && (
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: darkBrown,
+                      fontFamily: "Philosopher-Regular",
+                      opacity: 0.6,
+                      marginTop: 4,
+                    }}
+                  >
+                    {parentService.subServices.length} palvelua
+                  </Text>
+                )}
+              </View>
+              <Ionicons name="arrow-forward" size={22} color={darkBrown} />
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  // Render sub-services for selected parent (for salon services)
+  const renderSubServicesForParent = () => {
+    if (!salonId || !selectedParentServiceId) return null;
+    
+    const selectedParent = groupedServices.find(g => g.id === selectedParentServiceId);
+    if (!selectedParent || !selectedParent.subServices || selectedParent.subServices.length === 0) return null;
+
+    return (
+      <View style={{ marginTop: 30 }}>
+        {/* Parent service title */}
+        <Text
+          style={{
+            textAlign: "center",
+            fontSize: 30,
+            color: darkBrown,
+            fontFamily: "Philosopher-Bold",
+            marginBottom: 20,
+          }}
+        >
+          {selectedParent.name}
+        </Text>
+
+        {/* Sub-services */}
+        {selectedParent.subServices.map((subService) => (
+          <View key={subService.id} style={{ marginBottom: 12 }}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              style={{
+                backgroundColor: "white",
+                borderRadius: 30,
+                borderWidth: 3,
+                borderColor: lightBrown,
+                width: 330,
+                minHeight: subService.description ? 120 : 84,
+                justifyContent: "center",
+                alignSelf: "center",
+                paddingVertical: 12,
+              }}
+              onPress={() => handleServicePress(subService)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      color: darkBrown,
+                      fontFamily: "Philosopher-Bold",
+                    }}
+                  >
+                    {subService.name}
+                  </Text>
+                  
+                  {subService.description && (
+                    <Text
+                      style={{
+                        fontSize: 15,
+                        color: darkBrown,
+                        fontFamily: "Philosopher-Bold",
+                        opacity: 0.6,
+                        marginTop: 4,
+                        lineHeight: 20,
+                      }}
+                      numberOfLines={4}
+                    >
+                      {subService.description}
+                    </Text>
+                  )}
+                </View>
+                {subService.durationMinutes && (
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: darkBrown,
+                      fontFamily: "Philosopher-Regular",
+                      opacity: 0.6,
+                      marginTop: 2,
+                    }}
+                  >
+                    {subService.durationMinutes} min
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+            {/* Show work types if this service is selected */}
+            {selectedServiceWithWorkTypes?.id === subService.id && renderWorkTypes(subService)}
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   const handleServicePress = (service: Service) => {
     console.log(`Selected service: ${service.name} (ID: ${service.id})`);
+    console.log('Service workTypes:', service.workTypes);
+    console.log('Service workTypes type:', typeof service.workTypes);
+    console.log('Service workTypes length:', service.workTypes?.length);
+    console.log('Full service object:', JSON.stringify(service, null, 2));
     console.log('Current salonId:', salonId);
     console.log('Current salonName:', salonName);
     console.log('Salon service pricing map size:', salonServicePricing.size);
+    
+    // Check if service has workTypes (for both salon and non-salon flows)
+    // Also check for work_types (snake_case) in case API returns it that way
+    let workTypes = service.workTypes || (service as any).work_types || (service as any).WorkTypes;
+    
+    // Check if category is "Kynnet" - if so, use default workTypes if service doesn't have them
+    const isKynnetCategory = service.category?.name === 'Kynnet' || service.categoryId === '1dca56ac-d3b1-4e3c-986e-ad9b11aa6794';
+    
+    // If no workTypes or empty array, and category is Kynnet, use default workTypes immediately
+    if (isKynnetCategory && (!workTypes || (Array.isArray(workTypes) && workTypes.length === 0))) {
+      workTypes = ['UUDET', 'POISTO', 'HUOLTO'];
+    } else if ((!workTypes || (Array.isArray(workTypes) && workTypes.length === 0)) && service.parentService) {
+      // If still no workTypes, check parent service (for non-Kynnet categories)
+      const parentWorkTypes = service.parentService.workTypes || (service.parentService as any).work_types || (service.parentService as any).WorkTypes;
+      // Only use parent workTypes if it's not empty
+      if (parentWorkTypes && Array.isArray(parentWorkTypes) && parentWorkTypes.length > 0) {
+        workTypes = parentWorkTypes;
+      }
+    }
+    
+    const hasWorkTypes = workTypes && Array.isArray(workTypes) && workTypes.length > 0;
+    
+    console.log('hasWorkTypes check:', hasWorkTypes);
+    console.log('workTypes value:', workTypes);
+    console.log('Service workTypes from object:', service.workTypes);
+    console.log('Service work_types from object:', (service as any).work_types);
+    console.log('Service WorkTypes from object:', (service as any).WorkTypes);
+    console.log('ParentService workTypes:', service.parentService?.workTypes);
+    
+    // Show work types if service has them (for both salon and non-salon flows)
+    if (hasWorkTypes) {
+      console.log('✅ Service has workTypes, showing work type selector');
+      // Ensure workTypes is in the correct format
+      const serviceWithWorkTypes = {
+        ...service,
+        workTypes: Array.isArray(workTypes) ? workTypes : []
+      };
+      setSelectedServiceWithWorkTypes(serviceWithWorkTypes);
+      return;
+    }
+    
+    console.log('❌ No workTypes found, proceeding to navigation');
     
     // If coming from a salon, navigate directly to checkout
     if (salonId) {
@@ -291,6 +584,118 @@ export default function ServicesPage() {
     });
   };
 
+  const handleWorkTypePress = (service: Service, workType: string) => {
+    console.log(`Selected work type: ${workType} for service: ${service.name}`);
+    setSelectedServiceWithWorkTypes(null);
+    
+    // If coming from a salon, navigate to checkout with workType
+    if (salonId) {
+      const pricingInfo = salonServicePricing.get(service.id);
+      if (pricingInfo) {
+        console.log(`✅ Navigating to checkout with workType for salon: ${salonName}`);
+        router.push({
+          pathname: "/(app)/checkout",
+          params: { 
+            saloonId: salonId,
+            saloonName: salonName || 'Salon',
+            serviceId: service.id,
+            serviceName: service.name,
+            categoryName: categoryName || dynamicCategoryName || 'Service',
+            price: pricingInfo.price.toString(),
+            durationMinutes: pricingInfo.durationMinutes.toString(),
+            workType: workType
+          }
+        });
+        return;
+      }
+    }
+    
+    // Normal flow - Navigate to saloons with workType parameter
+    router.push({
+      pathname: "/(app)/saloons",
+      params: { 
+        serviceId: service.id,
+        serviceName: service.name,
+        categoryName: categoryName || dynamicCategoryName || 'Service',
+        workType: workType
+      }
+    });
+  };
+
+  // Helper to format work type for display
+  const formatWorkType = (workType: string): string => {
+    const mapping: Record<string, string> = {
+      'UUDET': 'Uudet',
+      'POISTO': 'Poisto',
+      'HUOLTO': 'Huolto'
+    };
+    return mapping[workType] || workType;
+  };
+
+  // Render work types UI below a service
+  const renderWorkTypes = (service: Service) => {
+    if (!service.workTypes || service.workTypes.length === 0) return null;
+    
+    return (
+      <View
+        style={{
+          backgroundColor: 'white',
+          borderRadius: 24,
+          
+          width: 330,
+          alignSelf: 'center',
+          marginTop: 12,
+          marginBottom: 12,
+          paddingVertical: 20,
+          paddingHorizontal: 16,
+        }}
+      >
+        
+        {/* Work Types Row */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {service.workTypes.map((workType, index) => (
+            <React.Fragment key={workType}>
+              <TouchableOpacity
+                onPress={() => handleWorkTypePress(service, workType)}
+                activeOpacity={0.7}
+                style={{
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 20,
+                    color: darkBrown,
+                    fontFamily: 'Philosopher-Bold',
+                  }}
+                >
+                  {formatWorkType(workType)}
+                </Text>
+              </TouchableOpacity>
+              {index < service.workTypes!.length - 1 && (
+                <View
+                  style={{
+                    width: 3,
+                    height: 24,
+                    backgroundColor: lightBrown,
+                    marginHorizontal: 4,
+                  }}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+      </View>
+    );
+  };
+
   // Hiukset custom helpers
   const HIUKSET_SUBCATS = [
     'Hiusten leikkauspalvelut',
@@ -311,7 +716,7 @@ export default function ServicesPage() {
           onPress={() => router.push({ pathname: '/services', params: { categoryName, uiVariant: 'hiukset', subCategory: label } })}
           style={{
             backgroundColor: 'white',
-            borderWidth: 2,
+            borderWidth: 3,
             borderColor: lightBrown,
             borderRadius: 30,
             width: 330,
@@ -417,7 +822,14 @@ export default function ServicesPage() {
       <Header 
         showBack={true}
         showMenu={true}
-        onBackPress={() => router.back()}
+        onBackPress={() => {
+          // If a parent service is selected, go back to parent services list
+          if (selectedParentServiceId) {
+            setSelectedParentServiceId(null);
+          } else {
+            router.back();
+          }
+        }}
         onMenuPress={() => setMenuVisible(true)}
       />
 
@@ -638,7 +1050,12 @@ export default function ServicesPage() {
               {/* Karvanpoistot landing sections */}
               {uiVariant === 'karvanpoistot' && !salonId && !subCategory && renderKarvanpoistotSections()}
 
-              {(uiVariant !== 'hiukset' || !!hiuksetSub || !!salonId) && (uiVariant !== 'karvanpoistot' || !!subCategory || !!salonId) && (
+              {/* For salon services: show parent services first, then sub-services when selected */}
+              {salonId && !selectedParentServiceId && renderParentServices()}
+              {salonId && selectedParentServiceId && renderSubServicesForParent()}
+
+              {/* Normal flow: show services grouped by parent */}
+              {!salonId && (uiVariant !== 'hiukset' || !!hiuksetSub || !!salonId) && (uiVariant !== 'karvanpoistot' || !!subCategory || !!salonId) && (
                 (uiVariant === 'karvanpoistot' && !salonId && subCategory ? hiuksetGroups : hiuksetGroups).length > 0 ? (
                   (uiVariant === 'karvanpoistot' && !salonId && subCategory ? hiuksetGroups : hiuksetGroups)
                   .map((service) => ({
@@ -661,7 +1078,7 @@ export default function ServicesPage() {
                     <Text
                       style={{
                         textAlign: "center",
-                        fontSize: 30,
+                        fontSize: 28,
                         color: darkBrown,
                         fontFamily: "Philosopher-Bold",
                         marginBottom: 20,
@@ -673,21 +1090,92 @@ export default function ServicesPage() {
                     {/* Sub Service Buttons */}
                     {service.subServices && service.subServices.length > 0 ? (
                       service.subServices.map((subService) => (
+                        <View key={subService.id}>
+                          <TouchableOpacity
+                            activeOpacity={0.7}
+                            style={{
+                              backgroundColor: "white",
+                              borderRadius: 30,
+                              borderWidth: 3,
+                              borderColor: lightBrown,
+                              width: 330,
+                              minHeight: subService.description ? 120 : 84,
+                              justifyContent: "center",
+                              marginBottom: 12,
+                              alignSelf: "center",
+                              paddingVertical: 12,
+                              opacity: 1,
+                            }}
+                            onPress={() => handleServicePress(subService)}
+                          >
+                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
+                              <View style={{ flex: 1 }}>
+                                <Text
+                                  style={{
+                                    fontSize: 20,
+                                    color: darkBrown,
+                                    fontFamily: "Philosopher-Bold",
+                                  }}
+                                >
+                                  {subService.name}
+                                </Text>
+                                
+                                {/* Add description here */}
+                                {subService.description && (
+                                  <Text
+                                    style={{
+                                      fontSize: 15,
+                                      color: darkBrown,
+                                      fontFamily: "Philosopher-Bold",
+                                      opacity: 0.6,
+                                      marginTop: 4,
+                                      lineHeight: 20,
+                                    }}
+                                    numberOfLines={4}
+                                  >
+                                    {subService.description}
+                                  </Text>
+                                )}
+                                
+                              </View>
+                              {subService.durationMinutes && (
+                                <Text
+                                  style={{
+                                    fontSize: 14,
+                                    color: darkBrown,
+                                    fontFamily: "Philosopher-Regular",
+                                    opacity: 0.6,
+                                    marginTop: 2,
+                                  }}
+                                >
+                                  {subService.durationMinutes} min
+                                </Text>
+                              )}
+                            </View>
+                          </TouchableOpacity>
+                          {/* Show work types if this service is selected */}
+                          {selectedServiceWithWorkTypes?.id === subService.id && renderWorkTypes(subService)}
+                        </View>
+                      ))
+                    ) : (
+                      // If no sub-services, show the main service as a clickable button
+                      <View>
                         <TouchableOpacity
-                          key={subService.id}
+                          activeOpacity={0.7}
                           style={{
                             backgroundColor: "white",
                             borderRadius: 30,
-                            borderWidth: 2,
+                            borderWidth: 3,
                             borderColor: lightBrown,
                             width: 330,
-                            minHeight: 84,
+                            minHeight: service.description ? 120 : 84,
                             justifyContent: "center",
                             marginBottom: 12,
                             alignSelf: "center",
                             paddingVertical: 12,
+                            opacity: 1,
                           }}
-                          onPress={() => handleServicePress(subService)}
+                          onPress={() => handleServicePress(service)}
                         >
                           <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
                             <View style={{ flex: 1 }}>
@@ -698,11 +1186,11 @@ export default function ServicesPage() {
                                   fontFamily: "Philosopher-Bold",
                                 }}
                               >
-                                {subService.name}
+                                {service.name}
                               </Text>
                               
                               {/* Add description here */}
-                              {subService.description && (
+                              {service.description && (
                                 <Text
                                   style={{
                                     fontSize: 15,
@@ -712,14 +1200,27 @@ export default function ServicesPage() {
                                     marginTop: 4,
                                     lineHeight: 20,
                                   }}
-                                  numberOfLines={2}
+                                  numberOfLines={4}
                                 >
-                                  {subService.description}
+                                  {service.description}
                                 </Text>
                               )}
                               
+                              {service.price && (
+                                <Text
+                                  style={{
+                                    fontSize: 16,
+                                    color: darkBrown,
+                                    fontFamily: "Philosopher-Regular",
+                                    opacity: 0.7,
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  €{service.price}
+                                </Text>
+                              )}
                             </View>
-                            {subService.durationMinutes && (
+                            {service.durationMinutes && (
                               <Text
                                 style={{
                                   fontSize: 14,
@@ -729,87 +1230,14 @@ export default function ServicesPage() {
                                   marginTop: 2,
                                 }}
                               >
-                                {subService.durationMinutes} min
+                                {service.durationMinutes} min
                               </Text>
                             )}
                           </View>
                         </TouchableOpacity>
-                      ))
-                    ) : (
-                      // If no sub-services, show the main service as a clickable button
-                      <TouchableOpacity
-                        style={{
-                          backgroundColor: "white",
-                          borderRadius: 30,
-                          borderWidth: 2,
-                          borderColor: lightBrown,
-                          width: 330,
-                          minHeight: 84,
-                          justifyContent: "center",
-                          marginBottom: 12,
-                          alignSelf: "center",
-                          paddingVertical: 12,
-                        }}
-                        onPress={() => handleServicePress(service)}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
-                          <View style={{ flex: 1 }}>
-                            <Text
-                              style={{
-                                fontSize: 20,
-                                color: darkBrown,
-                                fontFamily: "Philosopher-Bold",
-                              }}
-                            >
-                              {service.name}
-                            </Text>
-                            
-                            {/* Add description here */}
-                            {service.description && (
-                              <Text
-                                style={{
-                                  fontSize: 15,
-                                  color: darkBrown,
-                                  fontFamily: "Philosopher-Bold",
-                                  opacity: 0.6,
-                                  marginTop: 4,
-                                  lineHeight: 20,
-                                }}
-                                numberOfLines={2}
-                              >
-                                {service.description}
-                              </Text>
-                            )}
-                            
-                            {service.price && (
-                              <Text
-                                style={{
-                                  fontSize: 16,
-                                  color: darkBrown,
-                                  fontFamily: "Philosopher-Regular",
-                                  opacity: 0.7,
-                                  marginTop: 4,
-                                }}
-                              >
-                                €{service.price}
-                              </Text>
-                            )}
-                          </View>
-                          {service.durationMinutes && (
-                            <Text
-                              style={{
-                                fontSize: 14,
-                                color: darkBrown,
-                                fontFamily: "Philosopher-Regular",
-                                opacity: 0.6,
-                                marginTop: 2,
-                              }}
-                            >
-                              {service.durationMinutes} min
-                            </Text>
-                          )}
-                        </View>
-                      </TouchableOpacity>
+                        {/* Show work types if this service is selected */}
+                        {selectedServiceWithWorkTypes?.id === service.id && renderWorkTypes(service)}
+                      </View>
                     )}
                   </View>
                 ))

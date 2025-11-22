@@ -16,6 +16,7 @@ import { API_ENDPOINTS } from "../../../config/constants";
 import { router } from "expo-router";
 import Header from "../components/Header";
 import useAuthStore from "@/store/auth.store";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const beige = "#D9C7AF";
 const darkBrown = "#423120";
@@ -74,6 +75,7 @@ export default function BookingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [salonNames, setSalonNames] = useState<Record<string, string>>({});
   const { user } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   // Fonts are loaded globally in root _layout.tsx
 
@@ -174,7 +176,7 @@ export default function BookingsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
       >
         {/* WELCOME SECTION */}
         <View style={{
@@ -252,7 +254,7 @@ export default function BookingsScreen() {
           <View
             style={{
               marginTop: 16,
-              borderWidth: 1,
+              borderWidth: 3,
               borderColor: "#D9C7AF",
               borderRadius: 12,
               paddingVertical: 12,

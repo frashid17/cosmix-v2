@@ -7,9 +7,13 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  TextInput,
+  Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+import { API_BASE_URL } from '../config/constants';
+import getSaloonsByService from '../src/app/actions/get-saloons-by-service';
 
 interface Salon {
   id: string;
@@ -52,14 +56,22 @@ export const SalonMapView: React.FC<SalonMapViewProps> = ({
   const [selectedSalon, setSelectedSalon] = useState<Salon | null>(null);
   const mapRef = useRef<WebView>(null);
 
+  // Search state
+  const [query, setQuery] = useState('');
+  const [allServices, setAllServices] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<{
+    salons: Salon[];
+    salonsByService: Salon[];
+  }>({ salons: [], salonsByService: [] });
+
   // Fetch salons from the admin API
   const fetchSalons = async () => {
     try {
       setLoading(true);
-      const baseUrl = 'https://cosmix-admin.vercel.app'; // Production API URL
       const url = userLocation
-        ? `${baseUrl}/api/saloons/map?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=10`
-        : `${baseUrl}/api/saloons/map`;
+        ? `${API_BASE_URL.replace('/api','')}/api/saloons/map?lat=${userLocation.latitude}&lng=${userLocation.longitude}&radius=10`
+        : `${API_BASE_URL.replace('/api','')}/api/saloons/map`;
 
       const response = await fetch(url);
       if (!response.ok) {
@@ -79,6 +91,20 @@ export const SalonMapView: React.FC<SalonMapViewProps> = ({
   useEffect(() => {
     fetchSalons();
   }, [userLocation]);
+
+  // Lazy-load all services once (for sub-service search)
+  useEffect(() => {
+    const loadServices = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/public/services`);
+        const data = await res.json();
+        setAllServices(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.warn('Failed to load services for search', e);
+      }
+    };
+    loadServices();
+  }, []);
 
   // Update map when user location changes
   useEffect(() => {
@@ -118,6 +144,126 @@ export const SalonMapView: React.FC<SalonMapViewProps> = ({
         longitude: userLocation.longitude
       });
       mapRef.current.postMessage(message);
+    }
+  };
+
+  const centerOnSalon = (salon: { latitude: number; longitude: number }) => {
+    if (mapRef.current) {
+      const message = JSON.stringify({
+        type: 'centerOnLocation',
+        latitude: salon.latitude,
+        longitude: salon.longitude,
+      });
+      mapRef.current.postMessage(message);
+    }
+  };
+
+  // Search helpers
+  const onChangeQuery = async (text: string) => {
+    setQuery(text);
+    const normalize = (s: string) =>
+      (s || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/\p{Diacritic}+/gu, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    const q = normalize(text);
+    const tokens = q.split(' ').filter(Boolean);
+    if (q.length === 0) {
+      setSearchResults({ salons: [], salonsByService: [] });
+      return;
+    }
+
+    // Match salons by name/address/intro (more forgiving + scored)
+    let matchedSalons = salons
+      .map((s) => {
+        const hayName = normalize(s.name);
+        const hayAddr = normalize(s.address || '');
+        const hayIntro = normalize(s.shortIntro || '');
+        const hayAll = `${hayName} ${hayAddr} ${hayIntro}`;
+
+        // per-token score
+        let score = 0;
+        for (const t of tokens) {
+          if (!t) continue;
+          if (hayName.startsWith(t)) score += 3; // strongest signal
+          else if (hayName.includes(t)) score += 2;
+          else if (hayAll.includes(t)) score += 1;
+        }
+
+        // Single-token direct score as well
+        if (tokens.length === 1) {
+          const t = tokens[0];
+          if (hayName === t) score += 2;
+        }
+
+        // keep if any score
+        return { salon: s, score };
+      })
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.salon);
+
+    // Fallback: if no local markers match, try global salon search from API
+    if (matchedSalons.length === 0) {
+      try {
+        const res = await fetch(`${API_BASE_URL}/public/saloons`);
+        if (res.ok) {
+          const all = await res.json();
+          matchedSalons = (Array.isArray(all) ? all : [])
+            .map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              shortIntro: s.shortIntro,
+              address: s.address,
+              latitude: s.latitude || 0,
+              longitude: s.longitude || 0,
+              images: (s.images || []).map((img: any) => ({ url: img.url || img })),
+              averageRating: s.rating || s.averageRating || 0,
+              reviewCount: s.reviewCount || 0,
+              saloonServices: [],
+            }))
+            .filter((s: any) => normalize(`${s.name} ${s.address || ''}`).includes(q));
+        }
+      } catch {}
+    }
+
+    // Match a sub-service and fetch saloons offering it
+    setSearching(true);
+    try {
+      // Find first matching sub-service (has parentServiceId or inside subServices)
+      const subServices: any[] = [];
+      allServices.forEach((svc: any) => {
+        if (Array.isArray(svc.subServices)) {
+          svc.subServices.forEach((sub: any) => subServices.push(sub));
+        }
+      });
+      const match = subServices.find((s) => normalize(s.name || '').includes(q));
+      let salonsByService: Salon[] = [];
+      if (match && match.id) {
+        try {
+          const saloons = await getSaloonsByService(match.id);
+          salonsByService = saloons.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            shortIntro: s.shortIntro,
+            address: s.address,
+            latitude: (s as any).latitude || 0,
+            longitude: (s as any).longitude || 0,
+            images: (s.images || []).map((url: string) => ({ url })),
+            averageRating: s.rating || 0,
+            reviewCount: 0,
+            saloonServices: [],
+          }));
+        } catch (e) {
+          console.warn('Failed fetching saloons by service', e);
+        }
+      }
+      setSearchResults({ salons: matchedSalons, salonsByService });
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -349,6 +495,58 @@ export const SalonMapView: React.FC<SalonMapViewProps> = ({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Search Overlay */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchHeaderRow}>
+          <Text style={styles.searchTitle}>Etsi palvelua</Text>
+          <TouchableOpacity onPress={() => { setQuery(''); setSearchResults({ salons: [], salonsByService: [] }); }}>
+            <Ionicons name="close" size={24} color="#423120" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.searchInputWrapper}>
+          <Ionicons name="search" size={20} color="#423120" style={{ marginLeft: 12 }} />
+          <TextInput
+            placeholder="Kirjoita palvelun nimi..."
+            placeholderTextColor="#A89B8C"
+            value={query}
+            onChangeText={onChangeQuery}
+            style={styles.searchInput}
+          />
+        </View>
+
+        {/* Results */}
+        {query.length > 0 && (
+          <View style={{ maxHeight: 220, marginTop: 10 }}>
+            {searching ? (
+              <ActivityIndicator color="#423120" />
+            ) : (
+              <>
+                {searchResults.salons.length > 0 && (
+                  <View style={{ marginBottom: 8 }}>
+                    {searchResults.salons.slice(0, 5).map((s) => (
+                      <TouchableOpacity key={`s-${s.id}`} style={styles.resultRow} onPress={() => centerOnSalon(s)}>
+                        <Ionicons name="business" size={18} color="#423120" />
+                        <Text numberOfLines={1} style={styles.resultText}>{s.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {searchResults.salonsByService.length > 0 && (
+                  <View>
+                    {searchResults.salonsByService.slice(0, 5).map((s) => (
+                      <TouchableOpacity key={`sb-${s.id}`} style={styles.resultRow} onPress={() => centerOnSalon(s)}>
+                        <Ionicons name="pin" size={18} color="#423120" />
+                        <Text numberOfLines={1} style={styles.resultText}>{s.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 };
@@ -486,6 +684,66 @@ const styles = StyleSheet.create({
   viewDetailsButtonText: {
     color: 'white',
     fontSize: 14,
+    fontFamily: 'Philosopher-Bold',
+  },
+  // Search overlay styles
+  searchContainer: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    // Push up from system nav bar
+    bottom: Platform.OS === 'android' ? 110 : 80,
+    backgroundColor: '#F4EDE5',
+    borderRadius: 20,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  searchHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  searchTitle: {
+    fontFamily: 'Philosopher-Bold',
+    fontSize: 22,
+    color: '#423120',
+  },
+  searchInputWrapper: {
+    marginTop: 10,
+    backgroundColor: 'white',
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: '#D7C3A7',
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 12,
+  },
+  searchInput: {
+    flex: 1,
+    height: 50,
+    paddingHorizontal: 10,
+    fontSize: 16,
+    color: '#423120',
+    fontFamily: 'Philosopher-Regular',
+  },
+  resultRow: {
+    backgroundColor: 'white',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  resultText: {
+    flex: 1,
+    color: '#423120',
     fontFamily: 'Philosopher-Bold',
   },
 });

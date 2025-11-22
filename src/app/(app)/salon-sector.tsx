@@ -9,6 +9,8 @@ import getServicesBySalon from "../actions/get-services-by-salon";
 import { Service } from "../types";
 import { Salon } from "../../../types/salon";
 import getSaloonsMap from "../actions/get-saloons-map";
+import getCategories from "../actions/get-categories";
+import { Category } from "../types";
 
 const darkBrown = "#3C2C1E";
 const beige = "#D9C7AF";
@@ -24,6 +26,7 @@ const SalonSector = () => {
 
     const [salon, setSalon] = useState<Salon | null>(null);
     const [services, setServices] = useState<Service[]>([]);
+    const [allCategories, setAllCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isMenuVisible, setMenuVisible] = useState(false);
@@ -55,6 +58,13 @@ const SalonSector = () => {
                 const salonServices = await getServicesBySalon(salonId);
                 setServices(salonServices);
                 
+                // If no services found, fetch all categories as fallback
+                if (salonServices.length === 0) {
+                    console.log('No services found for salon, fetching all categories as fallback');
+                    const categories = await getCategories();
+                    setAllCategories(categories);
+                }
+                
                 console.log('Fetched salon:', foundSalon);
                 console.log('Fetched services:', salonServices);
             } catch (err) {
@@ -70,25 +80,35 @@ const SalonSector = () => {
         }
     }, [salonId]);
 
-    // Group services by category
+    // Group services by category, or use all categories if no services
     const getCategoriesFromServices = () => {
-        const categoryMap = new Map<string, { id: string; name: string; count: number }>();
-        
-        services.forEach(service => {
-            if (service.category) {
-                const categoryId = service.category.id;
-                const categoryName = service.category.name;
-                
-                if (categoryMap.has(categoryId)) {
-                    const existing = categoryMap.get(categoryId)!;
-                    categoryMap.set(categoryId, { ...existing, count: existing.count + 1 });
-                } else {
-                    categoryMap.set(categoryId, { id: categoryId, name: categoryName, count: 1 });
+        // If we have services, extract categories from them
+        if (services.length > 0) {
+            const categoryMap = new Map<string, { id: string; name: string; count: number }>();
+            
+            services.forEach(service => {
+                if (service.category) {
+                    const categoryId = service.category.id;
+                    const categoryName = service.category.name;
+                    
+                    if (categoryMap.has(categoryId)) {
+                        const existing = categoryMap.get(categoryId)!;
+                        categoryMap.set(categoryId, { ...existing, count: existing.count + 1 });
+                    } else {
+                        categoryMap.set(categoryId, { id: categoryId, name: categoryName, count: 1 });
+                    }
                 }
-            }
-        });
+            });
+            
+            return Array.from(categoryMap.values());
+        }
         
-        return Array.from(categoryMap.values());
+        // If no services, return all categories as fallback
+        if (allCategories.length > 0) {
+            return allCategories.map(cat => ({ id: cat.id, name: cat.name, count: 0 }));
+        }
+        
+        return [];
     };
 
     const categories = getCategoriesFromServices();

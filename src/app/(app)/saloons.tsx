@@ -14,11 +14,12 @@ const lightBeige = "#E4D2BA";
 
 const Saloons = () => {
     const router = useRouter();
-    const { serviceName, categoryName, serviceId, salonId } = useLocalSearchParams<{
+    const { serviceName, categoryName, serviceId, salonId, workType } = useLocalSearchParams<{
         serviceName?: string;
         serviceId?: string;
         categoryName: string;
         salonId?: string;
+        workType?: string;
     }>();
 
     const [saloons, setSaloons] = useState<SaloonData[]>([]);
@@ -48,9 +49,9 @@ const Saloons = () => {
                     console.log('Fetched specific salon for service:', salonId, serviceId, data);
                 } else {
                     // Normal flow - fetch all saloons for the service
-                    const data = await getSaloonsByService(serviceId);
+                    const data = await getSaloonsByService(serviceId, workType);
                     setSaloons(data);
-                    console.log('Fetched saloons for service:', serviceId, data);
+                    console.log('Fetched saloons for service:', serviceId, 'workType:', workType, data);
                 }
             } catch (err) {
                 console.error('Error fetching saloons:', err);
@@ -63,7 +64,7 @@ const Saloons = () => {
         if (serviceId) {
             fetchSaloons();
         }
-    }, [serviceId, salonId]);
+    }, [serviceId, salonId, workType]);
 
     // Render nothing until fonts are loaded to prevent style flashing
     // (Fonts are loaded globally, so no check needed here)
@@ -405,7 +406,7 @@ const Saloons = () => {
                                         textAlign: "center",
                                     }}
                                 >
-                                    No saloons available
+                                    Saloneja ei ole saatavilla
                                 </Text>
                                 <Text
                                     style={{
@@ -417,7 +418,7 @@ const Saloons = () => {
                                         opacity: 0.6,
                                     }}
                                 >
-                                    No saloons are currently offering {serviceName}
+                            Ei salonkeja tällä hetkellä tarjoa {serviceName}
                                 </Text>
                             </View>
                         )}

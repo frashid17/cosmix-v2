@@ -83,47 +83,49 @@ export default function SignIn() {
           justifyContent: 'center',
         }}>
           {/* Email Field */}
-          <View style={{ marginBottom: 20 }}>
-           
+          <View style={{ marginBottom: 20, alignItems: "center" }}>
             <TextInput
               autoCapitalize="none"
               value={emailAddress}
-              placeholder="syötä sähköpostiosoite"
-              placeholderTextColor="#A89B8C"
+              placeholder="sähköpostiosoite"
+              placeholderTextColor="#423120"
               onChangeText={setEmailAddress}
               keyboardType="email-address"
               style={{
-                width: '100%',
+                width: 174,
                 height: 47,
                 backgroundColor: '#D7C3A7',
-                borderRadius: 20,
+                borderRadius: 30,
                 paddingHorizontal: 20,
-                fontSize: 16,
+                fontSize: 15,
                 color: '#423120',
-                fontFamily: 'Philosopher-Regular'
+                fontFamily: 'Philosopher-Bold',
+                alignSelf: 'center',
+                textAlign: 'center',  // <-- added to center text
               }}
               editable={!isLoading}
             />
           </View>
 
           {/* Password Field */}
-          <View>
-           
+          <View style={{ alignItems: "center" }}>
             <TextInput
               value={password}
-              placeholder="Salasanasyötä salasana"
-              placeholderTextColor="#A89B8C"
+              placeholder="salasana"
+              placeholderTextColor="#423120"
               secureTextEntry={true}
               onChangeText={setPassword}
               style={{
-                width: '100%',
+                width: 174,
                 height: 47,
                 backgroundColor: '#D7C3A7',
-                borderRadius: 20,
+                borderRadius: 30,
                 paddingHorizontal: 20,
-                fontSize: 16,
+                fontSize: 15,
                 color: '#423120',
-                fontFamily: 'Philosopher-Regular'
+                fontFamily: 'Philosopher-Bold',
+                alignSelf: 'center',
+                textAlign: 'center', // <-- added to center text
               }}
               editable={!isLoading}
             />

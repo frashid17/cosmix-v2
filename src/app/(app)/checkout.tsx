@@ -286,7 +286,7 @@ export default function CheckoutScreen() {
                     fontWeight: 'bold', 
                     color: '#423120'
                   }}>
-                    Total Amount:
+                    Kokonaismäärä:
                   </Text>
                   <Text style={{ 
                     fontSize: 24, 
@@ -311,7 +311,7 @@ export default function CheckoutScreen() {
                 onError={handleError}
                 disabled={!isCustomerInfoComplete}
               >
-                Confirm Booking
+                Vahvista varaus
               </CheckoutButton>
             ) : (
               <TouchableOpacity
@@ -347,7 +347,7 @@ export default function CheckoutScreen() {
                 }}
               >
                 <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
-                  Sign in to continue
+                Kirjaudu sisään Aikatauluun
                 </Text>
               </TouchableOpacity>
             )
@@ -367,12 +367,13 @@ export default function CheckoutScreen() {
                 shadowOpacity: 0.2,
                 shadowRadius: 4,
                 elevation: 3,
-                flexDirection: 'row',
+                flexDirection: 'column',
                 justifyContent: 'center'
               }}
             >
+              <Ionicons name="calendar-outline" size={28} color="#F5F1EB" style={{ marginBottom: 6 }} />
               <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
-                Select Date & Time
+              Ajoittaa
               </Text>
             </TouchableOpacity>
           )}
@@ -383,7 +384,7 @@ export default function CheckoutScreen() {
           <View style={{
             marginBottom: 20,
             padding: 16,
-            backgroundColor: '#F4E4BC',
+            backgroundColor: '#D7C3A7',
             borderRadius: 12,
             borderWidth: 1,
             borderColor: '#D4AF37'
@@ -395,7 +396,7 @@ export default function CheckoutScreen() {
               marginBottom: 8,
               textAlign: 'center'
             }}>
-              Selected Appointment
+              Valittu tapaaminen
             </Text>
             <Text style={{
               fontSize: 14,
