@@ -32,6 +32,8 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.INTERNET"
       ],
+      "hardwareAccelerated": true,
+      "softwareKeyboardLayoutMode": "resize",
       "usesCleartextTraffic": false,
       "intentFilters": [
         {
@@ -56,9 +58,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b7d9e6b1-8d8c-4c39-a93a-3a63428866dd"
+        "projectId": "8098b988-e3ae-4702-88cb-7fa385c645f8"
       }
     },
-    "owner": "pkoooo"
+    "owner": "pgkk"
   }
 }

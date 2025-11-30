@@ -47,7 +47,7 @@ export default function Page() {
   // Alternate hero text every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setHeroText(prevText => 
+      setHeroText(prevText =>
         prevText === "Palvelut nyt!" ? "Kartta" : "Palvelut nyt!"
       );
     }, 4000);
@@ -92,7 +92,7 @@ export default function Page() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
       {/* FIXED HEADER - Outside ScrollView */}
-    <Header onMenuPress={() => setMenuVisible(true)} />
+      <Header onMenuPress={() => setMenuVisible(true)} />
 
       {/* SCROLLABLE CONTENT */}
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
@@ -126,77 +126,77 @@ export default function Page() {
             />
 
             <TouchableOpacity
-            style={{
-              borderRadius: 20,
-              overflow: "hidden",
-              alignItems: "center",
-              height: 300,
-              justifyContent: "center",
-              position: "relative",
-            }}
-            onPress={() => router.push("/map")}
-            activeOpacity={0.8}
-          >
-            <Image
-              source={{
-                uri: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533724/AdobeStock_130939808_cq1whi.png",
-              }}
               style={{
-                width: 300,
-                height: 213,
                 borderRadius: 20,
-              }}
-              resizeMode="cover"
-            />
-
-            <View
-              style={{
-                position: "absolute",
-                justifyContent: "center",
+                overflow: "hidden",
                 alignItems: "center",
+                height: 300,
+                justifyContent: "center",
+                position: "relative",
               }}
+              onPress={() => router.push("/map")}
+              activeOpacity={0.8}
             >
-              <Text
+              <Image
+                source={{
+                  uri: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533724/AdobeStock_130939808_cq1whi.png",
+                }}
                 style={{
-                  fontSize: 40,
-                  fontFamily: "Philosopher-Bold",
-                  color: darkBrown,
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
+                  width: 300,
+                  height: 213,
+                  borderRadius: 20,
+                }}
+                resizeMode="cover"
+              />
+
+              <View
+                style={{
+                  position: "absolute",
+                  justifyContent: "center",
+                  alignItems: "center",
                 }}
               >
-                {heroText}
-              </Text>
-            </View>
-            
-            {/* Dots indicator at bottom of image */}
-            <View style={{ 
-              position: "absolute", 
-              bottom: 50,
-              left: 0,
-              right: 0,
-              flexDirection: "row",
-              justifyContent: "center"
-            }}>
-              <View
-                style={{ 
-                  width: 11, 
-                  height: 11,
-                  backgroundColor: darkBrown,
-                  borderRadius: 5.5
-                }}
-              />
-              <View
-                style={{ 
-                  width: 11, 
-                  height: 11, 
-                  marginLeft: 5,
-                  backgroundColor: darkBrown,
-                  borderRadius: 5.5
-                }}
-              />
-            </View>
-          </TouchableOpacity>
+                <Text
+                  style={{
+                    fontSize: 40,
+                    fontFamily: "Philosopher-Bold",
+                    color: darkBrown,
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                  }}
+                >
+                  {heroText}
+                </Text>
+              </View>
+
+              {/* Dots indicator at bottom of image */}
+              <View style={{
+                position: "absolute",
+                bottom: 50,
+                left: 0,
+                right: 0,
+                flexDirection: "row",
+                justifyContent: "center"
+              }}>
+                <View
+                  style={{
+                    width: 11,
+                    height: 11,
+                    backgroundColor: darkBrown,
+                    borderRadius: 5.5
+                  }}
+                />
+                <View
+                  style={{
+                    width: 11,
+                    height: 11,
+                    marginLeft: 5,
+                    backgroundColor: darkBrown,
+                    borderRadius: 5.5
+                  }}
+                />
+              </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -225,7 +225,7 @@ export default function Page() {
               <TouchableOpacity
                 key={idx}
                 style={{ marginBottom: 24, width: "48%", alignItems: "center" }}
-                
+
                 activeOpacity={0.8}
               >
                 <Image
@@ -265,7 +265,7 @@ export default function Page() {
           <View style={{ position: "relative", height: 77, alignItems: "center", justifyContent: "center" }}>
             <Image
               source={require("../../../../assets/wed.png")}
-              style={{ position: "absolute",top: -130, width: 300, height: 330, opacity: 1 }}
+              style={{ position: "absolute", top: -130, width: 300, height: 330, opacity: 1 }}
               resizeMode="contain"
               onError={(e) => {
                 console.warn('Failed to load wed.png', e.nativeEvent?.error);
@@ -361,7 +361,7 @@ export default function Page() {
                         // Match the same navigation logic as categories page
                         router.push({
                           pathname: "/services",
-                          params: { 
+                          params: {
                             categoryName: category.name,
                             // Pass a UI variant flag for special categories like Hiukset and Karvanpoistot
                             ...(category.name.toLowerCase() === 'hiukset' ? { uiVariant: 'hiukset' } : {}),
@@ -444,10 +444,7 @@ export default function Page() {
                 justifyContent: "center",
                 alignItems: "center",
               }}
-              onPress={() => {
-                // Could navigate to entrepreneurs page or external link
-                console.log('Navigate to entrepreneurs section');
-              }}
+              onPress={() => router.push("/admin-webview")}
               activeOpacity={0.8}
             >
               <Text style={{ color: darkBrown, fontSize: 25, fontFamily: "Philosopher-Bold", textAlign: "center" }}>
@@ -467,12 +464,12 @@ export default function Page() {
           ].map((row, rowIdx) => (
             <View key={rowIdx} className="flex-row justify-between" style={{ marginBottom: 20 }}>
               {row.map((link, colIdx) => (
-                <TouchableOpacity 
-                  key={colIdx} 
+                <TouchableOpacity
+                  key={colIdx}
                   style={{ width: "48%", justifyContent: "center" }}
                   onPress={() => {
                     // Handle footer navigation
-                    switch(link) {
+                    switch (link) {
                       case "Etusivu":
                         router.push("/");
                         break;
