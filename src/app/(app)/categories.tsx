@@ -67,7 +67,7 @@ const Categories: React.FC = () => {
         console.log(`Selected category: ${category.name} (ID: ${category.id})`);
         router.push({
           pathname: "services",
-          params: { 
+          params: {
             categoryName: category.name,
             // Pass a UI variant flag for special categories like Hiukset
             ...(category.name.toLowerCase() === 'hiukset' ? { uiVariant: 'hiukset' } : {}),
@@ -166,7 +166,7 @@ const Categories: React.FC = () => {
   return (
     <SafeAreaView style={{ flex: 1, }}>
       {/* Header - Full Width */}
-      <Header 
+      <Header
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
@@ -179,7 +179,7 @@ const Categories: React.FC = () => {
         {loading && (
           <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
             <ActivityIndicator size="large" color={baseTextColor} />
-  
+
           </View>
         )}
 
@@ -253,22 +253,12 @@ const Categories: React.FC = () => {
       {/* Modal for the side menu */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={false}
         visible={isMenuVisible}
         onRequestClose={() => setMenuVisible(false)}
+        statusBarTranslucent={true}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <View
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: '#F4EDE5',
-              alignSelf: 'flex-end',
-            }}
-          >
-            <SideMenu onClose={() => setMenuVisible(false)} />
-          </View>
-        </View>
+        <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
     </SafeAreaView>
   );

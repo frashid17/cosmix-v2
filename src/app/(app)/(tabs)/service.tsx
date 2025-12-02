@@ -229,7 +229,7 @@ export default function ServicesPage() {
       <Header showBack={true} onMenuPress={() => setMenuVisible(true)} onBackPress={() => router.back()} />
 
       {/* Side menu modal */}
-      <Modal visible={isMenuVisible} animationType="slide" transparent={false} onRequestClose={() => setMenuVisible(false)}>
+      <Modal visible={isMenuVisible} animationType="slide" transparent={false} onRequestClose={() => setMenuVisible(false)} statusBarTranslucent={true}>
         <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
 

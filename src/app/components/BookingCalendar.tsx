@@ -1,13 +1,13 @@
 // src/app/components/BookingCalendar.tsx
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  ScrollView, 
-  Modal, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
   SafeAreaView,
-  Dimensions 
+  Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,7 +41,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
   const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
-  const [availabilityData, setAvailabilityData] = useState<{[date: string]: string[]}>({});
+  const [availabilityData, setAvailabilityData] = useState<{ [date: string]: string[] }>({});
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -59,13 +59,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
       const url = `${API_BASE_URL}/public/saloons/${saloonId}/available-slots?serviceId=${serviceId}&date=${date}`;
       console.log('Fetching available slots from:', url);
       console.log('Parameters:', { saloonId, serviceId, date });
-      
+
       const response = await fetch(url);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Available slots response:', data);
-        
+
         // Check if the saloon is closed on this day
         if (data.isClosed) {
           console.log('Saloon is closed on this day:', data.message);
@@ -73,10 +73,10 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
           setIsClosed(true);
           return;
         }
-        
+
         // Reset closed state if saloon is open
         setIsClosed(false);
-        
+
         const slots = data.availableSlots.map((slot: any) => slot.time);
         console.log('Available time slots:', slots);
         setAvailableSlots(slots);
@@ -107,7 +107,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
   const generateDates = () => {
     const dates = [];
     const today = new Date();
-    
+
     for (let i = 0; i < 14; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
@@ -122,7 +122,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
   const formatDate = (date: Date) => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+
     return {
       day: days[date.getDay()],
       date: date.getDate(),
@@ -174,7 +174,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
           <TouchableOpacity onPress={onClose} style={{ top: Math.max(0, insets.top - 20) }}>
             <Ionicons name="close" size={24} color={darkBrown} />
           </TouchableOpacity>
-          
+
           <View style={{ alignItems: 'center', paddingTop: Math.max(0, insets.top - 20) }}>
             <Text style={{
               fontSize: 18,
@@ -192,7 +192,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
               {salonName}
             </Text>
           </View>
-          
+
           <View style={{ width: 24 }} />
         </View>
 
@@ -207,9 +207,9 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
             }}>
               Valitse Päivämäärä
             </Text>
-            
-            <ScrollView 
-              horizontal 
+
+            <ScrollView
+              horizontal
               showsHorizontalScrollIndicator={false}
               style={{ marginBottom: 20 }}
             >
@@ -218,12 +218,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
                 const isSelected = selectedDate === formatted.full;
                 const isToday = index === 0;
                 const isAvailable = isDateAvailable(date);
-                
+
                 return (
                   <TouchableOpacity
                     key={formatted.full}
                     onPress={() => isAvailable && setSelectedDate(formatted.full)}
                     disabled={!isAvailable}
+                    activeOpacity={0.8}
                     style={{
                       width: 80,
                       height: 90,
@@ -305,13 +306,13 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
               }}>
                 Valitse Aika
               </Text>
-              
+
               {loading ? (
-                <View style={{ 
-                  flex: 1, 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  paddingVertical: 40 
+                <View style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  paddingVertical: 40
                 }}>
                   <Text style={{
                     fontSize: 16,
@@ -357,26 +358,27 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
                     // All slots from API are available (they're pre-filtered)
                     const isAvailable = true;
                     const isSelected = selectedTime === time;
-                    
+
                     return (
                       <TouchableOpacity
                         key={time}
                         onPress={() => isAvailable && setSelectedTime(time)}
                         disabled={!isAvailable}
+                        activeOpacity={0.8}
                         style={{
                           width: (width - 80) / 3,
                           height: 50,
                           borderRadius: 12,
-                          backgroundColor: isSelected 
-                            ? accentGold 
-                            : isAvailable 
-                              ? 'white' 
+                          backgroundColor: isSelected
+                            ? accentGold
+                            : isAvailable
+                              ? 'white'
                               : '#F0F0F0',
                           borderWidth: 2,
-                          borderColor: isSelected 
-                            ? accentGold 
-                            : isAvailable 
-                              ? '#E5DCC8' 
+                          borderColor: isSelected
+                            ? accentGold
+                            : isAvailable
+                              ? '#E5DCC8'
                               : '#D0D0D0',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -386,10 +388,10 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
                         <Text style={{
                           fontSize: 16,
                           fontFamily: 'Philosopher-Bold',
-                          color: isSelected 
-                            ? 'white' 
-                            : isAvailable 
-                              ? darkBrown 
+                          color: isSelected
+                            ? 'white'
+                            : isAvailable
+                              ? darkBrown
                               : '#999'
                         }}>
                           {time}
@@ -425,6 +427,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
           <TouchableOpacity
             onPress={handleConfirm}
             disabled={!selectedDate || !selectedTime}
+            activeOpacity={0.8}
             style={{
               backgroundColor: selectedDate && selectedTime ? accentGold : '#D0D0D0',
               paddingVertical: 16,

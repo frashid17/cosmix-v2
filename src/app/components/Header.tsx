@@ -1,11 +1,9 @@
 // src/app/components/Header.tsx
-import { View, Text, TouchableOpacity, Dimensions } from "react-native";
+import { View, TouchableOpacity, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 interface HeaderProps {
-  title?: string;
   showMenu?: boolean;
   showBack?: boolean;
   onMenuPress?: () => void;
@@ -16,21 +14,29 @@ const darkBrown = "#423120";
 const white = "#FFFFFF";
 const { width } = Dimensions.get('window');
 
-export default function Header({ 
-  title = "COSMIX", 
-  showMenu = true, 
+// Fixed header height - no dynamic safe area padding here
+// Parent screens should use SafeAreaView to handle status bar insets
+const HEADER_HEIGHT = 60;
+
+export default function Header({
+  showMenu = true,
   showBack = false,
   onMenuPress,
-  onBackPress 
+  onBackPress
 }: HeaderProps) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const handleBackPress = () => {
     if (onBackPress) {
       onBackPress();
     } else {
-      router.back();
+      // Check if we can go back before calling router.back()
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        // If we can't go back, navigate to home
+        router.push('/');
+      }
     }
   };
 
@@ -54,62 +60,49 @@ export default function Header({
         width: width,
         alignSelf: 'stretch',
         flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
+        alignItems: "flex-end",
+        justifyContent: "space-between",
         paddingHorizontal: 16,
-        paddingVertical: 2,
-        paddingTop: Math.max(30, insets.top + 10), // Use safe area top inset
+        paddingBottom: 0,
+        height: HEADER_HEIGHT,
       }}
     >
       {/* Back Button (left side) */}
-      {showBack && (
+      {showBack ? (
         <TouchableOpacity
           onPress={handleBackPress}
-          style={{ 
-            position: "absolute", 
-            left: 16, 
-            zIndex: 10, 
-            top: Math.max(25, insets.top + 5) // Position relative to safe area
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{
+            width: 44,
+            height: 44,
+            alignItems: "center",
+            justifyContent: "center",
           }}
         >
           <Ionicons name="arrow-back" size={28} color={darkBrown} />
         </TouchableOpacity>
+      ) : (
+        <View style={{ width: 44 }} />
       )}
 
-      {/* Title (center) */}
-      <Text
-        style={{
-          fontSize: 24,
-          fontFamily: "Philosopher-Bold",
-          letterSpacing: 3,
-          color: darkBrown,
-          textAlign: 'center',
-          flex: 1,
-          marginHorizontal: 40,
-          paddingTop: Math.max(0, insets.top - 20), // Adjust title position based on safe area
-        }}
-        numberOfLines={1}
-        ellipsizeMode="tail"
-      >
-        {title}
-      </Text>
-
       {/* Menu Button (right side) */}
-      {showMenu && (
+      {showMenu ? (
         <TouchableOpacity
           onPress={handleMenuPress}
-          style={{ 
-            position: "absolute", 
-            right: 16, 
-            zIndex: 10, 
-            top: Math.max(25, insets.top + 5), // Position relative to safe area
-            width: 40,
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{
+            width: 44,
+            height: 44,
             alignItems: "center",
             justifyContent: "center"
           }}
         >
           <Ionicons name="menu" size={37} color={darkBrown} />
         </TouchableOpacity>
+      ) : (
+        <View style={{ width: 44 }} />
       )}
     </View>
   );

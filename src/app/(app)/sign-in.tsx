@@ -32,7 +32,7 @@ export default function SignIn() {
     let dest = typeof params.redirect === 'string' && params.redirect.length > 0 ? params.redirect : '/';
     try {
       dest = decodeURIComponent(dest);
-    } catch {}
+    } catch { }
     router.replace(dest);
   };
 
@@ -60,14 +60,14 @@ export default function SignIn() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#D7C3A7" }}>
-      <Header 
+      <Header
         title="COSMIX"
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
         onMenuPress={() => setMenuVisible(true)}
       />
-      
+
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         {/* Arch-shaped container */}
         <View style={{
@@ -147,9 +147,9 @@ export default function SignIn() {
           }}
           activeOpacity={0.8}
         >
-          <Text style={{ 
-            color: '#423120', 
-            fontSize: 18, 
+          <Text style={{
+            color: '#423120',
+            fontSize: 18,
             fontFamily: 'Philosopher-Bold'
           }}>
             {isLoading ? "Kirjaudutaan..." : "Kirjaudu sisään"}
@@ -157,9 +157,9 @@ export default function SignIn() {
         </TouchableOpacity>
 
         {/* Sign Up Link */}
-        <View style={{ 
-          flexDirection: 'row', 
-          justifyContent: 'center', 
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'center',
           alignItems: 'center',
         }}>
           <Text style={{ color: '#423120', opacity: 0.8, fontSize: 18, fontFamily: 'Philosopher-Regular' }}>
@@ -167,8 +167,8 @@ export default function SignIn() {
           </Text>
           <Link href="/sign-up" asChild>
             <TouchableOpacity>
-              <Text style={{ 
-                color: '#423120', 
+              <Text style={{
+                color: '#423120',
                 fontFamily: 'Philosopher-Bold',
                 fontSize: 18,
                 textDecorationLine: 'underline'
@@ -183,22 +183,12 @@ export default function SignIn() {
       {/* Modal for the side menu */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={false}
         visible={isMenuVisible}
         onRequestClose={() => setMenuVisible(false)}
+        statusBarTranslucent={true}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <View
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: '#F4EDE5',
-              alignSelf: 'flex-end',
-            }}
-          >
-            <SideMenu onClose={() => setMenuVisible(false)} />
-          </View>
-        </View>
+        <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
     </SafeAreaView>
   );

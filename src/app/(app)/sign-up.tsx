@@ -1,8 +1,6 @@
 import * as React from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   SafeAreaView,
   Text,
   TextInput,
@@ -11,7 +9,6 @@ import {
   Modal,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { createUser } from "@/lib/appwrite";
 import useAuthStore from "@/store/auth.store";
 import Header from "../components/Header";
@@ -57,14 +54,14 @@ export default function SignUp() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
-      <Header 
+      <Header
         title="COSMIX"
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
         onMenuPress={() => setMenuVisible(true)}
       />
-      
+
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <View style={{
           width: 327,
@@ -76,15 +73,15 @@ export default function SignUp() {
           overflow: 'hidden',
         }}>
           {/* Title with separator line */}
-          <View style={{ 
-            paddingHorizontal: 17, 
-            paddingTop: 24, 
+          <View style={{
+            paddingHorizontal: 17,
+            paddingTop: 24,
             paddingBottom: 16,
             borderBottomWidth: 1,
             borderBottomColor: '#D7C3A7',
           }}>
-            <Text style={{ 
-              fontSize: 32, 
+            <Text style={{
+              fontSize: 32,
               color: '#423120',
               fontFamily: 'Philosopher-Bold'
             }}>
@@ -95,132 +92,132 @@ export default function SignUp() {
           {/* Form Content */}
           <View style={{ paddingHorizontal: 17, paddingTop: 24, paddingBottom: 24 }}>
 
-          {/* Form Fields */}
-          <View>
-            {/* Name Field */}
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ 
-                fontSize: 16, 
-                fontWeight: '600', 
-                color: '#423120', 
-                marginBottom: 8,
-                fontFamily: 'Philosopher-Bold'
-              }}>
-                Nimi
-              </Text>
-              <TextInput
-                value={name}
-                placeholder="Kirjoita nimesi"
-                placeholderTextColor="#A89B8C"
-                onChangeText={setName}
+            {/* Form Fields */}
+            <View>
+              {/* Name Field */}
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#423120',
+                  marginBottom: 8,
+                  fontFamily: 'Philosopher-Bold'
+                }}>
+                  Nimi
+                </Text>
+                <TextInput
+                  value={name}
+                  placeholder="Kirjoita nimesi"
+                  placeholderTextColor="#A89B8C"
+                  onChangeText={setName}
+                  style={{
+                    width: 293,
+                    height: 47,
+                    backgroundColor: '#F4EDE5',
+                    borderRadius: 20,
+                    paddingHorizontal: 20,
+                    fontSize: 16,
+                    color: '#423120',
+                    fontFamily: 'Philosopher-Regular'
+                  }}
+                  editable={!isLoading}
+                />
+              </View>
+
+              {/* Email Field */}
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#423120',
+                  marginBottom: 8,
+                  fontFamily: 'Philosopher-Bold'
+                }}>
+                  Sähköpostiosoite
+                </Text>
+                <TextInput
+                  autoCapitalize="none"
+                  value={emailAddress}
+                  placeholder="Kirjoita sähköpostiosoitteesi"
+                  placeholderTextColor="#A89B8C"
+                  onChangeText={setEmailAddress}
+                  keyboardType="email-address"
+                  style={{
+                    width: 293,
+                    height: 47,
+                    backgroundColor: '#F4EDE5',
+                    borderRadius: 20,
+                    paddingHorizontal: 20,
+                    fontSize: 16,
+                    color: '#423120',
+                    fontFamily: 'Philosopher-Regular'
+                  }}
+                  editable={!isLoading}
+                />
+              </View>
+
+              {/* Password Field */}
+              <View style={{ marginBottom: 24 }}>
+                <Text style={{
+                  fontSize: 16,
+                  fontWeight: '600',
+                  color: '#423120',
+                  marginBottom: 8,
+                  fontFamily: 'Philosopher-Bold'
+                }}>
+                  salasana
+                </Text>
+                <TextInput
+                  value={password}
+                  placeholder="Kirjoita salasanasi"
+                  placeholderTextColor="#A89B8C"
+                  secureTextEntry={true}
+                  onChangeText={setPassword}
+                  style={{
+                    width: 293,
+                    height: 47,
+                    backgroundColor: '#F4EDE5',
+                    borderRadius: 20,
+                    paddingHorizontal: 20,
+                    fontSize: 16,
+                    color: '#423120',
+                    fontFamily: 'Philosopher-Regular'
+                  }}
+                  editable={!isLoading}
+                />
+              </View>
+
+              {/* Register Button */}
+              <TouchableOpacity
+                onPress={onSignUpPress}
+                disabled={isLoading}
                 style={{
                   width: 293,
                   height: 47,
-                  backgroundColor: '#F4EDE5',
+                  backgroundColor: isLoading ? '#5C4A3A' : '#423120',
                   borderRadius: 20,
-                  paddingHorizontal: 20,
-                  fontSize: 16,
-                  color: '#423120',
-                  fontFamily: 'Philosopher-Regular'
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
-                editable={!isLoading}
-              />
+                activeOpacity={0.8}
+              >
+                <Text style={{
+                  color: 'white',
+                  fontWeight: '600',
+                  fontSize: 18,
+                  fontFamily: 'Philosopher-Bold'
+                }}>
+                  {isLoading ? "Luodaan..." : "Rekisteröidy"}
+                </Text>
+              </TouchableOpacity>
             </View>
-
-            {/* Email Field */}
-            <View style={{ marginBottom: 16 }}>
-              <Text style={{ 
-                fontSize: 16, 
-                fontWeight: '600', 
-                color: '#423120', 
-                marginBottom: 8,
-                fontFamily: 'Philosopher-Bold'
-              }}>
-                Sähköpostiosoite
-              </Text>
-              <TextInput
-                autoCapitalize="none"
-                value={emailAddress}
-                placeholder="Kirjoita sähköpostiosoitteesi"
-                placeholderTextColor="#A89B8C"
-                onChangeText={setEmailAddress}
-                keyboardType="email-address"
-                style={{
-                  width: 293,
-                  height: 47,
-                  backgroundColor: '#F4EDE5',
-                  borderRadius: 20,
-                  paddingHorizontal: 20,
-                  fontSize: 16,
-                  color: '#423120',
-                  fontFamily: 'Philosopher-Regular'
-                }}
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* Password Field */}
-            <View style={{ marginBottom: 24 }}>
-              <Text style={{ 
-                fontSize: 16, 
-                fontWeight: '600', 
-                color: '#423120', 
-                marginBottom: 8,
-                fontFamily: 'Philosopher-Bold'
-              }}>
-                salasana
-              </Text>
-              <TextInput
-                value={password}
-                placeholder="Kirjoita salasanasi"
-                placeholderTextColor="#A89B8C"
-                secureTextEntry={true}
-                onChangeText={setPassword}
-                style={{
-                  width: 293,
-                  height: 47,
-                  backgroundColor: '#F4EDE5',
-                  borderRadius: 20,
-                  paddingHorizontal: 20,
-                  fontSize: 16,
-                  color: '#423120',
-                  fontFamily: 'Philosopher-Regular'
-                }}
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* Register Button */}
-            <TouchableOpacity
-              onPress={onSignUpPress}
-              disabled={isLoading}
-              style={{
-                width: 293,
-                height: 47,
-                backgroundColor: isLoading ? '#5C4A3A' : '#423120',
-                borderRadius: 20,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ 
-                color: 'white', 
-                fontWeight: '600', 
-                fontSize: 18, 
-                fontFamily: 'Philosopher-Bold'
-              }}>
-                {isLoading ? "Luodaan..." : "Rekisteröidy"}
-              </Text>
-            </TouchableOpacity>
-          </View>
           </View>
         </View>
 
         {/* Sign In Link */}
-        <View style={{ 
-          flexDirection: 'row', 
-          justifyContent: 'center', 
+        <View style={{
+          flexDirection: 'row',
+          justifyContent: 'center',
           alignItems: 'center',
           marginTop: 24
         }}>
@@ -229,8 +226,8 @@ export default function SignUp() {
           </Text>
           <Link href="/sign-in" asChild>
             <TouchableOpacity>
-              <Text style={{ 
-                color: '#423120', 
+              <Text style={{
+                color: '#423120',
                 fontWeight: '900',
                 fontFamily: 'Philosopher-Bold',
                 fontSize: 15,
@@ -246,22 +243,12 @@ export default function SignUp() {
       {/* Modal for the side menu */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={false}
         visible={isMenuVisible}
         onRequestClose={() => setMenuVisible(false)}
+        statusBarTranslucent={true}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <View
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: '#F4EDE5',
-              alignSelf: 'flex-end',
-            }}
-          >
-            <SideMenu onClose={() => setMenuVisible(false)} />
-          </View>
-        </View>
+        <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
     </SafeAreaView>
   );

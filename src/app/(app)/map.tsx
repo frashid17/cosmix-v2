@@ -775,22 +775,12 @@ export default function MapScreen() {
       {/* Modal for the side menu */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={false}
         visible={isMenuVisible}
         onRequestClose={() => setMenuVisible(false)}
+        statusBarTranslucent={true}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <View
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: veryLightBeige,
-              alignSelf: 'flex-end',
-            }}
-          >
-            <SideMenu onClose={() => setMenuVisible(false)} />
-          </View>
-        </View>
+        <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
 
       {/* Search Modal */}

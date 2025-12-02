@@ -76,10 +76,19 @@ export const signIn = async ({ email, password }: SignInParams) => {
 
 export const signOut = async () => {
     try {
-        await account.deleteSession('current');
+        // Get the current session first
+        const session = await account.getSession('current');
+        if (session) {
+            // Delete the specific session by its ID
+            await account.deleteSession(session.$id);
+        }
     } catch (e: any) {
         console.error('Sign out error:', e);
-        throw new Error(e.message || 'Failed to sign out');
+        // If there's no current session, that's okay - user is already logged out
+        // Only throw if it's a different error
+        if (e.code !== 401 && e.code !== 404) {
+            throw new Error(e.message || 'Failed to sign out');
+        }
     }
 }
 

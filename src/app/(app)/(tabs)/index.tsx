@@ -24,6 +24,8 @@ export default function Page() {
   const veryLightBeige = "#F4EDE5";
   const white = "#FFFFFF";
 
+  const [randomCategories, setRandomCategories] = useState<Category[]>([]);
+
   // Fetch categories on component mount
   useEffect(() => {
     const fetchCategories = async () => {
@@ -32,6 +34,13 @@ export default function Page() {
         setError(null);
         const data = await getCategories();
         setCategories(data);
+
+        // Select 4 random categories
+        if (data.length > 0) {
+          const shuffled = [...data].sort(() => 0.5 - Math.random());
+          setRandomCategories(shuffled.slice(0, 4));
+        }
+
         console.log('Fetched categories:', data);
       } catch (err) {
         console.error('Error fetching categories:', err);
@@ -54,25 +63,6 @@ export default function Page() {
 
     return () => clearInterval(interval);
   }, []);
-
-  const items = [
-    {
-      label: "Gua Sha hoidot",
-      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png",
-    },
-    {
-      label: "Ripsienpidennykset",
-      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png",
-    },
-    {
-      label: "Hieronnat",
-      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png",
-    },
-    {
-      label: "Kynsihoidot",
-      img: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png",
-    },
-  ];
 
   // Function to chunk array into rows of 2 items
   const chunkArray = (array: any[], chunkSize: number) => {
@@ -221,11 +211,20 @@ export default function Page() {
               marginTop: 16,
             }}
           >
-            {items.map((item, idx) => (
+            {randomCategories.map((category, idx) => (
               <TouchableOpacity
                 key={idx}
                 style={{ marginBottom: 24, width: "48%", alignItems: "center" }}
-
+                onPress={() => {
+                  router.push({
+                    pathname: "/services",
+                    params: {
+                      categoryName: category.name,
+                      ...(category.name.toLowerCase() === 'hiukset' ? { uiVariant: 'hiukset' } : {}),
+                      ...(category.name.toLowerCase() === 'karvanpoistot' ? { uiVariant: 'karvanpoistot' } : {})
+                    }
+                  });
+                }}
                 activeOpacity={0.8}
               >
                 <Image
@@ -235,7 +234,7 @@ export default function Page() {
                 />
 
                 <Image
-                  source={{ uri: item.img }}
+                  source={{ uri: "https://res.cloudinary.com/dguk4ks45/image/upload/v1755533722/AdobeStock_323915985_kzt3ji.png" }}
                   style={{
                     width: 127,
                     height: 128,
@@ -253,7 +252,7 @@ export default function Page() {
                     maxWidth: 120,
                   }}
                 >
-                  {item.label}
+                  {category.name}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -482,6 +481,15 @@ export default function Page() {
                       case "Tili":
                         router.push("/profile");
                         break;
+                      case "Käyttöehdot":
+                        router.push("/info?tab=terms");
+                        break;
+                      case "Meistä":
+                        router.push("/info?tab=about");
+                        break;
+                      case "Ota yhteyttä":
+                        router.push("/info?tab=contact");
+                        break;
                       default:
                         console.log(`Navigate to: ${link}`);
                         break;
@@ -510,22 +518,12 @@ export default function Page() {
       {/* Modal for the side menu */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent={false}
         visible={isMenuVisible}
         onRequestClose={() => setMenuVisible(false)}
+        statusBarTranslucent={true}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-          <View
-            style={{
-              width: '100%',
-              height: '100%',
-              backgroundColor: veryLightBeige,
-              alignSelf: 'flex-end',
-            }}
-          >
-            <SideMenu onClose={() => setMenuVisible(false)} />
-          </View>
-        </View>
+        <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
     </SafeAreaView>
   );

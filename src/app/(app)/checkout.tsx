@@ -1,10 +1,8 @@
 // src/app/(app)/checkout.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Alert, SafeAreaView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
-import { TextInput } from 'react-native';
+import { View, Text, ScrollView, SafeAreaView, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button } from '@/components/ui/button';
 import { CheckoutButton } from '../components/CheckoutButton';
 import { CustomerInfo } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
@@ -142,10 +140,9 @@ export default function CheckoutScreen() {
   const handleSuccess = (bookingIds: string[]) => {
     console.log('Booking successful:', { bookingIds });
     setIsProcessingBooking(false);
-    
-    // Navigate to profile to view bookings
-    router.dismissAll();
-    router.push('/(tabs)/profile');
+
+    // Navigate to profile to view bookings without using POP_TO_TOP
+    router.replace('/(tabs)/profile');
   };
 
   const handleError = (error: Error) => {
@@ -157,14 +154,14 @@ export default function CheckoutScreen() {
   const handleBookingConfirm = (date: string, time: string) => {
     setSelectedBookingDate(date);
     setSelectedBookingTime(time);
-    
+
     // Update customer info with the selected booking time
     const bookingDateTime = new Date(`${date}T${time}:00`);
     setCustomerInfo(prev => ({
       ...prev,
       bookingTime: bookingDateTime.toISOString()
     }));
-    
+
     setShowBookingCalendar(false);
   };
 
@@ -196,15 +193,15 @@ export default function CheckoutScreen() {
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}>
         <View style={{ paddingHorizontal: 24, paddingBottom: 24, alignContent: 'center', justifyContent: 'center', marginTop: 24 }}>
 
-       
 
-        {/* Selected Services */}
+
+          {/* Selected Services */}
           <View style={{ marginBottom: 24 }}>
-                       
-            <View style={{ 
-              backgroundColor: '#FFFFFF', 
-              borderRadius: 16, 
-              padding: 20, 
+
+            <View style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: 16,
+              padding: 20,
               shadowColor: '#423120',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.1,
@@ -214,7 +211,7 @@ export default function CheckoutScreen() {
               borderColor: '#E0D7CA'
             }}>
               {servicesToDisplay.map((service, index) => (
-                <View key={index} style={{ 
+                <View key={index} style={{
                   paddingBottom: 0,
                   borderBottomWidth: index < servicesToDisplay.length - 1 ? 1 : 0,
                   borderBottomColor: '#E0D7CA',
@@ -222,75 +219,75 @@ export default function CheckoutScreen() {
                 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ 
-                        fontSize: 18, 
-                        fontWeight: '600', 
+                      <Text style={{
+                        fontSize: 18,
+                        fontWeight: '600',
                         color: '#423120',
                         marginBottom: 4
                       }}>
-                {service.service?.name}
+                        {service.service?.name}
                       </Text>
                       <Text style={{ fontSize: 14, color: '#423120', opacity: 0.7, fontFamily: 'Philosopher-Regular', marginBottom: 2 }}>
-                          {service.saloon?.name}
-                        </Text>
-                      <Text style={{ 
-                        fontSize: 12, 
-                        color: '#423120', 
+                        {service.saloon?.name}
+                      </Text>
+                      <Text style={{
+                        fontSize: 12,
+                        color: '#423120',
                         opacity: 0.6
                       }}>
-                     
+
                       </Text>
                     </View>
-                    <Text style={{ 
-                      fontSize: 18, 
-                      fontWeight: '600', 
+                    <Text style={{
+                      fontSize: 18,
+                      fontWeight: '600',
                       color: '#423120'
                     }}>
                     </Text>
                   </View>
-            </View>
-          ))}
+                </View>
+              ))}
 
-          <View style={{ 
+              <View style={{
                 paddingTop: 16,
                 borderTopWidth: 1,
                 borderTopColor: '#E0D7CA'
               }}>
-                <View style={{ 
-                  flexDirection: 'row', 
+                <View style={{
+                  flexDirection: 'row',
                   justifyContent: 'space-between',
                   marginBottom: 8
                 }}>
-                  <Text style={{ 
-                    fontSize: 14, 
-                    color: '#423120', 
+                  <Text style={{
+                    fontSize: 14,
+                    color: '#423120',
                     opacity: 0.7
                   }}>
-                  Duration:
+                    Duration:
                   </Text>
-                  <Text style={{ 
-                    fontSize: 14, 
-                    fontWeight: '600', 
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '600',
                     color: '#423120'
                   }}>
                     {totalDuration} minutes
                   </Text>
                 </View>
-                <View style={{ 
-                  flexDirection: 'row', 
+                <View style={{
+                  flexDirection: 'row',
                   justifyContent: 'space-between',
                   alignItems: 'center'
                 }}>
-                  <Text style={{ 
-                    fontSize: 20, 
-                    fontWeight: 'bold', 
+                  <Text style={{
+                    fontSize: 20,
+                    fontWeight: 'bold',
                     color: '#423120'
                   }}>
                     Kokonaismäärä:
                   </Text>
-                  <Text style={{ 
-                    fontSize: 24, 
-                    fontWeight: 'bold', 
+                  <Text style={{
+                    fontSize: 24,
+                    fontWeight: 'bold',
                     color: '#423120'
                   }}>
                     €{totalPrice.toFixed(2)}
@@ -300,36 +297,61 @@ export default function CheckoutScreen() {
             </View>
           </View>
 
-        {/* Book Button */}
-        <View style={{ marginBottom: 32 }}>
-          {selectedBookingDate && selectedBookingTime ? (
-            isAuthenticated ? (
-              <CheckoutButton
-                saloonServices={servicesToDisplay}
-                customerInfo={customerInfo}
-                onSuccess={handleSuccess}
-                onError={handleError}
-                disabled={!isCustomerInfoComplete}
-              >
-                Vahvista varaus
-              </CheckoutButton>
+          {/* Book Button */}
+          <View style={{ marginBottom: 32 }}>
+            {selectedBookingDate && selectedBookingTime ? (
+              isAuthenticated ? (
+                <CheckoutButton
+                  saloonServices={servicesToDisplay}
+                  customerInfo={customerInfo}
+                  onSuccess={handleSuccess}
+                  onError={handleError}
+                  disabled={!isCustomerInfoComplete}
+                >
+                  Vahvista varaus
+                </CheckoutButton>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => {
+                    // Build redirect back to checkout with all current params + selected date/time
+                    const search = new URLSearchParams({
+                      ...(params.saloonId ? { saloonId: String(params.saloonId) } : {}),
+                      ...(params.saloonName ? { saloonName: String(params.saloonName) } : {}),
+                      ...(params.serviceId ? { serviceId: String(params.serviceId) } : {}),
+                      ...(params.serviceName ? { serviceName: String(params.serviceName) } : {}),
+                      ...(params.categoryName ? { categoryName: String(params.categoryName) } : {}),
+                      ...(params.price ? { price: String(params.price) } : {}),
+                      ...(params.durationMinutes ? { durationMinutes: String(params.durationMinutes) } : {}),
+                      date: selectedBookingDate,
+                      time: selectedBookingTime,
+                    }).toString();
+                    const redirectPath = `/(app)/checkout?${search}`;
+                    router.push({ pathname: '/sign-in', params: { redirect: encodeURIComponent(redirectPath) } });
+                  }}
+                  style={{
+                    backgroundColor: '#423120',
+                    paddingVertical: 16,
+                    paddingHorizontal: 32,
+                    borderRadius: 12,
+                    alignItems: 'center',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.2,
+                    shadowRadius: 4,
+                    elevation: 3,
+                    flexDirection: 'row',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
+                    Kirjaudu sisään Aikatauluun
+                  </Text>
+                </TouchableOpacity>
+              )
             ) : (
               <TouchableOpacity
                 onPress={() => {
-                  // Build redirect back to checkout with all current params + selected date/time
-                  const search = new URLSearchParams({
-                    ...(params.saloonId ? { saloonId: String(params.saloonId) } : {}),
-                    ...(params.saloonName ? { saloonName: String(params.saloonName) } : {}),
-                    ...(params.serviceId ? { serviceId: String(params.serviceId) } : {}),
-                    ...(params.serviceName ? { serviceName: String(params.serviceName) } : {}),
-                    ...(params.categoryName ? { categoryName: String(params.categoryName) } : {}),
-                    ...(params.price ? { price: String(params.price) } : {}),
-                    ...(params.durationMinutes ? { durationMinutes: String(params.durationMinutes) } : {}),
-                    date: selectedBookingDate,
-                    time: selectedBookingTime,
-                  }).toString();
-                  const redirectPath = `/(app)/checkout?${search}`;
-                  router.push({ pathname: '/sign-in', params: { redirect: encodeURIComponent(redirectPath) } });
+                  handleBookButtonPress();
                 }}
                 style={{
                   backgroundColor: '#423120',
@@ -342,105 +364,70 @@ export default function CheckoutScreen() {
                   shadowOpacity: 0.2,
                   shadowRadius: 4,
                   elevation: 3,
-                  flexDirection: 'row',
+                  flexDirection: 'column',
                   justifyContent: 'center'
                 }}
               >
+                <Ionicons name="calendar-outline" size={28} color="#F5F1EB" style={{ marginBottom: 6 }} />
                 <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
-                Kirjaudu sisään Aikatauluun
+                  Ajoittaa
                 </Text>
               </TouchableOpacity>
-            )
-          ) : (
-            <TouchableOpacity
-              onPress={() => {
-                handleBookButtonPress();
-              }}
-              style={{
-                backgroundColor: '#423120',
-                paddingVertical: 16,
-                paddingHorizontal: 32,
-                borderRadius: 12,
-                alignItems: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.2,
-                shadowRadius: 4,
-                elevation: 3,
-                flexDirection: 'column',
-                justifyContent: 'center'
-              }}
-            >
-              <Ionicons name="calendar-outline" size={28} color="#F5F1EB" style={{ marginBottom: 6 }} />
-              <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
-              Ajoittaa
+            )}
+          </View>
+
+          {/* Show selected appointment info */}
+          {selectedBookingDate && selectedBookingTime && (
+            <View style={{
+              marginBottom: 20,
+              padding: 16,
+              backgroundColor: '#D7C3A7',
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: '#D4AF37'
+            }}>
+              <Text style={{
+                fontSize: 16,
+                fontFamily: 'Philosopher-Bold',
+                color: '#3C2C1E',
+                marginBottom: 8,
+                textAlign: 'center'
+              }}>
+                Valittu tapaaminen
               </Text>
-            </TouchableOpacity>
+              <Text style={{
+                fontSize: 14,
+                fontFamily: 'Philosopher-Regular',
+                color: '#3C2C1E',
+                textAlign: 'center'
+              }}>
+                {new Date(selectedBookingDate).toLocaleDateString()} at {selectedBookingTime}
+              </Text>
+            </View>
           )}
         </View>
+      </ScrollView>
 
-        {/* Show selected appointment info */}
-        {selectedBookingDate && selectedBookingTime && (
-          <View style={{
-            marginBottom: 20,
-            padding: 16,
-            backgroundColor: '#D7C3A7',
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: '#D4AF37'
-          }}>
-            <Text style={{
-              fontSize: 16,
-              fontFamily: 'Philosopher-Bold',
-              color: '#3C2C1E',
-              marginBottom: 8,
-              textAlign: 'center'
-            }}>
-              Valittu tapaaminen
-            </Text>
-            <Text style={{
-              fontSize: 14,
-              fontFamily: 'Philosopher-Regular',
-              color: '#3C2C1E',
-              textAlign: 'center'
-            }}>
-              {new Date(selectedBookingDate).toLocaleDateString()} at {selectedBookingTime}
-            </Text>
-          </View>
-        )}
-        </View>
-    </ScrollView>
+      {/* Booking Calendar Modal */}
+      <BookingCalendar
+        visible={showBookingCalendar}
+        onClose={() => setShowBookingCalendar(false)}
+        onConfirm={handleBookingConfirm}
+        salonName={params.saloonName || 'Salon'}
+        saloonId={params.saloonId}
+        serviceId={params.serviceId}
+      />
 
-    {/* Booking Calendar Modal */}
-    <BookingCalendar
-      visible={showBookingCalendar}
-      onClose={() => setShowBookingCalendar(false)}
-      onConfirm={handleBookingConfirm}
-      salonName={params.saloonName || 'Salon'}
-      saloonId={params.saloonId}
-      serviceId={params.serviceId}
-    />
-
-    {/* Modal for the side menu */}
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={isMenuVisible}
-      onRequestClose={() => setMenuVisible(false)}
-    >
-      <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-        <View
-          style={{
-            width: '100%',
-            height: '100%',
-            backgroundColor: '#F4EDE5',
-            alignSelf: 'flex-end',
-          }}
-        >
-          <SideMenu onClose={() => setMenuVisible(false)} />
-        </View>
-      </View>
-    </Modal>
+      {/* Modal for the side menu */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={isMenuVisible}
+        onRequestClose={() => setMenuVisible(false)}
+        statusBarTranslucent={true}
+      >
+        <SideMenu onClose={() => setMenuVisible(false)} />
+      </Modal>
     </SafeAreaView>
   );
 }
