@@ -14,7 +14,7 @@ import {
 import { useRouter } from "expo-router";
 import { useFonts } from "expo-font";
 import Header from "../components/Header";
-import useAuthStore from "@/store/auth.store";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 
 const darkBrown = "#423120";
 const beige = "#D9C7AF";
@@ -24,7 +24,8 @@ const titleLine = "#D7C3A7";
 
 export default function ProfileEditPage() {
   const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { user: clerkUser, isLoaded: userLoaded } = useUser();
   const [isMenuVisible, setMenuVisible] = useState(false);
 
   // Form state
@@ -42,22 +43,29 @@ export default function ProfileEditPage() {
   });
 
   useEffect(() => {
+    // Wait for auth to load
+    if (!authLoaded || !userLoaded) {
+      return;
+    }
+
     // Redirect if not authenticated
-    if (!isAuthenticated) {
+    if (!isSignedIn) {
       router.replace("/sign-in");
       return;
     }
 
-    // Load user data
-    if (user) {
-      setName(user.name || "");
-      setEmail(user.email || "");
+    // Load user data from Clerk
+    if (clerkUser) {
+      const fullName = clerkUser.fullName || clerkUser.firstName || "";
+      setName(fullName);
+      setEmail(clerkUser.primaryEmailAddress?.emailAddress || "");
       // Extract username from name (first name)
-      setUsername(user.name ? user.name.split(' ')[0] : "");
-      // Phone might not be in user object, so leave empty or get from user.phone if exists
-      setPhone((user as any).phone || "");
+      setUsername(clerkUser.firstName || fullName.split(' ')[0] || "");
+      // Phone might not be in user object, so leave empty or get from user.phoneNumbers if exists
+      const phoneNumber = clerkUser.phoneNumbers?.[0]?.phoneNumber || "";
+      setPhone(phoneNumber);
     }
-  }, [user, isAuthenticated]);
+  }, [clerkUser, isSignedIn, authLoaded, userLoaded, router]);
 
   const handleSave = async () => {
     if (!name || !email) {
@@ -80,12 +88,12 @@ export default function ProfileEditPage() {
     }
   };
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !authLoaded || !userLoaded) {
     return null;
   }
 
   // Redirect if not authenticated
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return null;
   }
 

@@ -14,7 +14,7 @@ import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import useAuthStore from '@/store/auth.store';
+import { useClerk, useAuth } from '@clerk/clerk-expo';
 import Header from './components/Header';
 import SideMenu from './components/SideMenu';
 import {
@@ -23,7 +23,6 @@ import {
     getLogoutHandlerScript,
     getConsoleLogCaptureScript,
 } from '@/lib/webview-bridge';
-import { signOut } from '@/lib/appwrite';
 
 const ADMIN_DASHBOARD_URL = process.env.EXPO_PUBLIC_ADMIN_DASHBOARD_URL || 'https://cosmix-admin.vercel.app';
 const DASHBOARD_PATH = process.env.EXPO_PUBLIC_ADMIN_DASHBOARD_PATH || '';
@@ -31,8 +30,23 @@ const DASHBOARD_PATH = process.env.EXPO_PUBLIC_ADMIN_DASHBOARD_PATH || '';
 export default function AdminWebViewScreen() {
     const router = useRouter();
     const webViewRef = useRef<WebView>(null);
-    const { authToken, setIsAuthenticated, setUser, setAuthToken } = useAuthStore();
+    const { signOut } = useClerk();
+    const { getToken } = useAuth();
     const insets = useSafeAreaInsets();
+    const [authToken, setAuthToken] = useState<string | null>(null);
+
+    // Get auth token on mount
+    React.useEffect(() => {
+        const fetchToken = async () => {
+            try {
+                const token = await getToken();
+                setAuthToken(token);
+            } catch (e) {
+                console.log('Failed to get auth token:', e);
+            }
+        };
+        fetchToken();
+    }, [getToken]);
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -100,9 +114,6 @@ export default function AdminWebViewScreen() {
     const handleLogout = async () => {
         try {
             await signOut();
-            setIsAuthenticated(false);
-            setUser(null);
-            setAuthToken(null);
             router.replace('/');
         } catch (e) {
             console.error('Logout error:', e);

@@ -1,10 +1,10 @@
 // src/app/types.ts
 export interface User {
   id: string;
-  accountId: string; // Appwrite account ID
   email: string;
   name?: string;
   avatar?: string;
+  provider?: 'google' | 'apple' | 'email';
   createdAt?: string;
   updatedAt?: string;
 }

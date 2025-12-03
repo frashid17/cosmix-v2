@@ -20,7 +20,6 @@ function Layout() {
                 <Stack.Screen name="map" options={{ headerShown: false }} />
                 <Stack.Screen name="bookings" options={{ headerShown: false }} />
                 <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-                <Stack.Screen name="sign-up" options={{ headerShown: false }} />
                 <Stack.Screen name="profile-edit" options={{ headerShown: false }} />
                 <Stack.Screen name="language" options={{ headerShown: false }} />
             </Stack>

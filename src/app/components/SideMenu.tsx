@@ -3,8 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import useAuthStore from "@/store/auth.store";
-import { signOut } from "@/lib/appwrite";
+import { useClerk, useAuth } from "@clerk/clerk-expo";
 
 // New color scheme based on provided HEX codes
 const darkBrown = "#423120"; // Main dark brown
@@ -17,7 +16,8 @@ interface SideMenuProps {
 
 export default function SideMenu({ onClose }: SideMenuProps) {
   const router = useRouter();
-  const { isAuthenticated, setIsAuthenticated, setUser } = useAuthStore();
+  const { signOut } = useClerk();
+  const { isSignedIn } = useAuth();
   const insets = useSafeAreaInsets();
 
   // Load all Philosopher font variants
@@ -32,8 +32,6 @@ export default function SideMenu({ onClose }: SideMenuProps) {
   const handleSignOut = async () => {
     try {
       await signOut();
-      setIsAuthenticated(false);
-      setUser(null);
       onClose();
       router.replace('/');
     } catch (error) {
@@ -62,8 +60,8 @@ export default function SideMenu({ onClose }: SideMenuProps) {
   const menuItems = [
     { label: "Kategoriat", onPress: handleCategories },
     {
-      label: isAuthenticated ? "Kirjaudu ulos" : "Kirjaudu sisään",
-      onPress: isAuthenticated ? handleSignOut : handleSignIn
+      label: isSignedIn ? "Kirjaudu ulos" : "Kirjaudu sisään",
+      onPress: isSignedIn ? handleSignOut : handleSignIn
     },
     {
       label: "Yrittäjille",

@@ -24,10 +24,10 @@ export default function InfoPage() {
 
     const tabs: { key: TabType; label: string }[] = [
         { key: 'faq', label: 'FAQ' },
-        { key: 'about', label: 'About Us' },
-        { key: 'contact', label: 'Contact' },
-        { key: 'terms', label: 'Terms' },
-        { key: 'privacy', label: 'Privacy' },
+        { key: 'about', label: 'Tietoja meistä' },
+        { key: 'contact', label: 'Ota yhteyttä' },
+        { key: 'terms', label: 'Ehdot' },
+        { key: 'privacy', label: 'Yksityisyys' },
     ];
 
     const renderContent = () => {
@@ -35,47 +35,47 @@ export default function InfoPage() {
             case 'faq':
                 return (
                     <View>
-                        <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
+                        <Text style={styles.sectionTitle}>Usein kysytyt kysymykset</Text>
 
                         <View style={styles.faqItem}>
-                            <Text style={styles.question}>How do I book a service?</Text>
-                            <Text style={styles.answer}>You can book a service by navigating to the Services page, selecting a category, choosing a service, and picking a time slot.</Text>
+                            <Text style={styles.question}>Miten voin varata palvelun?</Text>
+                            <Text style={styles.answer}>Voit varata palvelun siirtymällä Palvelut-sivulle, valitsemalla kategorian, valitsemalla palvelun ja valitsemalla ajankohdan.</Text>
                         </View>
 
                         <View style={styles.faqItem}>
-                            <Text style={styles.question}>Can I cancel my booking?</Text>
-                            <Text style={styles.answer}>Yes, you can cancel your booking from the "My Bookings" section in your profile, subject to the cancellation policy.</Text>
+                            <Text style={styles.question}>Voinko peruuttaa varaukseni?</Text>
+                            <Text style={styles.answer}>Kyllä, voit peruuttaa varauksesi profiilisi "Omat varaukset" -osiossa peruutusehtojen mukaisesti.</Text>
                         </View>
 
                         <View style={styles.faqItem}>
-                            <Text style={styles.question}>What payment methods are accepted?</Text>
-                            <Text style={styles.answer}>We accept major credit cards and online banking payments through Paytrail.</Text>
+                            <Text style={styles.question}>Mitä maksutapoja hyväksytään?</Text>
+                            <Text style={styles.answer}>Hyväksymme yleisimmät luottokortit ja verkkopankkimaksut Paytrailin kautta.</Text>
                         </View>
                     </View>
                 );
             case 'about':
                 return (
                     <View>
-                        <Text style={styles.sectionTitle}>About Us</Text>
+                        <Text style={styles.sectionTitle}>Tietoja meistä</Text>
                         <Text style={styles.paragraph}>
-                            COSMIX is your premier destination for beauty and wellness services. We connect you with top-rated professionals for hair, nails, massage, and more.
+                        COSMIX on ensisijainen kauneus- ja hyvinvointipalveluiden kohteesi. Yhdistämme sinut huippuammattilaisiin hiusten, kynsien, hieronnan ja muiden alojen parissa.
                         </Text>
                         <Text style={styles.paragraph}>
-                            Our mission is to make self-care accessible and convenient for everyone. Whether you need a quick trim or a full spa day, we've got you covered.
+                        Missiomme on tehdä itsehoidosta helppoa ja helppoa kaikille. Tarvitsetpa sitten nopeaa siistimistä tai kokonaisen kylpyläpäivän, me hoidamme kaiken.  
                         </Text>
                     </View>
                 );
             case 'contact':
                 return (
                     <View>
-                        <Text style={styles.sectionTitle}>Get in Touch</Text>
+                        <Text style={styles.sectionTitle}>Ota yhteyttä</Text>
                         <Text style={styles.paragraph}>
-                            Have questions or feedback? We'd love to hear from you!
+                        Onko sinulla kysyttävää tai palautetta? Kuulemme mielellämme sinusta!
                         </Text>
 
                         <View style={styles.contactItem}>
                             <Ionicons name="mail-outline" size={24} color={darkBrown} />
-                            <Text style={styles.contactText}>support@cosmix.fi</Text>
+                            <Text style={styles.contactText}>support@cosmix.com</Text>
                         </View>
 
                         <View style={styles.contactItem}>
@@ -92,38 +92,38 @@ export default function InfoPage() {
             case 'terms':
                 return (
                     <View>
-                        <Text style={styles.sectionTitle}>Terms of Use</Text>
+                        <Text style={styles.sectionTitle}>Käyttöehdot</Text>
                         <Text style={styles.paragraph}>
-                            Welcome to COSMIX. By using our app, you agree to these terms.
+                        Tervetuloa COSMIXiin. Käyttämällä sovellustamme hyväksyt nämä ehdot.
                         </Text>
-                        <Text style={styles.subTitle}>1. User Accounts</Text>
+                        <Text style={styles.subTitle}>1. Käyttäjätilit</Text>
                         <Text style={styles.paragraph}>
-                            You are responsible for maintaining the confidentiality of your account and password.
+                        Olet vastuussa Google-/Apple-tilisi luottamuksellisuuden säilyttämisestä.
                         </Text>
-                        <Text style={styles.subTitle}>2. Bookings</Text>
+                        <Text style={styles.subTitle}>2. Varaukset</Text>
                         <Text style={styles.paragraph}>
-                            Bookings are subject to availability and confirmation by the service provider.
+                        Varaukset riippuvat saatavuudesta ja palveluntarjoajan vahvistuksesta.
                         </Text>
-                        <Text style={styles.subTitle}>3. Cancellations</Text>
+                        <Text style={styles.subTitle}>3. Peruutukset</Text>
                         <Text style={styles.paragraph}>
-                            Cancellations must be made at least 24 hours in advance to avoid fees.
+                        Peruutukset on tehtävä vähintään 24 tuntia etukäteen maksujen välttämiseksi.
                         </Text>
                     </View>
                 );
             case 'privacy':
                 return (
                     <View>
-                        <Text style={styles.sectionTitle}>Privacy Statement</Text>
+                        <Text style={styles.sectionTitle}>Tietosuojalausunto</Text>
                         <Text style={styles.paragraph}>
-                            Your privacy is important to us. This policy explains how we collect and use your data.
+                        Tietosuojasi on meille tärkeää. Tässä käytännössä selitetään, miten keräämme ja käytämme tietojasi.
                         </Text>
-                        <Text style={styles.subTitle}>Data Collection</Text>
+                        <Text style={styles.subTitle}>Tiedonkeruu</Text>
                         <Text style={styles.paragraph}>
-                            We collect information you provide directly to us, such as when you create an account or book a service.
+                        Keräämme tietoja, jotka annat meille suoraan, esimerkiksi luodessasi tilin tai varatessasi palvelun.
                         </Text>
-                        <Text style={styles.subTitle}>Data Usage</Text>
+                        <Text style={styles.subTitle}>Datan käyttö</Text>
                         <Text style={styles.paragraph}>
-                            We use your data to provide and improve our services, process payments, and communicate with you.
+                        Käytämme tietojasi palvelujemme tarjoamiseen ja parantamiseen, maksujen käsittelyyn ja viestintään kanssasi.
                         </Text>
                     </View>
                 );
@@ -204,7 +204,7 @@ const styles = {
         marginBottom: 8,
     },
     paragraph: {
-        fontSize: 16,
+        fontSize: 18,
         fontFamily: 'Philosopher-Regular',
         color: darkBrown,
         lineHeight: 24,
@@ -217,13 +217,13 @@ const styles = {
         borderRadius: 12,
     },
     question: {
-        fontSize: 16,
+        fontSize: 18,
         fontFamily: 'Philosopher-Bold',
         color: darkBrown,
         marginBottom: 8,
     },
     answer: {
-        fontSize: 15,
+        fontSize: 18,
         fontFamily: 'Philosopher-Regular',
         color: darkBrown,
         lineHeight: 22,
@@ -238,7 +238,7 @@ const styles = {
     },
     contactText: {
         marginLeft: 12,
-        fontSize: 16,
+        fontSize: 18,
         fontFamily: 'Philosopher-Regular',
         color: darkBrown,
     },

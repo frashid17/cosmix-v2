@@ -15,7 +15,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { API_ENDPOINTS } from "../../../config/constants";
 import { router } from "expo-router";
 import Header from "../components/Header";
-import useAuthStore from "@/store/auth.store";
+import { useUser } from "@clerk/clerk-expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const beige = "#D9C7AF";
@@ -74,7 +74,7 @@ export default function BookingsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [salonNames, setSalonNames] = useState<Record<string, string>>({});
-  const { user } = useAuthStore();
+  const { user } = useUser();
   const insets = useSafeAreaInsets();
 
   // Fonts are loaded globally in root _layout.tsx
@@ -82,8 +82,9 @@ export default function BookingsScreen() {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const userId = user?.$id;
-      const userEmail = user?.email;
+      // Clerk uses user.id, not user.$id
+      const userId = user?.id;
+      const userEmail = user?.primaryEmailAddress?.emailAddress;
       
       console.log("Fetching bookings for user");
       console.log("User ID:", userId);
@@ -128,8 +129,10 @@ export default function BookingsScreen() {
   };
 
   useEffect(() => {
-    fetchBookings();
-  }, []);
+    if (user) {
+      fetchBookings();
+    }
+  }, [user]);
 
   const confirmCancel = (id: string) => {
     Alert.alert("Cancel Booking", "Are you sure you want to cancel?", [
@@ -211,7 +214,7 @@ export default function BookingsScreen() {
               lineHeight: 30,
             }}>
               Tervetuloa,{"\n"}
-              {user?.name?.split(' ')[0] || 'User'}!
+              {user?.firstName || user?.fullName?.split(' ')[0] || 'User'}!
             </Text>
           </View>
         </View>

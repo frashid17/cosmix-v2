@@ -1,16 +1,7 @@
-import { Account, Avatars, Client, Databases, ID, Query, Storage } from "react-native-appwrite";
+import { Client, Databases, Storage } from "react-native-appwrite";
 
-export interface CreateUserParams {
-    email: string;
-    password: string;
-    name: string;
-}
-
-export interface SignInParams {
-    email: string;
-    password: string;
-}
-
+// Appwrite configuration - only database and storage functionality
+// Authentication has been migrated to Clerk
 export const appwriteConfig = {
     endpoint: process.env.EXPO_PUBLIC_APPWRITE_ENDPOINT!,
     projectId: process.env.EXPO_PUBLIC_APPWRITE_PROJECT_ID!,
@@ -27,87 +18,5 @@ client
     .setProject(appwriteConfig.projectId)
     .setPlatform(appwriteConfig.platform)
 
-export const account = new Account(client);
 export const databases = new Databases(client);
 export const storage = new Storage(client);
-const avatars = new Avatars(client);
-
-export const createUser = async ({ email, password, name }: CreateUserParams) => {
-    try {
-        const newAccount = await account.create(ID.unique(), email, password, name)
-        if (!newAccount) throw Error;
-
-        await signIn({ email, password });
-
-        const avatarUrl = avatars.getInitialsURL(name);
-
-        return await databases.createDocument(
-            appwriteConfig.databaseId,
-            appwriteConfig.userCollectionId,
-            ID.unique(),
-            { email, name, accountId: newAccount.$id, avatar: avatarUrl }
-        );
-    } catch (e: any) {
-        console.error('Create user error:', e);
-        throw new Error(e.message || 'Failed to create user');
-    }
-}
-
-export const signIn = async ({ email, password }: SignInParams) => {
-    try {
-        // Check if there's already an active session
-        try {
-            const currentSession = await account.get();
-            if (currentSession) {
-                // User is already logged in, delete the current session first
-                await account.deleteSession('current');
-            }
-        } catch (sessionError) {
-            // No active session, continue with sign in
-        }
-
-        const session = await account.createEmailPasswordSession(email, password);
-        return session;
-    } catch (e: any) {
-        console.error('Sign in error:', e);
-        throw new Error(e.message || 'Failed to sign in');
-    }
-}
-
-export const signOut = async () => {
-    try {
-        // Get the current session first
-        const session = await account.getSession('current');
-        if (session) {
-            // Delete the specific session by its ID
-            await account.deleteSession(session.$id);
-        }
-    } catch (e: any) {
-        console.error('Sign out error:', e);
-        // If there's no current session, that's okay - user is already logged out
-        // Only throw if it's a different error
-        if (e.code !== 401 && e.code !== 404) {
-            throw new Error(e.message || 'Failed to sign out');
-        }
-    }
-}
-
-export const getCurrentUser = async () => {
-    try {
-        const currentAccount = await account.get();
-        if (!currentAccount) throw Error;
-
-        const currentUser = await databases.listDocuments(
-            appwriteConfig.databaseId,
-            appwriteConfig.userCollectionId,
-            [Query.equal('accountId', currentAccount.$id)]
-        )
-
-        if (!currentUser) throw Error;
-
-        return currentUser.documents[0];
-    } catch (e: any) {
-        console.log('Get current user error:', e);
-        return null;
-    }
-}

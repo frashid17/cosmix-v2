@@ -1,5 +1,5 @@
 // Page.js
-import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, Image, Modal, ActivityIndicator } from "react-native";
+import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, Image, Modal, ActivityIndicator, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
@@ -473,10 +473,13 @@ export default function Page() {
                         router.push("/");
                         break;
                       case "Palvelut":
-                        router.push("/services");
+                        router.push("/categories");
                         break;
                       case "Ajanvaraus":
-                        router.push("/booking");
+                        router.push("/bookings");
+                        break;
+                      case "Lahjakortit":
+                        Alert.alert("Lahjakortit", "Tulossa pian");
                         break;
                       case "Tili":
                         router.push("/profile");

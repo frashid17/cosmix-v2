@@ -20,7 +20,8 @@
       "expo-router",
       "expo-location",
       "expo-font",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ],
     "android": {
       "package": "com.cosmix.beauty",
@@ -58,9 +59,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "8098b988-e3ae-4702-88cb-7fa385c645f8"
+        "projectId": "7592e6d8-d2d1-4c98-b758-45bd9d4df722"
       }
     },
-    "owner": "pgkk"
+    "owner": "kppp"
   }
 }

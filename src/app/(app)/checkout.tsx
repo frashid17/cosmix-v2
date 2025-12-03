@@ -10,7 +10,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import BookingCalendar from '../components/BookingCalendar';
 import Header from '../components/Header';
 import SideMenu from '../components/SideMenu';
-import useAuthStore from '@/store/auth.store';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 
 // Mock data - replace with your actual data
 const mockSaloonServices: SaloonService[] = [
@@ -59,7 +59,8 @@ const mockSaloonServices: SaloonService[] = [
 export default function CheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { user, isAuthenticated } = useAuthStore();
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
   const params = useLocalSearchParams<{
     saloonId?: string;
     saloonName?: string;
@@ -73,20 +74,20 @@ export default function CheckoutScreen() {
   }>();
 
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo>({
-    name: user?.name || '',
-    email: user?.email || '',
+    name: user?.fullName || user?.firstName || '',
+    email: user?.primaryEmailAddress?.emailAddress || '',
     phone: '',
     bookingTime: new Date().toISOString(),
     notes: ''
   });
 
-  // Keep customerInfo in sync with Appwrite user after sign-in
+  // Keep customerInfo in sync with Clerk user after sign-in
   useEffect(() => {
     if (user) {
       setCustomerInfo(prev => ({
         ...prev,
-        name: user.name || prev.name,
-        email: user.email || prev.email,
+        name: user.fullName || user.firstName || prev.name,
+        email: user.primaryEmailAddress?.emailAddress || prev.email,
       }));
     }
   }, [user]);
@@ -126,16 +127,26 @@ export default function CheckoutScreen() {
   }, [params.saloonId, params.serviceId, params.price, params.durationMinutes, params.saloonName, params.serviceName]);
 
   // Hydrate selected date/time from URL params if present (e.g., after sign-in redirect)
+  // Only set from params if local state is empty (to preserve user selections)
   useEffect(() => {
-    const pDate = typeof params.date === 'string' ? params.date : '';
-    const pTime = typeof params.time === 'string' ? params.time : '';
-    if (pDate) setSelectedBookingDate(pDate);
-    if (pTime) setSelectedBookingTime(pTime);
-    if (pDate && pTime) {
+    const pDate = typeof params.date === 'string' && params.date.length > 0 ? params.date : null;
+    const pTime = typeof params.time === 'string' && params.time.length > 0 ? params.time : null;
+    
+    // Only update from params if local state is empty (preserve user's current selection)
+    if (pDate && !selectedBookingDate) {
+      setSelectedBookingDate(pDate);
+    }
+    if (pTime && !selectedBookingTime) {
+      setSelectedBookingTime(pTime);
+    }
+    
+    // Update customerInfo bookingTime if we have both date and time from params
+    if (pDate && pTime && (!selectedBookingDate || !selectedBookingTime)) {
       const bookingDateTime = new Date(`${pDate}T${pTime}:00`);
       setCustomerInfo(prev => ({ ...prev, bookingTime: bookingDateTime.toISOString() }));
     }
-  }, [params.date, params.time]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.date, params.time]); // Only run when params change, not when local state changes
 
   const handleSuccess = (bookingIds: string[]) => {
     console.log('Booking successful:', { bookingIds });
@@ -152,6 +163,7 @@ export default function CheckoutScreen() {
 
   // Booking calendar handlers
   const handleBookingConfirm = (date: string, time: string) => {
+    // Always update when user explicitly confirms from calendar
     setSelectedBookingDate(date);
     setSelectedBookingTime(time);
 
@@ -164,6 +176,17 @@ export default function CheckoutScreen() {
 
     setShowBookingCalendar(false);
   };
+
+  // Update customerInfo bookingTime whenever selected date/time changes (from user selection)
+  useEffect(() => {
+    if (selectedBookingDate && selectedBookingTime) {
+      const bookingDateTime = new Date(`${selectedBookingDate}T${selectedBookingTime}:00`);
+      setCustomerInfo(prev => ({
+        ...prev,
+        bookingTime: bookingDateTime.toISOString()
+      }));
+    }
+  }, [selectedBookingDate, selectedBookingTime]);
 
   const handleBookButtonPress = () => {
     if (selectedBookingDate && selectedBookingTime) {
@@ -180,7 +203,7 @@ export default function CheckoutScreen() {
   const totalPrice = servicesToDisplay.reduce((sum, service) => sum + service.price, 0);
   const totalDuration = servicesToDisplay.reduce((sum, service) => sum + service.durationMinutes, 0);
 
-  // Check if all customer info is filled from Appwrite profile
+  // Check if all customer info is filled from Clerk profile
   const isCustomerInfoComplete = customerInfo.name && customerInfo.email;
 
   // Allow rendering even without params; fallback services are used
@@ -300,7 +323,7 @@ export default function CheckoutScreen() {
           {/* Book Button */}
           <View style={{ marginBottom: 32 }}>
             {selectedBookingDate && selectedBookingTime ? (
-              isAuthenticated ? (
+              isSignedIn ? (
                 <CheckoutButton
                   saloonServices={servicesToDisplay}
                   customerInfo={customerInfo}

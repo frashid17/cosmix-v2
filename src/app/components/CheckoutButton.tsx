@@ -4,7 +4,7 @@ import { Alert, Platform, TouchableOpacity, View, Text, ActivityIndicator } from
 import { initiateCheckout, CustomerInfo, CheckoutResponse } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import useAuthStore from '@/store/auth.store';
+import { useAuth, useUser } from '@clerk/clerk-expo';
 
 interface CheckoutButtonProps {
   saloonServices: SaloonService[];
@@ -24,7 +24,8 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
   children = "Confirm Booking"
 }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const { isAuthenticated } = useAuthStore();
+  const { isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
   const router = useRouter();
 
   const handleCheckout = async () => {
@@ -39,7 +40,7 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
     }
 
     // If not signed in, go to sign-in and then resume
-    if (!isAuthenticated) {
+    if (!isSignedIn) {
       router.push({
         pathname: '/sign-in',
         params: {
@@ -52,7 +53,14 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
     setIsLoading(true);
 
     try {
-      const result = await initiateCheckout(saloonServices, customerInfo, undefined);
+      // Get auth token and include user ID in customerInfo
+      const authToken = await getToken();
+      const customerInfoWithUserId = {
+        ...customerInfo,
+        userId: user?.id, // Include Clerk user ID
+      };
+      
+      const result = await initiateCheckout(saloonServices, customerInfoWithUserId, authToken);
       Alert.alert(
         'Booking Confirmed! 🎉',
         result.message || 'Your booking has been confirmed. You will receive a confirmation email shortly. Please remember to pay at the venue.',

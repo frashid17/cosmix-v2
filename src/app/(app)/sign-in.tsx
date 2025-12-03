@@ -1,65 +1,170 @@
-import { Link, useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Alert,
   SafeAreaView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Modal,
+  ActivityIndicator,
+  Platform,
 } from "react-native";
-import React from "react";
+import React, { useCallback, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
-import { signIn } from "@/lib/appwrite";
-import useAuthStore from "@/store/auth.store";
+import { useOAuth, useAuth } from "@clerk/clerk-expo";
+import * as WebBrowser from "expo-web-browser";
 import Header from "../components/Header";
 import SideMenu from "../components/SideMenu";
 
+// Color constants
+const darkBrown = "#423120";
+const lightBeige = "#F4EDE5";
+const beigeBackground = "#D7C3A7";
+
+// Warm up browser hook for faster OAuth
+const useWarmUpBrowser = () => {
+  useEffect(() => {
+    void WebBrowser.warmUpAsync();
+    return () => {
+      void WebBrowser.coolDownAsync();
+    };
+  }, []);
+};
+
 export default function SignIn() {
+  // Warm up browser on component mount
+  useWarmUpBrowser();
+  
   const router = useRouter();
   const params = useLocalSearchParams<{ redirect?: string }>();
-  const { fetchAuthenticatedUser } = useAuthStore();
+  const { isSignedIn, isLoaded: isClerkLoaded } = useAuth();
+  
+  // Let Clerk handle redirect URL automatically
+  const { startOAuthFlow: startGoogleOAuth } = useOAuth({ 
+    strategy: "oauth_google",
+  });
+  const { startOAuthFlow: startAppleOAuth } = useOAuth({ 
+    strategy: "oauth_apple",
+  });
 
-  const [emailAddress, setEmailAddress] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
-  const [password, setPassword] = React.useState("");
+  const [loadingProvider, setLoadingProvider] = React.useState<'google' | 'apple' | null>(null);
   const [isMenuVisible, setMenuVisible] = React.useState(false);
+  
+  // Handle OAuth session completion on mount
+  useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
+  }, []);
 
-  const redirectTo = () => {
+  const redirectTo = useCallback(() => {
     let dest = typeof params.redirect === 'string' && params.redirect.length > 0 ? params.redirect : '/';
     try {
       dest = decodeURIComponent(dest);
     } catch { }
     router.replace(dest);
-  };
+  }, [params.redirect, router]);
 
-  const onSignInPress = async () => {
-    if (!emailAddress || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+  // If user is already signed in, redirect immediately
+  useEffect(() => {
+    if (isSignedIn) {
+      redirectTo();
+    }
+  }, [isSignedIn, redirectTo]);
+
+  const handleGoogleSignIn = useCallback(async () => {
+    if (isLoading) return;
+    
+    // Check if Clerk is loaded
+    if (!isClerkLoaded) {
+      Alert.alert(
+        "Odota",
+        "Sovellus latautuu vielä. Yritä uudelleen hetken kuluttua."
+      );
       return;
     }
-
+    
     setIsLoading(true);
+    setLoadingProvider('google');
 
     try {
-      await signIn({ email: emailAddress, password });
-      // Refresh the auth state
-      await fetchAuthenticatedUser();
-      Alert.alert("Success", "Signed in successfully!");
-      redirectTo();
+      const result = await startGoogleOAuth();
+      
+      if (result?.createdSessionId && result?.setActive) {
+        await result.setActive({ session: result.createdSessionId });
+        redirectTo();
+      }
+      // If no session created, user likely cancelled - no error needed
     } catch (err: any) {
-      console.error('Sign in error:', err);
-      Alert.alert("Error", err.message || "Failed to sign in. Please check your credentials.");
+      // Don't show error if user is actually signed in (success despite error)
+      if (isSignedIn) {
+        redirectTo();
+        return;
+      }
+      
+      // Ignore these non-error cases
+      const errorCode = err?.errors?.[0]?.code;
+      const errorMessage = err?.message || '';
+      
+      if (
+        errorCode === 'user_cancelled' || 
+        errorCode === 'session_exists' ||
+        errorMessage.includes('user cancelled') ||
+        errorMessage.includes('toString') // Ignore this known Clerk bug
+      ) {
+        // Check if we're signed in despite the error
+        return;
+      }
+      
+      // Show user-friendly error for real failures
+      let displayMessage = 'Yritä uudelleen hetken kuluttua.';
+      
+      if (errorMessage.includes('Too many requests')) {
+        displayMessage = 'Liian monta yritystä. Odota hetki ja yritä uudelleen.';
+      } else if (err?.errors?.[0]?.longMessage) {
+        displayMessage = err.errors[0].longMessage;
+      }
+      
+      Alert.alert("Virhe", displayMessage);
     } finally {
       setIsLoading(false);
+      setLoadingProvider(null);
     }
-  };
+  }, [isLoading, isClerkLoaded, isSignedIn, startGoogleOAuth, redirectTo]);
+
+  const handleAppleSignIn = useCallback(async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    setLoadingProvider('apple');
+
+    try {
+      const { createdSessionId, setActive } = await startAppleOAuth();
+
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        // Small delay to ensure session is fully active before redirect
+        setTimeout(() => {
+          redirectTo();
+        }, 100);
+      }
+    } catch (err: any) {
+      console.error('Apple OAuth error:', JSON.stringify(err, null, 2));
+      
+      // Don't show error for user cancellation
+      if (err?.errors?.[0]?.code !== 'user_cancelled') {
+        Alert.alert(
+          "Virhe",
+          "Kirjautuminen Applella epäonnistui. Yritä uudelleen."
+        );
+      }
+    } finally {
+      setIsLoading(false);
+      setLoadingProvider(null);
+    }
+  }, [isLoading, startAppleOAuth, redirectTo]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#D7C3A7" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: beigeBackground }}>
       <Header
         title="COSMIX"
         showBack={true}
@@ -72,112 +177,110 @@ export default function SignIn() {
         {/* Arch-shaped container */}
         <View style={{
           width: 300,
-          height: 350,
-          backgroundColor: '#F4EDE5',
+          backgroundColor: lightBeige,
           borderTopLeftRadius: 150,
           borderTopRightRadius: 150,
           paddingHorizontal: 24,
-          paddingTop: 80,
-          paddingBottom: 30,
+          paddingTop: 60,
+          paddingBottom: 40,
           marginBottom: 24,
-          justifyContent: 'center',
-        }}>
-          {/* Email Field */}
-          <View style={{ marginBottom: 20, alignItems: "center" }}>
-            <TextInput
-              autoCapitalize="none"
-              value={emailAddress}
-              placeholder="sähköpostiosoite"
-              placeholderTextColor="#423120"
-              onChangeText={setEmailAddress}
-              keyboardType="email-address"
-              style={{
-                width: 174,
-                height: 47,
-                backgroundColor: '#D7C3A7',
-                borderRadius: 30,
-                paddingHorizontal: 20,
-                fontSize: 15,
-                color: '#423120',
-                fontFamily: 'Philosopher-Bold',
-                alignSelf: 'center',
-                textAlign: 'center',  // <-- added to center text
-              }}
-              editable={!isLoading}
-            />
-          </View>
-
-          {/* Password Field */}
-          <View style={{ alignItems: "center" }}>
-            <TextInput
-              value={password}
-              placeholder="salasana"
-              placeholderTextColor="#423120"
-              secureTextEntry={true}
-              onChangeText={setPassword}
-              style={{
-                width: 174,
-                height: 47,
-                backgroundColor: '#D7C3A7',
-                borderRadius: 30,
-                paddingHorizontal: 20,
-                fontSize: 15,
-                color: '#423120',
-                fontFamily: 'Philosopher-Bold',
-                alignSelf: 'center',
-                textAlign: 'center', // <-- added to center text
-              }}
-              editable={!isLoading}
-            />
-          </View>
-        </View>
-
-        {/* Sign In Button - Outside the arch */}
-        <TouchableOpacity
-          onPress={onSignInPress}
-          disabled={isLoading}
-          style={{
-            width: 181,
-            height: 55,
-            backgroundColor: '#F4EDE5',
-            borderRadius: 27.5,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: 20,
-          }}
-          activeOpacity={0.8}
-        >
-          <Text style={{
-            color: '#423120',
-            fontSize: 18,
-            fontFamily: 'Philosopher-Bold'
-          }}>
-            {isLoading ? "Kirjaudutaan..." : "Kirjaudu sisään"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Sign Up Link */}
-        <View style={{
-          flexDirection: 'row',
-          justifyContent: 'center',
           alignItems: 'center',
         }}>
-          <Text style={{ color: '#423120', opacity: 0.8, fontSize: 18, fontFamily: 'Philosopher-Regular' }}>
-            Ei tiliä?{" "}
+          {/* Title */}
+          <Text style={{
+            fontSize: 28,
+            fontFamily: 'Philosopher-Bold',
+            color: darkBrown,
+            textAlign: 'center',
+            marginBottom: 40,
+          }}>
+            Kirjaudu sisään
           </Text>
-          <Link href="/sign-up" asChild>
-            <TouchableOpacity>
-              <Text style={{
-                color: '#423120',
-                fontFamily: 'Philosopher-Bold',
-                fontSize: 18,
-                textDecorationLine: 'underline'
-              }}>
-                Luo tili
-              </Text>
-            </TouchableOpacity>
-          </Link>
+
+          {/* Google Sign In Button */}
+          <TouchableOpacity
+            onPress={handleGoogleSignIn}
+            disabled={isLoading}
+            style={{
+              width: 220,
+              height: 50,
+              backgroundColor: '#FFFFFF',
+              borderRadius: 25,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 16,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 3,
+              opacity: isLoading && loadingProvider !== 'google' ? 0.6 : 1,
+            }}
+            activeOpacity={0.8}
+          >
+            {loadingProvider === 'google' ? (
+              <ActivityIndicator size="small" color={darkBrown} />
+            ) : (
+              <>
+                <View style={{ marginRight: 12 }}>
+                  {/* Google Icon */}
+                  <Ionicons name="logo-google" size={22} color="#4285F4" />
+                </View>
+                <Text style={{
+                  color: darkBrown,
+                  fontSize: 16,
+                  fontFamily: 'Philosopher-Bold',
+                }}>
+                  Jatka Googlella
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Apple Sign In Button */}
+          <TouchableOpacity
+            onPress={handleAppleSignIn}
+            disabled={isLoading}
+            style={{
+              width: 220,
+              height: 50,
+              backgroundColor: '#000000',
+              borderRadius: 25,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.2,
+              shadowRadius: 4,
+              elevation: 3,
+              opacity: isLoading && loadingProvider !== 'apple' ? 0.6 : 1,
+            }}
+            activeOpacity={0.8}
+          >
+            {loadingProvider === 'apple' ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <View style={{ marginRight: 12 }}>
+                  {/* Apple Icon */}
+                  <Ionicons name="logo-apple" size={22} color="#FFFFFF" />
+                </View>
+                <Text style={{
+                  color: '#FFFFFF',
+                  fontSize: 16,
+                  fontFamily: 'Philosopher-Bold',
+                }}>
+                  Jatka Applella
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+          
         </View>
+
+       
       </View>
 
       {/* Modal for the side menu */}

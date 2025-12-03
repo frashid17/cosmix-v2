@@ -13,17 +13,18 @@ import {
 import { router } from "expo-router";
 import Header from "../../../components/Header";
 import SideMenu from "../../../components/SideMenu";
-import useAuthStore from "@/store/auth.store";
-import { signOut } from "@/lib/appwrite";
+import { useClerk, useAuth, useUser } from "@clerk/clerk-expo";
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, setUser, setIsAuthenticated } = useAuthStore();
+  const { signOut } = useClerk();
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
   const [isMenuVisible, setMenuVisible] = React.useState(false);
 
   const handleMenuPress = async (menuItem: string) => {
     switch (menuItem) {
       case "Tulevat hoidot":
-        if (isAuthenticated) {
+        if (isSignedIn) {
           router.push("/bookings");
         } else {
           router.push("/sign-in");
@@ -33,7 +34,7 @@ export default function ProfilePage() {
         Alert.alert("Menneet hoidot", "Past treatments feature coming soon!");
         break;
       case "Asetukset":
-        if (isAuthenticated) {
+        if (isSignedIn) {
           router.push("/profile-edit");
         } else {
           Alert.alert("Kirjaudu sisään", "Sinun täytyy kirjautua sisään päästäksesi asetuksiin", [
@@ -51,18 +52,16 @@ export default function ProfilePage() {
       case "Kirjaudu ulos":
         try {
           await signOut();
-          setUser(null);
-          setIsAuthenticated(false);
-          Alert.alert("Success", "You have been signed out");
+          Alert.alert("Onnistui", "Olet kirjautunut ulos");
           router.replace("/");
         } catch (error) {
-          Alert.alert("Error", "Failed to sign out");
+          Alert.alert("Virhe", "Kirjautuminen ulos epäonnistui");
         }
         break;
     }
   };
 
-  const menuItems = isAuthenticated
+  const menuItems = isSignedIn
     ? [
         "Tulevat hoidot",
         "Menneet hoidot",
@@ -77,6 +76,9 @@ export default function ProfilePage() {
         "Kieli",
         "Kirjaudu sisään",
       ];
+
+  // Get user's first name for display
+  const displayName = user?.firstName || user?.fullName?.split(' ')[0] || 'Käyttäjä';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -95,7 +97,7 @@ export default function ProfilePage() {
           <View style={styles.archContainer}>
             <Text style={styles.welcomeText}>
               Tervetuloa,{"\n"}
-              {isAuthenticated && user ? user.name.split(' ')[0] : 'Käyttäjä'}!
+              {displayName}!
             </Text>
           </View>
         </View>
