@@ -13,7 +13,7 @@ import { getBookings } from "../actions/get-bookings";
 import { Booking } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 import { API_ENDPOINTS } from "../../../config/constants";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import Header from "../components/Header";
 import { useUser } from "@clerk/clerk-expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -76,6 +76,28 @@ export default function BookingsScreen() {
   const [salonNames, setSalonNames] = useState<Record<string, string>>({});
   const { user } = useUser();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{ view?: string }>();
+  
+  // Determine which view to show: 'upcoming', 'past', or 'all' (default)
+  const viewMode = params.view || 'all';
+
+  // Separate bookings into upcoming (pending/confirmed) and past (completed)
+  const upcomingBookings = bookings.filter(
+    (b) => b.status === 'pending' || b.status === 'confirmed'
+  );
+  const pastBookings = bookings.filter((b) => b.status === 'completed');
+  
+  // Get the title based on view mode
+  const getTitle = () => {
+    switch (viewMode) {
+      case 'upcoming':
+        return 'Tulevat hoidot';
+      case 'past':
+        return 'Menneet hoidot';
+      default:
+        return 'Varaukset';
+    }
+  };
 
   // Fonts are loaded globally in root _layout.tsx
 
@@ -135,17 +157,59 @@ export default function BookingsScreen() {
   }, [user]);
 
   const confirmCancel = (id: string) => {
-    Alert.alert("Cancel Booking", "Are you sure you want to cancel?", [
-      { text: "No", style: "cancel" },
+    Alert.alert("Peruuta varaus", "Haluatko varmasti peruuttaa varauksen?", [
+      { text: "Ei", style: "cancel" },
       {
-        text: "Yes",
+        text: "Kyllä",
         style: "destructive",
         onPress: () => {
           setBookings((prev) => prev.filter((b) => b.id !== id));
-          Alert.alert("Cancelled", "Booking cancelled (demo only).");
+          Alert.alert("Peruutettu", "Varaus peruutettu.");
         },
       },
     ]);
+  };
+
+  const handleRating = (booking: Booking) => {
+    // Navigate to rating screen or show rating modal
+    Alert.alert(
+      "Arvostele hoito",
+      `Arvostele ${getServiceName(booking)} - ${getSalonName(booking, salonNames)}`,
+      [
+        { text: "Peruuta", style: "cancel" },
+        {
+          text: "⭐ 1",
+          onPress: () => submitRating(booking.id, 1),
+        },
+        {
+          text: "⭐ 2",
+          onPress: () => submitRating(booking.id, 2),
+        },
+        {
+          text: "⭐ 3",
+          onPress: () => submitRating(booking.id, 3),
+        },
+        {
+          text: "⭐ 4",
+          onPress: () => submitRating(booking.id, 4),
+        },
+        {
+          text: "⭐ 5",
+          onPress: () => submitRating(booking.id, 5),
+        },
+      ]
+    );
+  };
+
+  const submitRating = async (bookingId: string, rating: number) => {
+    try {
+      // TODO: Implement actual rating submission to backend
+      console.log(`Rating ${rating} submitted for booking ${bookingId}`);
+      Alert.alert("Kiitos!", `Annoit arvosanan ${rating}/5 ⭐`);
+    } catch (error) {
+      console.error("Error submitting rating:", error);
+      Alert.alert("Virhe", "Arvosanan lähettäminen epäonnistui.");
+    }
   };
 
   if (loading) {
@@ -213,145 +277,288 @@ export default function BookingsScreen() {
               textAlign: "center",
               lineHeight: 30,
             }}>
-              Tervetuloa,{"\n"}
-              {user?.firstName || user?.fullName?.split(' ')[0] || 'User'}!
+              {getTitle()}
             </Text>
           </View>
         </View>
 
-      {/* Tulevat hoidot */}
-      <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
-        <Text
-          style={{
-            fontSize: 25,
-            fontFamily: "Philosopher-Bold",
-            color: darkBrown,
-            borderBottomWidth: 1,
-            borderBottomColor: "#D9C7AF",
-            paddingBottom: 4,
-          }}
-        >
-          Tulevat hoidot
-        </Text>
-
-        {bookings.length === 0 ? (
-          <View
-            style={{
-              marginTop: 20,
-              padding: 20,
-              borderWidth: 1,
-              borderColor: "#D9C7AF",
-              borderRadius: 12,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ 
-              color: "#666", 
-              fontSize: 15,
-              fontFamily: "Philosopher-Regular"
-            }}>
-              Ei varauksia tällä hetkellä.
+      {/* Tulevat hoidot - show only when viewMode is 'upcoming' or 'all' */}
+      {(viewMode === 'upcoming' || viewMode === 'all') && (
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          {viewMode === 'all' && (
+            <Text
+              style={{
+                fontSize: 25,
+                fontFamily: "Philosopher-Bold",
+                color: darkBrown,
+                borderBottomWidth: 1,
+                borderBottomColor: "#D9C7AF",
+                paddingBottom: 4,
+              }}
+            >
+              Tulevat hoidot
             </Text>
-          </View>
-        ) : (
-          <View
-            style={{
-              marginTop: 16,
-              borderWidth: 3,
-              borderColor: "#D9C7AF",
-              borderRadius: 12,
-              paddingVertical: 12,
-            }}
-          >
-             {bookings.map((b, i) => {
-               const serviceName = getServiceName(b);
-               const salonName = getSalonName(b, salonNames);
-              const bookingDate = new Date(b.bookingTime);
-              const dateStr = bookingDate.toLocaleDateString("fi-FI", {
-                weekday: "short",
-                day: "numeric",
-                month: "numeric",
-                year: "numeric",
-              });
-              const timeStr = bookingDate.toLocaleTimeString("fi-FI", {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
+          )}
 
-              return (
-                 <View
-                   key={b.id}
-                   style={{
-                     paddingHorizontal: 16,
-                     paddingVertical: 10,
-                     flexDirection: "row",
-                     justifyContent: "space-between",
-                     alignItems: "flex-start",
-                   }}
-                 >
-                   <View style={{ flex: 1, paddingRight: 8 }}>
-                     <Text
-                       style={{
-                         fontSize: 17,
-                         fontFamily: "Philosopher-Bold",
-                         color: darkBrown,
-                         marginBottom: 4,
-                       }}
-                     >
-                       • {serviceName}
-                     </Text>
-                     <Text style={{ 
-                       color: "#666", 
-                       fontSize: 15,
-                       fontFamily: "Philosopher-Regular",
-                       marginLeft: 12
-                     }}>{dateStr}</Text>
-                     <Text style={{ 
-                       color: "#666", 
-                       fontSize: 15,
-                       fontFamily: "Philosopher-Regular",
-                       marginLeft: 12
-                     }}>
-                       klo {timeStr}
-                     </Text>
-                     <Text style={{ 
-                       color: "#666", 
-                       fontSize: 15, 
-                       marginTop: 2,
-                       fontFamily: "Philosopher-Regular",
-                       marginLeft: 12
-                     }}>
-                       {salonName} Salon
-                     </Text>
-                   </View>
+          {upcomingBookings.length === 0 ? (
+            <View
+              style={{
+                marginTop: 20,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: "#D9C7AF",
+                borderRadius: 12,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ 
+                color: "#666", 
+                fontSize: 15,
+                fontFamily: "Philosopher-Regular"
+              }}>
+                Ei tulevia varauksia.
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={{
+                marginTop: 16,
+                borderWidth: 3,
+                borderColor: "#D9C7AF",
+                borderRadius: 12,
+                paddingVertical: 12,
+              }}
+            >
+               {upcomingBookings.map((b, i) => {
+                 const serviceName = getServiceName(b);
+                 const salonName = getSalonName(b, salonNames);
+                const bookingDate = new Date(b.bookingTime);
+                const dateStr = bookingDate.toLocaleDateString("fi-FI", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "numeric",
+                  year: "numeric",
+                });
+                const timeStr = bookingDate.toLocaleTimeString("fi-FI", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
 
-                   <TouchableOpacity
-                     onPress={() => confirmCancel(b.id)}
+                return (
+                   <View
+                     key={b.id}
                      style={{
-                       backgroundColor: "#E9E2D8",
-                       borderRadius: 20,
-                       paddingHorizontal: 17,
-                       paddingVertical: 6,
+                       paddingHorizontal: 16,
+                       paddingVertical: 10,
+                       flexDirection: "row",
+                       justifyContent: "space-between",
+                       alignItems: "flex-start",
                      }}
-                     activeOpacity={0.8}
                    >
-                     <Text
-                       style={{
-                         color: darkBrown,
-                         fontFamily: "Philosopher-Bold",
+                     <View style={{ flex: 1, paddingRight: 8 }}>
+                       <Text
+                         style={{
+                           fontSize: 17,
+                           fontFamily: "Philosopher-Bold",
+                           color: darkBrown,
+                           marginBottom: 4,
+                         }}
+                       >
+                         • {serviceName}
+                       </Text>
+                       <Text style={{ 
+                         color: "#666", 
                          fontSize: 15,
-                         textTransform: "lowercase",
+                         fontFamily: "Philosopher-Regular",
+                         marginLeft: 12
+                       }}>{dateStr}</Text>
+                       <Text style={{ 
+                         color: "#666", 
+                         fontSize: 15,
+                         fontFamily: "Philosopher-Regular",
+                         marginLeft: 12
+                       }}>
+                         klo {timeStr}
+                       </Text>
+                       <Text style={{ 
+                         color: "#666", 
+                         fontSize: 15, 
+                         marginTop: 2,
+                         fontFamily: "Philosopher-Regular",
+                         marginLeft: 12
+                       }}>
+                         {salonName} Salon
+                       </Text>
+                     </View>
+
+                     <TouchableOpacity
+                       onPress={() => confirmCancel(b.id)}
+                       style={{
+                         backgroundColor: "#E9E2D8",
+                         borderRadius: 20,
+                         paddingHorizontal: 17,
+                         paddingVertical: 6,
                        }}
+                       activeOpacity={0.8}
                      >
-                       peru
-                     </Text>
-                   </TouchableOpacity>
-                 </View>
-              );
-            })}
-          </View>
-        )}
-      </View>
+                       <Text
+                         style={{
+                           color: darkBrown,
+                           fontFamily: "Philosopher-Bold",
+                           fontSize: 15,
+                           textTransform: "lowercase",
+                         }}
+                       >
+                         peru
+                       </Text>
+                     </TouchableOpacity>
+                   </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Menneet hoidot (Past treatments) - show only when viewMode is 'past' or 'all' */}
+      {(viewMode === 'past' || viewMode === 'all') && (
+        <View style={{ marginTop: 32, paddingHorizontal: 20 }}>
+          {viewMode === 'all' && (
+            <Text
+              style={{
+                fontSize: 25,
+                fontFamily: "Philosopher-Bold",
+                color: darkBrown,
+                borderBottomWidth: 1,
+                borderBottomColor: "#D9C7AF",
+                paddingBottom: 4,
+              }}
+            >
+              Menneet hoidot
+            </Text>
+          )}
+
+          {pastBookings.length === 0 ? (
+            <View
+              style={{
+                marginTop: 20,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: "#D9C7AF",
+                borderRadius: 12,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ 
+                color: "#666", 
+                fontSize: 15,
+                fontFamily: "Philosopher-Regular"
+              }}>
+                Ei menneitä hoitoja.
+              </Text>
+            </View>
+          ) : (
+            <View
+              style={{
+                marginTop: 16,
+                borderWidth: 3,
+                borderColor: "#D9C7AF",
+                borderRadius: 12,
+                paddingVertical: 12,
+              }}
+            >
+               {pastBookings.map((b, i) => {
+                 const serviceName = getServiceName(b);
+                 const salonName = getSalonName(b, salonNames);
+                const bookingDate = new Date(b.bookingTime);
+                const dateStr = bookingDate.toLocaleDateString("fi-FI", {
+                  weekday: "short",
+                  day: "numeric",
+                  month: "numeric",
+                  year: "numeric",
+                });
+                const timeStr = bookingDate.toLocaleTimeString("fi-FI", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+
+                return (
+                   <View
+                     key={b.id}
+                     style={{
+                       paddingHorizontal: 16,
+                       paddingVertical: 10,
+                       flexDirection: "row",
+                       justifyContent: "space-between",
+                       alignItems: "flex-start",
+                     }}
+                   >
+                     <View style={{ flex: 1, paddingRight: 8 }}>
+                       <Text
+                         style={{
+                           fontSize: 17,
+                           fontFamily: "Philosopher-Bold",
+                           color: darkBrown,
+                           marginBottom: 4,
+                         }}
+                       >
+                         • {serviceName}
+                       </Text>
+                       <Text style={{ 
+                         color: "#666", 
+                         fontSize: 15,
+                         fontFamily: "Philosopher-Regular",
+                         marginLeft: 12
+                       }}>{dateStr}</Text>
+                       <Text style={{ 
+                         color: "#666", 
+                         fontSize: 15,
+                         fontFamily: "Philosopher-Regular",
+                         marginLeft: 12
+                       }}>
+                         klo {timeStr}
+                       </Text>
+                       <Text style={{ 
+                         color: "#666", 
+                         fontSize: 15, 
+                         marginTop: 2,
+                         fontFamily: "Philosopher-Regular",
+                         marginLeft: 12
+                       }}>
+                         {salonName} Salon
+                       </Text>
+                     </View>
+
+                     <TouchableOpacity
+                       onPress={() => handleRating(b)}
+                       style={{
+                         backgroundColor: "#FFD700",
+                         borderRadius: 20,
+                         paddingHorizontal: 14,
+                         paddingVertical: 6,
+                         flexDirection: "row",
+                         alignItems: "center",
+                       }}
+                       activeOpacity={0.8}
+                     >
+                       <Ionicons name="star" size={14} color={darkBrown} style={{ marginRight: 4 }} />
+                       <Text
+                         style={{
+                           color: darkBrown,
+                           fontFamily: "Philosopher-Bold",
+                           fontSize: 14,
+                         }}
+                       >
+                         arvostele
+                       </Text>
+                     </TouchableOpacity>
+                   </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      )}
     </ScrollView>
     </View>
   );

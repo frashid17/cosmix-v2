@@ -25,13 +25,17 @@ export default function ProfilePage() {
     switch (menuItem) {
       case "Tulevat hoidot":
         if (isSignedIn) {
-          router.push("/bookings");
+          router.push("/bookings?view=upcoming");
         } else {
           router.push("/sign-in");
         }
         break;
       case "Menneet hoidot":
-        Alert.alert("Menneet hoidot", "Past treatments feature coming soon!");
+        if (isSignedIn) {
+          router.push("/bookings?view=past");
+        } else {
+          router.push("/sign-in");
+        }
         break;
       case "Asetukset":
         if (isSignedIn) {
