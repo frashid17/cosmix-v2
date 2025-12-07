@@ -189,7 +189,7 @@ export default function CheckoutScreen() {
   // Allow rendering even without params; fallback services are used
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
+    <View style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
       {/* Header */}
       <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} />
 
@@ -441,6 +441,6 @@ export default function CheckoutScreen() {
         </View>
       </View>
     </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

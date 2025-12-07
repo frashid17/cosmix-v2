@@ -90,7 +90,7 @@ export default function ProfileEditPage() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Header
         title="COSMIX"
         showBack={true}
@@ -171,7 +171,7 @@ export default function ProfileEditPage() {
         {/* Bottom Spacer */}
         <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

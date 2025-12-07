@@ -79,7 +79,7 @@ export default function ProfilePage() {
       ];
 
   return (
-    <SafeAreaView style={styles.container}>
+      <View style={styles.container}>
       {/* Header */}
       <Header 
         title="COSMIX"
@@ -139,7 +139,7 @@ export default function ProfilePage() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

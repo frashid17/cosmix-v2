@@ -69,9 +69,9 @@ export const PaymentSheet: React.FC<PaymentSheetProps> = (props) => {
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
+      <View style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
         <PaymentForm {...props} />
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 };

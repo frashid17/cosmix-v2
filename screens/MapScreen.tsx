@@ -97,7 +97,7 @@ export const MapScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Find Salons</Text>
         <Text style={styles.headerSubtitle}>
@@ -112,7 +112,7 @@ export const MapScreen: React.FC = () => {
         userLocation={userLocation || undefined}
         onSalonSelect={handleSalonSelect}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 
