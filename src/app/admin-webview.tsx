@@ -7,16 +7,15 @@ import {
     StyleSheet,
     Platform,
     RefreshControl,
-    Modal,
-    Alert,
+    // Modal, // Removed Modal as it was only used for SideMenu
 } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+// import { Ionicons } from '@expo/vector-icons'; // Unused if not used elsewhere
 import { useClerk, useAuth } from '@clerk/clerk-expo';
 import Header from './components/Header';
-import SideMenu from './components/SideMenu';
+// import SideMenu from './components/SideMenu'; // REMOVED: SideMenu import
 import {
     parseWebViewMessage,
     getTokenInjectionScript,
@@ -29,11 +28,29 @@ const DASHBOARD_PATH = process.env.EXPO_PUBLIC_ADMIN_DASHBOARD_PATH || '';
 
 export default function AdminWebViewScreen() {
     const router = useRouter();
-    const webViewRef = useRef<WebView>(null);
+    const webViewRef = useRef<WebView | null>(null);
     const { signOut } = useClerk();
     const { getToken } = useAuth();
     const insets = useSafeAreaInsets();
     const [authToken, setAuthToken] = useState<string | null>(null);
+
+    // Construct and validate dashboard URL - ensure it has a protocol
+    const ensureProtocol = (url: string) => {
+        if (!url) return 'https://cosmix-admin.vercel.app';
+        if (url.startsWith('http://') || url.startsWith('https://')) {
+            return url;
+        }
+        return `https://${url}`;
+    };
+
+    const dashboardUrl = ensureProtocol(ADMIN_DASHBOARD_URL) + DASHBOARD_PATH;
+
+    // Log the URL for debugging
+    React.useEffect(() => {
+        console.log('Dashboard URL:', dashboardUrl);
+        console.log('ADMIN_DASHBOARD_URL:', ADMIN_DASHBOARD_URL);
+        console.log('DASHBOARD_PATH:', DASHBOARD_PATH);
+    }, []);
 
     // Get auth token on mount
     React.useEffect(() => {
@@ -52,7 +69,8 @@ export default function AdminWebViewScreen() {
     const [error, setError] = useState<string | null>(null);
     const [canGoBack, setCanGoBack] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [isMenuVisible, setMenuVisible] = useState(false);
+
+    // REMOVED: isMenuVisible state
 
     // Colors matching the app theme
     const darkBrown = '#423120';
@@ -66,8 +84,6 @@ export default function AdminWebViewScreen() {
         android: 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.6099.144 Mobile Safari/537.36 ReactNativeWebView',
         default: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 ReactNativeWebView'
     });
-
-    const dashboardUrl = `${ADMIN_DASHBOARD_URL}${DASHBOARD_PATH}`;
 
     // Handle messages from WebView
     const handleWebViewMessage = useCallback((event: any) => {
@@ -93,7 +109,7 @@ export default function AdminWebViewScreen() {
                 break;
 
             case 'error':
-                console.error('WebView error:', message.payload);
+                console.log('WebView error:', message.payload);
                 setError(message.payload?.message || 'An error occurred in the dashboard');
                 break;
 
@@ -116,7 +132,7 @@ export default function AdminWebViewScreen() {
             await signOut();
             router.replace('/');
         } catch (e) {
-            console.error('Logout error:', e);
+            console.log('Logout error:', e);
             router.replace('/');
         }
     };
@@ -124,8 +140,6 @@ export default function AdminWebViewScreen() {
     // Handle WebView navigation state changes
     const handleNavigationStateChange = (navState: WebViewNavigation) => {
         setCanGoBack(navState.canGoBack);
-        // Sync loading state with WebView's actual state
-        // This fixes the issue where the spinner persists if onLoadEnd doesn't fire correctly
         setLoading(navState.loading);
     };
 
@@ -143,8 +157,18 @@ export default function AdminWebViewScreen() {
     // Handle WebView errors
     const handleError = (syntheticEvent: any) => {
         const { nativeEvent } = syntheticEvent;
-        console.error('WebView error:', nativeEvent);
-        setError('Failed to load admin dashboard. Please check your internet connection.');
+        console.log('WebView error:', JSON.stringify(nativeEvent, null, 2));
+        console.log('Attempted URL:', dashboardUrl);
+
+        let errorMessage = 'Failed to load admin dashboard.';
+
+        if (nativeEvent.code === -1100) {
+            errorMessage = 'Server not found. Please check the dashboard URL.';
+        } else if (!dashboardUrl || dashboardUrl === '') {
+            errorMessage = 'Invalid dashboard URL configuration.';
+        }
+
+        setError(errorMessage + ' Please check your internet connection.');
         setLoading(false);
     };
 
@@ -153,8 +177,6 @@ export default function AdminWebViewScreen() {
         const { nativeEvent } = syntheticEvent;
         console.warn('WebView HTTP error:', nativeEvent.statusCode, nativeEvent);
 
-        // Don't show error for 401 - user can sign in through the web interface
-        // Only show errors for server issues
         if (nativeEvent.statusCode >= 500) {
             setError('Server error. Please try again later.');
         }
@@ -176,30 +198,34 @@ export default function AdminWebViewScreen() {
         setTimeout(() => setRefreshing(false), 1000);
     }, []);
 
-    // Combine injected JavaScript
-    // Note: Token injection is optional - if no authToken, users can sign in through the web interface
     const injectedJavaScript = `
     ${getTokenInjectionScript(authToken)}
     ${getLogoutHandlerScript()}
     ${getConsoleLogCaptureScript()}
-    true; // Required for iOS
+    true;
   `;
 
     return (
         <View style={[styles.container, { backgroundColor: white }]}>
-            {/* Use the shared Header component exactly like Profile page */}
+            {/* UPDATED HEADER:
+                1. showMenu set to false to hide hamburger
+                2. Removed onMenuPress
+                3. Set showBack to true so you can exit the screen (optional, set to false if preferred)
+            */}
             <Header
-                title="COSMIX"
-                showBack={false}
-                showMenu={true}
+                title="cosmix"
+                showBack={true}
+                showMenu={false}
                 onBackPress={handleGoBack}
-                onMenuPress={() => setMenuVisible(true)}
             />
 
             {/* Error Display */}
             {error && (
                 <View style={[styles.errorContainer, { backgroundColor: '#fee' }]}>
                     <Text style={styles.errorText}>{error}</Text>
+                    <Text style={[styles.errorText, { fontSize: 12, marginTop: 8 }]}>
+                        URL: {dashboardUrl}
+                    </Text>
                     <TouchableOpacity
                         style={[styles.retryButton, { backgroundColor: lightBrown }]}
                         onPress={() => {
@@ -230,14 +256,13 @@ export default function AdminWebViewScreen() {
                     injectedJavaScriptBeforeContentLoaded={getTokenInjectionScript(authToken)}
 
                     // ========== CRITICAL FOR MAPBOX ==========
-                    javaScriptEnabled={true}              // Required for Mapbox
-                    domStorageEnabled={true}              // Required for Mapbox
-                    geolocationEnabled={true}             // Enable location services
+                    javaScriptEnabled={true}
+                    domStorageEnabled={true}
+                    geolocationEnabled={true}
 
                     // ========== ANDROID OPTIMIZATIONS ==========
                     {...Platform.select({
                         android: {
-                            // CRITICAL: Enable hardware acceleration for WebGL
                             androidLayerType: 'hardware',
                             androidHardwareAccelerationDisabled: false,
                         },
@@ -256,10 +281,8 @@ export default function AdminWebViewScreen() {
                     // ========== KEYBOARD HANDLING ==========
                     keyboardDisplayRequiresUserAction={false}
 
-                    // Allow HTTPS
                     originWhitelist={['*']}
 
-                    // iOS specific
                     {...Platform.select({
                         ios: {
                             allowsInlineMediaPlayback: true,
@@ -289,16 +312,7 @@ export default function AdminWebViewScreen() {
                 />
             )}
 
-            {/* Modal for the side menu */}
-            <Modal
-                animationType="slide"
-                transparent={false}
-                visible={isMenuVisible}
-                onRequestClose={() => setMenuVisible(false)}
-                statusBarTranslucent={true}
-            >
-                <SideMenu onClose={() => setMenuVisible(false)} />
-            </Modal>
+            {/* REMOVED: Modal component containing SideMenu */}
         </View>
     );
 }
