@@ -378,18 +378,25 @@ const Saloons = () => {
                                                     >
                                                         Time {saloon.durationMinutes} min
                                                     </Text>
-                                                    <Text
-                                                        style={{
-                                                            width: 39,
-                                                            height: 13,
-                                                            color: "#E0CFB9",
-                                                            fontSize: 13,
-                                                            lineHeight: 13,
-                                                            textAlign: 'center',
-                                                        }}
-                                                    >
-                                                        {"★".repeat(Math.max(0, 5 - saloon.rating))}
-                                                    </Text>
+                                                    {/* Star Rating - 5 stars total */}
+                                                    <View style={{ flexDirection: "row" }}>
+                                                        {(() => {
+                                                            const rating = saloon.rating || 0;
+                                                            const filledStars = Math.round(rating);
+                                                            const totalStars = 5;
+                                                            return [...Array(totalStars)].map((_, index) => (
+                                                                <Text
+                                                                    key={index}
+                                                                    style={{
+                                                                        color: index < filledStars ? darkBrown : "#E0CFB9",
+                                                                        fontSize: 18,
+                                                                    }}
+                                                                >
+                                                                    ★
+                                                                </Text>
+                                                            ));
+                                                        })()}
+                                                    </View>
                                                 </View>
                                             </View>
                                         </View>

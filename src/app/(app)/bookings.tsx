@@ -8,6 +8,8 @@ import {
   Alert,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
+  Dimensions,
 } from "react-native";
 import { getBookings } from "../actions/get-bookings";
 import { Booking } from "../types";
@@ -20,6 +22,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const beige = "#D9C7AF";
 const darkBrown = "#423120";
+const lightBeige = "#E4D2BA";
+const { width: screenWidth } = Dimensions.get("window");
 
 // Function to fetch salon details by ID
 const fetchSalonDetails = async (salonId: string) => {
@@ -77,6 +81,12 @@ export default function BookingsScreen() {
   const { user } = useUser();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ view?: string }>();
+  
+  // Rating modal state
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
   
   // Determine which view to show: 'upcoming', 'past', or 'all' (default)
   const viewMode = params.view || 'all';
@@ -171,45 +181,59 @@ export default function BookingsScreen() {
   };
 
   const handleRating = (booking: Booking) => {
-    // Navigate to rating screen or show rating modal
-    Alert.alert(
-      "Arvostele hoito",
-      `Arvostele ${getServiceName(booking)} - ${getSalonName(booking, salonNames)}`,
-      [
-        { text: "Peruuta", style: "cancel" },
-        {
-          text: "⭐ 1",
-          onPress: () => submitRating(booking.id, 1),
-        },
-        {
-          text: "⭐ 2",
-          onPress: () => submitRating(booking.id, 2),
-        },
-        {
-          text: "⭐ 3",
-          onPress: () => submitRating(booking.id, 3),
-        },
-        {
-          text: "⭐ 4",
-          onPress: () => submitRating(booking.id, 4),
-        },
-        {
-          text: "⭐ 5",
-          onPress: () => submitRating(booking.id, 5),
-        },
-      ]
-    );
+    setSelectedBooking(booking);
+    setSelectedRating(0);
+    setRatingModalVisible(true);
   };
 
-  const submitRating = async (bookingId: string, rating: number) => {
+  const submitRating = async () => {
+    if (!selectedBooking || selectedRating === 0) return;
+    
+    setSubmittingRating(true);
     try {
-      // TODO: Implement actual rating submission to backend
-      console.log(`Rating ${rating} submitted for booking ${bookingId}`);
-      Alert.alert("Kiitos!", `Annoit arvosanan ${rating}/5 ⭐`);
+      console.log(`Submitting rating ${selectedRating} for booking ${selectedBooking.id}`);
+      console.log(`API URL: ${API_ENDPOINTS.REVIEWS}`);
+      
+      const response = await fetch(API_ENDPOINTS.REVIEWS, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          bookingId: selectedBooking.id,
+          rating: selectedRating,
+        }),
+      });
+
+      const responseText = await response.text();
+      console.log(`Response status: ${response.status}`);
+      console.log(`Response body: ${responseText.substring(0, 200)}`);
+
+      if (!response.ok) {
+        console.error("Rating submission failed:", responseText);
+        throw new Error("Failed to submit rating");
+      }
+
+      const result = JSON.parse(responseText);
+      console.log("Rating submitted successfully:", result);
+      
+      setRatingModalVisible(false);
+      setSelectedBooking(null);
+      setSelectedRating(0);
+      
+      Alert.alert("Kiitos!", `Annoit arvosanan ${selectedRating}/5 ⭐`);
     } catch (error) {
       console.error("Error submitting rating:", error);
       Alert.alert("Virhe", "Arvosanan lähettäminen epäonnistui.");
+    } finally {
+      setSubmittingRating(false);
     }
+  };
+
+  const closeRatingModal = () => {
+    setRatingModalVisible(false);
+    setSelectedBooking(null);
+    setSelectedRating(0);
   };
 
   if (loading) {
@@ -532,12 +556,14 @@ export default function BookingsScreen() {
                      <TouchableOpacity
                        onPress={() => handleRating(b)}
                        style={{
-                         backgroundColor: "#FFD700",
+                         backgroundColor: beige,
                          borderRadius: 20,
                          paddingHorizontal: 14,
                          paddingVertical: 6,
                          flexDirection: "row",
                          alignItems: "center",
+                         borderWidth: 1,
+                         borderColor: darkBrown,
                        }}
                        activeOpacity={0.8}
                      >
@@ -560,6 +586,149 @@ export default function BookingsScreen() {
         </View>
       )}
     </ScrollView>
+
+      {/* Rating Modal */}
+      <Modal
+        visible={ratingModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={closeRatingModal}
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: "rgba(0, 0, 0, 0.5)",
+          justifyContent: "flex-end",
+        }}>
+          <View style={{
+            backgroundColor: "white",
+            borderTopLeftRadius: 24,
+            borderTopRightRadius: 24,
+            paddingHorizontal: 24,
+            paddingTop: 24,
+            paddingBottom: insets.bottom + 24,
+          }}>
+            {/* Handle bar */}
+            <View style={{
+              width: 40,
+              height: 4,
+              backgroundColor: "#E0CFB9",
+              borderRadius: 2,
+              alignSelf: "center",
+              marginBottom: 20,
+            }} />
+
+            {/* Title */}
+            <Text style={{
+              fontFamily: "Philosopher-Bold",
+              fontSize: 24,
+              color: darkBrown,
+              textAlign: "center",
+              marginBottom: 8,
+            }}>
+              Arvostele hoito
+            </Text>
+
+            {/* Service & Salon name */}
+            {selectedBooking && (
+              <Text style={{
+                fontFamily: "Philosopher-Regular",
+                fontSize: 20,
+                color: darkBrown,
+                textAlign: "center",
+                marginBottom: 24,
+                opacity: 0.7,
+              }}>
+                {getServiceName(selectedBooking)} - {getSalonName(selectedBooking, salonNames)}
+              </Text>
+            )}
+
+            {/* Star Rating */}
+            <View style={{
+              flexDirection: "row",
+              justifyContent: "center",
+              marginBottom: 16,
+            }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setSelectedRating(star)}
+                  style={{ paddingHorizontal: 8 }}
+                >
+                  <Text style={{
+                    fontSize: 40,
+                    color: star <= selectedRating ? darkBrown : "#E0CFB9",
+                  }}>
+                    ★
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Rating description */}
+            <Text style={{
+              fontFamily: "Philosopher-Regular",
+              fontSize: 20,
+              color: darkBrown,
+              textAlign: "center",
+              marginBottom: 24,
+              
+            }}>
+              {selectedRating === 0 && "Valitse arvosana napauttamalla tähtiä"}
+              {selectedRating === 1 && "Huono kokemus 😞"}
+              {selectedRating === 2 && "Tyydyttävä 😐"}
+              {selectedRating === 3 && "Hyvä 🙂"}
+              {selectedRating === 4 && "Erittäin hyvä 😊"}
+              {selectedRating === 5 && "Erinomainen! 🤩"}
+            </Text>
+
+            {/* Buttons */}
+            <View style={{ flexDirection: "row", gap: 12 }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: "#F5F5F5",
+                  paddingVertical: 16,
+                  borderRadius: 12,
+                  alignItems: "center",
+                }}
+                onPress={closeRatingModal}
+              >
+                <Text style={{
+                  fontFamily: "Philosopher-Bold",
+                  fontSize: 16,
+                  color: darkBrown,
+                }}>
+                  Peruuta
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: selectedRating > 0 ? darkBrown : "#E0CFB9",
+                  paddingVertical: 16,
+                  borderRadius: 12,
+                  alignItems: "center",
+                }}
+                onPress={submitRating}
+                disabled={selectedRating === 0 || submittingRating}
+              >
+                {submittingRating ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={{
+                    fontFamily: "Philosopher-Bold",
+                    fontSize: 16,
+                    color: "white",
+                  }}>
+                    Lähetä
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

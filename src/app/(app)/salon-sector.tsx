@@ -411,16 +411,25 @@ const SalonSector = () => {
                                             >
                                                 Arviot:{" "}
                                             </Text>
-                                            <Text
-                                                style={{
-                                                    color: "#E0CFB9",
-                                                    fontSize: 13,
-                                                    lineHeight: 13,
-                                                    marginBottom: 9,
-                                                }}
-                                            >
-                                                {"★".repeat(Math.round(salon.averageRating || salon.rating || 5))}
-                                            </Text>
+                                            {/* Star Rating - 5 stars total */}
+                                            <View style={{ flexDirection: "row", marginBottom: 9 }}>
+                                                {(() => {
+                                                    const rating = salon.averageRating || salon.rating || 0;
+                                                    const filledStars = Math.round(rating);
+                                                    const totalStars = 5;
+                                                    return [...Array(totalStars)].map((_, index) => (
+                                                        <Text
+                                                            key={index}
+                                                            style={{
+                                                                color: index < filledStars ? darkBrown : "#E0CFB9",
+                                                                fontSize: 18,
+                                                            }}
+                                                        >
+                                                            ★
+                                                        </Text>
+                                                    ));
+                                                })()}
+                                            </View>
                                         </View>
                                     </View>
                                 </View>

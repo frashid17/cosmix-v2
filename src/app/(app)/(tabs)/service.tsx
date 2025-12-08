@@ -597,15 +597,28 @@ function SalonCard({
               justifyContent: "flex-end", 
               marginTop: 8 
             }}>
-              <Text
-                style={{
-                  color: "#E0CFB9",
-                  fontSize: 16,
-                  fontFamily: "Philosopher-Bold",
-                }}
-              >
-                {"★".repeat(Math.max(0, Math.min(5, Math.round(salon.averageRating || salon.rating || 0))))}
-              </Text>
+              {/* Star Rating - 5 stars total */}
+              {(() => {
+                const rating = salon.averageRating || salon.rating || 0;
+                const filledStars = Math.round(rating);
+                const totalStars = 5;
+                return (
+                  <View style={{ flexDirection: "row" }}>
+                    {[...Array(totalStars)].map((_, index) => (
+                      <Text
+                        key={index}
+                        style={{
+                          color: index < filledStars ? darkBrown : "#E0CFB9",
+                          fontSize: 18,
+                          fontFamily: "Philosopher-Bold",
+                        }}
+                      >
+                        ★
+                      </Text>
+                    ))}
+                  </View>
+                );
+              })()}
             </View>
           </View>
         </View>
