@@ -70,7 +70,7 @@ const Saloons = () => {
     // (Fonts are loaded globally, so no check needed here)
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+        <View style={{ flex: 1, backgroundColor: "white" }}>
             {/* Header - Fixed at Top */}
             <Header
                 title="COSMIX"
@@ -446,7 +446,7 @@ const Saloons = () => {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 

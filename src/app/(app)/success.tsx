@@ -28,7 +28,7 @@ export default function SuccessScreen() {
   const totalAmount = params.totalAmount ? parseFloat(params.totalAmount) : 0;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
+    <View style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
       <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
         {/* Success Icon */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
@@ -196,6 +196,6 @@ export default function SuccessScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

@@ -70,14 +70,14 @@ export default function SideMenu({ onClose }: SideMenuProps) {
   // Don't render if fonts aren't loaded
   if (!fontsLoaded) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: veryLightBeige, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: veryLightBeige, justifyContent: 'center', alignItems: 'center' }}>
         <Text>Loading...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: veryLightBeige }}>
+    <View style={{ flex: 1, backgroundColor: veryLightBeige }}>
       {/* Header component - clickable to close menu */}
       <TouchableOpacity onPress={onClose} activeOpacity={0.9}>
         <Header 
@@ -109,6 +109,6 @@ export default function SideMenu({ onClose }: SideMenuProps) {
           </TouchableOpacity>
         ))}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

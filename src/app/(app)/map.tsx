@@ -719,19 +719,19 @@ export default function MapScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: white }]}>
+      <View style={[styles.container, { backgroundColor: white }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={darkBrown} />
           <Text style={[styles.loadingText, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
             Ladataan karttaa...
           </Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: white }]}>
+    <View style={[styles.container, { backgroundColor: white }]}>
       {/* Cosmix Header */}
       <Header 
         title="COSMIX" 
@@ -927,7 +927,7 @@ export default function MapScreen() {
         </View>
         </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 

@@ -73,7 +73,7 @@ export const PaytrailPaymentSheet: React.FC<PaytrailPaymentSheetProps> = ({
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
+      <View style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
         <View style={{ 
           flexDirection: 'row', 
           justifyContent: 'space-between', 
@@ -98,7 +98,7 @@ export const PaytrailPaymentSheet: React.FC<PaytrailPaymentSheetProps> = ({
             onCancel={handlePaymentCancel}
           />
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 };

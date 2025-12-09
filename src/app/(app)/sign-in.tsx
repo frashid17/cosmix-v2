@@ -59,7 +59,7 @@ export default function SignIn() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#D7C3A7" }}>
+    <View style={{ flex: 1, backgroundColor: "#D7C3A7" }}>
       <Header 
         title="COSMIX"
         showBack={true}
@@ -200,6 +200,6 @@ export default function SignIn() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

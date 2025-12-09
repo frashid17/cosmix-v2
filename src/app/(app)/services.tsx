@@ -817,7 +817,7 @@ export default function ServicesPage() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: veryLightBeige }}>
+    <View style={{ flex: 1, backgroundColor: veryLightBeige }}>
       {/* Header - Full Width */}
       <Header 
         showBack={true}
@@ -1285,6 +1285,6 @@ export default function ServicesPage() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

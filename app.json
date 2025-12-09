@@ -12,7 +12,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#423120"
     },
-    "sdkVersion": "52.0.0",
+    "sdkVersion": "54.0.0",
     "web": {
       "output": "static"
     },

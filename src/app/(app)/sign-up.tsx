@@ -56,7 +56,7 @@ export default function SignUp() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
+    <View style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
       <Header 
         title="COSMIX"
         showBack={true}
@@ -263,6 +263,6 @@ export default function SignUp() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

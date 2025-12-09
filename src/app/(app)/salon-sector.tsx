@@ -125,7 +125,7 @@ const SalonSector = () => {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+        <View style={{ flex: 1, backgroundColor: "white" }}>
             {/* Header - Fixed at Top */}
             <Header
                 title="COSMIX"
@@ -580,7 +580,7 @@ const SalonSector = () => {
                     </View>
                 </View>
             </Modal>
-        </SafeAreaView>
+        </View>
     );
 };
 

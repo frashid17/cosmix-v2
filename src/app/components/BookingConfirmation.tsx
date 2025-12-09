@@ -34,7 +34,7 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
+    <View style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
       <View style={{ flex: 1, padding: 24, justifyContent: 'center' }}>
         {/* Success Icon */}
         <View style={{ alignItems: 'center', marginBottom: 32 }}>
@@ -194,7 +194,7 @@ export const BookingConfirmation: React.FC<BookingConfirmationProps> = ({
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

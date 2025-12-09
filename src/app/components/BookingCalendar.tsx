@@ -158,7 +158,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
       animationType="slide"
       presentationStyle="pageSheet"
     >
-      <SafeAreaView style={{ flex: 1, backgroundColor: lightBeige }}>
+      <View style={{ flex: 1, backgroundColor: lightBeige }}>
         {/* Header */}
         <View style={{
           flexDirection: 'row',
@@ -446,7 +446,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 };
