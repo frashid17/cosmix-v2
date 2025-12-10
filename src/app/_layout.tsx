@@ -3,10 +3,11 @@ import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import { Slot } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import * as SecureStore from "expo-secure-store";
+import { StripeProvider } from "@stripe/stripe-react-native";
 
 // Custom token cache implementation
 const tokenCache = {
@@ -42,10 +43,17 @@ const tokenCache = {
 SplashScreen.preventAutoHideAsync();
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+const stripePublishableKey = process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 
 if (!publishableKey) {
   throw new Error(
     "Missing Publishable Key. Please set EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY in your .env file."
+  );
+}
+
+if (!stripePublishableKey) {
+  console.warn(
+    "Missing Stripe Publishable Key. Please set EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY in your .env file."
   );
 }
 
@@ -103,11 +111,17 @@ export default function Layout() {
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
       <ClerkLoadedWithTimeout>
-        <SafeAreaProvider>
-          <GluestackUIProvider mode="light">
-            <Slot />
-          </GluestackUIProvider>
-        </SafeAreaProvider>
+        <StripeProvider
+          publishableKey={stripePublishableKey}
+          merchantIdentifier="merchant.com.cosmix.beauty"
+          urlScheme="cosmix"
+        >
+          <SafeAreaProvider>
+            <GluestackUIProvider mode="light">
+              <Slot />
+            </GluestackUIProvider>
+          </SafeAreaProvider>
+        </StripeProvider>
       </ClerkLoadedWithTimeout>
     </ClerkProvider>
   );

@@ -20,6 +20,7 @@
     "@gluestack-ui/overlay": "^0.1.22",
     "@gluestack-ui/toast": "^1.0.9",
     "@legendapp/motion": "^2.4.0",
+    "@stripe/stripe-react-native": "^0.57.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "expo": "^54.0.25",
     "expo-apple-authentication": "^8.0.7",

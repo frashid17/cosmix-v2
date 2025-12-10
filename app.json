@@ -21,7 +21,22 @@
       "expo-location",
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#423120",
+          "image": "./assets/splash.png",
+          "imageWidth": 200
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.cosmix.beauty",
+          "enableGooglePay": false
+        }
+      ]
     ],
     "android": {
       "package": "com.cosmix.beauty",
@@ -59,9 +74,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "7592e6d8-d2d1-4c98-b758-45bd9d4df722"
+        "projectId": "b4d2be30-101f-4676-90b4-1aa0c95ec59f"
       }
     },
-    "owner": "kppp"
+    "owner": "wkop"
   }
 }

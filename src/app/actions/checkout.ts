@@ -13,10 +13,18 @@ export interface CustomerInfo {
 
 export interface CheckoutResponse {
   success: boolean;
-  message: string;
+  paymentIntentClientSecret: string;
+  publishableKey: string;
   bookingIds: string[];
   amount: number;
   paymentMethod: string;
+  status: string;
+}
+
+export interface ConfirmBookingResponse {
+  success: boolean;
+  message: string;
+  bookingIds: string[];
   status: string;
 }
 
@@ -31,7 +39,7 @@ const createCheckoutSession = async (
   authToken?: string
 ): Promise<CheckoutResponse> => {
   try {
-    console.log('Creating checkout session for services (Pay at Venue):', saloonServiceIds);
+    console.log('Creating checkout session for services:', saloonServiceIds);
     console.log('Customer info:', customerInfo);
     console.log('Auth token provided:', authToken ? 'Yes' : 'No');
     
@@ -64,11 +72,57 @@ const createCheckoutSession = async (
     }
     
     const data = await response.json();
-    console.log('Checkout session created successfully (Pay at Venue):', data);
+    console.log('Checkout session created successfully:', { 
+      ...data, 
+      paymentIntentClientSecret: data.paymentIntentClientSecret ? '***hidden***' : undefined 
+    });
     
     return data;
   } catch (error) {
     console.error('Error in createCheckoutSession:', error);
+    throw error;
+  }
+};
+
+// Confirm booking after successful payment
+export const confirmBooking = async (
+  bookingIds: string[],
+  paymentIntentId: string,
+  authToken?: string
+): Promise<ConfirmBookingResponse> => {
+  try {
+    console.log('Confirming booking after payment:', { bookingIds, paymentIntentId });
+    
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    
+    const response = await fetch(API_ENDPOINTS.CHECKOUT, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        bookingIds,
+        paymentIntentId,
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Confirm booking API error:', response.status, errorText);
+      throw new Error(`Confirm booking failed: ${response.status} ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Booking confirmed successfully:', data);
+    
+    return data;
+  } catch (error) {
+    console.error('Error in confirmBooking:', error);
     throw error;
   }
 };
@@ -84,12 +138,12 @@ export const initiateCheckout = async (
       `${service.saloonId}:${service.serviceId}`
     );
     
-    console.log('Initiating checkout with service IDs (Pay at Venue):', saloonServiceIds);
+    console.log('Initiating checkout with service IDs:', saloonServiceIds);
     
-    // Create booking without payment
-    const bookingData = await createCheckoutSession(saloonServiceIds, customerInfo, authToken);
+    // Create checkout session and get payment intent
+    const checkoutData = await createCheckoutSession(saloonServiceIds, customerInfo, authToken);
     
-    return bookingData;
+    return checkoutData;
   } catch (error) {
     console.error('Error in initiateCheckout:', error);
     throw error;

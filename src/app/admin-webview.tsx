@@ -7,15 +7,12 @@ import {
     StyleSheet,
     Platform,
     RefreshControl,
-    // Modal, // Removed Modal as it was only used for SideMenu
+    SafeAreaView,
 } from 'react-native';
 import { WebView, WebViewNavigation } from 'react-native-webview';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-// import { Ionicons } from '@expo/vector-icons'; // Unused if not used elsewhere
 import { useClerk, useAuth } from '@clerk/clerk-expo';
 import Header from './components/Header';
-// import SideMenu from './components/SideMenu'; // REMOVED: SideMenu import
 import {
     parseWebViewMessage,
     getTokenInjectionScript,
@@ -31,7 +28,6 @@ export default function AdminWebViewScreen() {
     const webViewRef = useRef<WebView | null>(null);
     const { signOut } = useClerk();
     const { getToken } = useAuth();
-    const insets = useSafeAreaInsets();
     const [authToken, setAuthToken] = useState<string | null>(null);
 
     // Construct and validate dashboard URL - ensure it has a protocol
@@ -198,7 +194,37 @@ export default function AdminWebViewScreen() {
         setTimeout(() => setRefreshing(false), 1000);
     }, []);
 
+    // Script to disable zooming
+    const disableZoomScript = `
+      // Disable zoom via viewport meta tag
+      var meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+      var existingMeta = document.querySelector('meta[name="viewport"]');
+      if (existingMeta) {
+        existingMeta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+      } else {
+        document.head.appendChild(meta);
+      }
+      
+      // Disable pinch zoom
+      document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
+      
+      // Disable double-tap zoom
+      var lastTouchEnd = 0;
+      document.addEventListener('touchend', function(e) {
+        var now = Date.now();
+        if (now - lastTouchEnd <= 300) {
+          e.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, { passive: false });
+    `;
+
     const injectedJavaScript = `
+    ${disableZoomScript}
     ${getTokenInjectionScript(authToken)}
     ${getLogoutHandlerScript()}
     ${getConsoleLogCaptureScript()}
@@ -206,7 +232,7 @@ export default function AdminWebViewScreen() {
   `;
 
     return (
-        <View style={[styles.container, { backgroundColor: white }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: white }]}>
             {/* UPDATED HEADER:
                 1. showMenu set to false to hide hamburger
                 2. Removed onMenuPress
@@ -241,7 +267,7 @@ export default function AdminWebViewScreen() {
             )}
 
             {/* WebView */}
-            <View style={[styles.webViewContainer, { paddingBottom: insets.bottom }]}>
+            <View style={styles.webViewContainer}>
                 <WebView
                     ref={webViewRef}
                     source={{ uri: dashboardUrl }}
@@ -270,13 +296,19 @@ export default function AdminWebViewScreen() {
 
                     // ========== PERFORMANCE & COMPATIBILITY ==========
                     startInLoadingState={true}
-                    scalesPageToFit={true}
+                    scalesPageToFit={false}
                     mixedContentMode="always"
                     allowsBackForwardNavigationGestures={true}
                     sharedCookiesEnabled={true}
                     thirdPartyCookiesEnabled={true}
                     cacheEnabled={true}
                     cacheMode="LOAD_DEFAULT"
+                    
+                    // ========== DISABLE ZOOM ==========
+                    setBuiltInZoomControls={false}
+                    setDisplayZoomControls={false}
+                    bounces={false}
+                    scrollEnabled={true}
 
                     // ========== KEYBOARD HANDLING ==========
                     keyboardDisplayRequiresUserAction={false}
@@ -311,9 +343,7 @@ export default function AdminWebViewScreen() {
                     progressBackgroundColor={lightBrown}
                 />
             )}
-
-            {/* REMOVED: Modal component containing SideMenu */}
-        </View>
+        </SafeAreaView>
     );
 }
 

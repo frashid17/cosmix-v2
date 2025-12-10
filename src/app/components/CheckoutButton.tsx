@@ -1,10 +1,11 @@
 // src/app/components/CheckoutButton.tsx
 import React, { useState } from 'react';
-import { Alert, Platform, TouchableOpacity, View, Text, ActivityIndicator } from 'react-native';
-import { initiateCheckout, CustomerInfo, CheckoutResponse } from '../actions/checkout';
+import { Alert, TouchableOpacity, View, Text, ActivityIndicator } from 'react-native';
+import { initiateCheckout, confirmBooking, CustomerInfo } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useStripe } from '@stripe/stripe-react-native';
 
 interface CheckoutButtonProps {
   saloonServices: SaloonService[];
@@ -27,15 +28,18 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
   const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const router = useRouter();
+  
+  // Use Stripe hook - this will work if the native module is available
+  const { initPaymentSheet, presentPaymentSheet } = useStripe();
 
   const handleCheckout = async () => {
     if (saloonServices.length === 0) {
-      Alert.alert('Error', 'Please select at least one service');
+      Alert.alert('Virhe', 'Valitse vähintään yksi palvelu');
       return;
     }
 
     if (!customerInfo.name || !customerInfo.email) {
-      Alert.alert('Error', 'Please fill in your name and email address');
+      Alert.alert('Virhe', 'Täytä nimesi ja sähköpostiosoitteesi');
       return;
     }
 
@@ -53,17 +57,68 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
     setIsLoading(true);
 
     try {
-      // Get auth token and include user ID in customerInfo
+      // Get auth token
       const authToken = await getToken();
       const customerInfoWithUserId = {
         ...customerInfo,
-        userId: user?.id, // Include Clerk user ID
+        userId: user?.id,
       };
       
-      const result = await initiateCheckout(saloonServices, customerInfoWithUserId, authToken);
+      // Step 1: Create checkout session and get payment intent
+      console.log('Creating checkout session...');
+      const result = await initiateCheckout(saloonServices, customerInfoWithUserId, authToken || undefined);
+      
+      if (!result.paymentIntentClientSecret) {
+        throw new Error('Maksun alustus epäonnistui');
+      }
+
+      console.log('Got payment intent, initializing payment sheet...');
+
+      // Step 2: Initialize the Payment Sheet
+      const { error: initError } = await initPaymentSheet({
+        paymentIntentClientSecret: result.paymentIntentClientSecret,
+        merchantDisplayName: 'Cosmix Beauty',
+        allowsDelayedPaymentMethods: false,
+        customFlow: false, // Explicitly set to avoid native crashes
+        defaultBillingDetails: {
+          name: customerInfo.name,
+          email: customerInfo.email,
+          phone: customerInfo.phone,
+        },
+      });
+
+      if (initError) {
+        console.error('Error initializing payment sheet:', initError);
+        throw new Error(initError.message || 'Maksulomakkeen alustus epäonnistui');
+      }
+
+      console.log('Payment sheet initialized, presenting...');
+
+      // Step 3: Present the Payment Sheet
+      const { error: paymentError } = await presentPaymentSheet();
+
+      if (paymentError) {
+        if (paymentError.code === 'Canceled') {
+          console.log('Payment canceled by user');
+          setIsLoading(false);
+          return;
+        }
+        console.error('Payment failed:', paymentError);
+        throw new Error(paymentError.message || 'Maksu epäonnistui');
+      }
+
+      // Step 4: Payment successful - confirm the booking
+      console.log('Payment successful, confirming booking...');
+      
+      const confirmResult = await confirmBooking(
+        result.bookingIds, 
+        result.paymentIntentClientSecret.split('_secret_')[0],
+        authToken || undefined
+      );
+
       Alert.alert(
-        'Booking Confirmed! 🎉',
-        result.message || 'Your booking has been confirmed. You will receive a confirmation email shortly. Please remember to pay at the venue.',
+        'Varaus vahvistettu! 🎉',
+        confirmResult.message || 'Varauksesi on vahvistettu. Saat vahvistusviestin sähköpostiisi.',
         [
           {
             text: 'OK',
@@ -75,8 +130,8 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
       );
     } catch (error) {
       console.error('Checkout error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
-      Alert.alert('Booking Failed', errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'Odottamaton virhe tapahtui';
+      Alert.alert('Varaus epäonnistui', errorMessage);
       onError?.(error instanceof Error ? error : new Error(errorMessage));
     } finally {
       setIsLoading(false);
@@ -105,7 +160,7 @@ const CheckoutButtonInner: React.FC<CheckoutButtonProps> = ({
           <>
             <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
             <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 18 }}>
-            Vahvistetaan aikataulua...
+              Käsitellään maksua...
             </Text>
           </>
         ) : (

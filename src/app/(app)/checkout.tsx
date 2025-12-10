@@ -12,49 +12,6 @@ import Header from '../components/Header';
 import SideMenu from '../components/SideMenu';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 
-// Mock data - replace with your actual data
-const mockSaloonServices: SaloonService[] = [
-  {
-    saloonId: 'saloon-1',
-    serviceId: 'service-1',
-    price: 50.00,
-    durationMinutes: 60,
-    isAvailable: true,
-    saloon: {
-      id: 'saloon-1',
-      name: 'Beauty Salon',
-      userId: 'user-1',
-      rating: 4.5,
-    },
-    service: {
-      id: 'service-1',
-      name: 'Hair Cut & Style',
-      description: 'Professional hair cutting and styling',
-      categoryId: 'cat-1',
-      isPopular: true,
-    }
-  },
-  {
-    saloonId: 'saloon-1',
-    serviceId: 'service-2',
-    price: 30.00,
-    durationMinutes: 30,
-    isAvailable: true,
-    saloon: {
-      id: 'saloon-1',
-      name: 'Beauty Salon',
-      userId: 'user-1',
-      rating: 4.5,
-    },
-    service: {
-      id: 'service-2',
-      name: 'Manicure',
-      description: 'Professional nail care',
-      categoryId: 'cat-1',
-      isPopular: false,
-    }
-  }
-];
 
 export default function CheckoutScreen() {
   const router = useRouter();
@@ -198,15 +155,53 @@ export default function CheckoutScreen() {
 
   // No auto-resume; user explicitly taps the button to open the calendar
 
-  // Use the selected saloon service or fallback to mock data
-  const servicesToDisplay = saloonService ? [saloonService] : mockSaloonServices;
+  // Use the selected saloon service - no mock data, require real service
+  const servicesToDisplay = saloonService ? [saloonService] : [];
   const totalPrice = servicesToDisplay.reduce((sum, service) => sum + service.price, 0);
   const totalDuration = servicesToDisplay.reduce((sum, service) => sum + service.durationMinutes, 0);
 
   // Check if all customer info is filled from Clerk profile
   const isCustomerInfoComplete = customerInfo.name && customerInfo.email;
 
-  // Allow rendering even without params; fallback services are used
+  // Show error if no service is selected
+  if (!saloonService) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
+        <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <Ionicons name="alert-circle-outline" size={64} color="#423120" style={{ marginBottom: 16, opacity: 0.5 }} />
+          <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#423120', textAlign: 'center', marginBottom: 8 }}>
+            Palvelua ei valittu
+          </Text>
+          <Text style={{ fontSize: 14, fontFamily: 'Philosopher-Regular', color: '#423120', opacity: 0.7, textAlign: 'center', marginBottom: 24 }}>
+            Valitse palvelu jatkaaksesi varausta
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{
+              backgroundColor: '#423120',
+              paddingVertical: 12,
+              paddingHorizontal: 24,
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ fontSize: 16, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
+              Takaisin palveluihin
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <Modal
+          animationType="slide"
+          transparent={false}
+          visible={isMenuVisible}
+          onRequestClose={() => setMenuVisible(false)}
+          statusBarTranslucent={true}
+        >
+          <SideMenu onClose={() => setMenuVisible(false)} />
+        </Modal>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
