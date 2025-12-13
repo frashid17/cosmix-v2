@@ -10,6 +10,8 @@ const getCategories = async (): Promise<Category[]> => {
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
+                // Bearer key for admin API (public endpoint still expects it due to middleware)
+                'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
             },
         });
         

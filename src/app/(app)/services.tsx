@@ -32,6 +32,8 @@ export default function ServicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [dynamicCategoryName, setDynamicCategoryName] = useState<string>('');
   const [isMenuVisible, setMenuVisible] = useState(false);
+  const formatDescription = (text?: string) =>
+    text ? text.replace(/\s+/g, " ").trim() : "";
   
   // Store pricing info for salon services (serviceId -> { price, durationMinutes })
   const [salonServicePricing, setSalonServicePricing] = useState<Map<string, { price: number; durationMinutes: number }>>(new Map());
@@ -424,7 +426,8 @@ export default function ServicesPage() {
                 borderWidth: 3,
                 borderColor: lightBrown,
                 width: 330,
-                minHeight: subService.description ? 120 : 84,
+                // Keep name-only boxes as-is; normalize description cards to a consistent height
+                minHeight: subService.description ? 100 : 84,
                 justifyContent: "center",
                 alignSelf: "center",
                 paddingVertical: 12,
@@ -443,7 +446,7 @@ export default function ServicesPage() {
                     {subService.name}
                   </Text>
                   
-                  {subService.description && (
+                                {subService.description && (
                     <Text
                       style={{
                         fontSize: 15,
@@ -455,7 +458,7 @@ export default function ServicesPage() {
                       }}
                       numberOfLines={4}
                     >
-                      {subService.description}
+                      {formatDescription(subService.description)}
                     </Text>
                   )}
                 </View>
@@ -1099,7 +1102,7 @@ export default function ServicesPage() {
                               borderWidth: 3,
                               borderColor: lightBrown,
                               width: 330,
-                              minHeight: subService.description ? 120 : 84,
+                              minHeight: subService.description ? 140 : 84,
                               justifyContent: "center",
                               marginBottom: 12,
                               alignSelf: "center",
@@ -1133,7 +1136,7 @@ export default function ServicesPage() {
                                     }}
                                     numberOfLines={4}
                                   >
-                                    {subService.description}
+                                        {formatDescription(subService.description)}
                                   </Text>
                                 )}
                                 
@@ -1168,7 +1171,7 @@ export default function ServicesPage() {
                             borderWidth: 3,
                             borderColor: lightBrown,
                             width: 330,
-                            minHeight: service.description ? 120 : 84,
+                            minHeight: service.description ? 140 : 84,
                             justifyContent: "center",
                             marginBottom: 12,
                             alignSelf: "center",
@@ -1202,7 +1205,7 @@ export default function ServicesPage() {
                                   }}
                                   numberOfLines={4}
                                 >
-                                  {service.description}
+                                  {formatDescription(service.description)}
                                 </Text>
                               )}
                               

@@ -1,6 +1,6 @@
 // src/app/(app)/saloons.tsx
-import React, { useState, useEffect } from "react";
-import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import getSaloonsByService, { SaloonData } from "../actions/get-saloons-by-service";
@@ -11,6 +11,103 @@ import SideMenu from "../components/SideMenu";
 const darkBrown = "#3C2C1E";
 const beige = "#D9C7AF";
 const lightBeige = "#E4D2BA";
+
+// Auto-swipe image carousel component
+const SaloonImageCarousel = ({ images, saloonName }: { images: string[], saloonName: string }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+        if (images.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % images.length);
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [images.length]);
+
+    if (images.length === 0) {
+        return (
+            <View
+                style={{
+                    width: 310,
+                    height: 200,
+                    backgroundColor: lightBeige,
+                    borderRadius: 24,
+                    position: "absolute",
+                    zIndex: 10,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    overflow: "hidden"
+                }}
+            >
+                <Ionicons name="business-outline" size={48} color={darkBrown} />
+                <Text style={{
+                    color: darkBrown,
+                    fontFamily: "Philosopher-Regular",
+                    marginTop: 8,
+                    fontSize: 14
+                }}>
+                    {saloonName}
+                </Text>
+            </View>
+        );
+    }
+
+    return (
+        <View
+            style={{
+                width: 310,
+                height: 200,
+                backgroundColor: lightBeige,
+                borderRadius: 24,
+                position: "absolute",
+                zIndex: 10,
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "hidden"
+            }}
+        >
+            {images.map((img, index) => (
+                <Image
+                    key={index}
+                    source={{ uri: img }}
+                    style={{
+                        width: "100%",
+                        height: "100%",
+                        borderRadius: 24,
+                        position: "absolute",
+                        opacity: index === currentIndex ? 1 : 0
+                    }}
+                    resizeMode="cover"
+                />
+            ))}
+
+            {/* Dot indicators for multiple images */}
+            {images.length > 1 && (
+                <View style={{
+                    position: "absolute",
+                    bottom: 10,
+                    flexDirection: "row",
+                    gap: 6,
+                    zIndex: 20
+                }}>
+                    {images.map((_, index) => (
+                        <View
+                            key={index}
+                            style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: index === currentIndex ? "white" : "rgba(255,255,255,0.5)"
+                            }}
+                        />
+                    ))}
+                </View>
+            )}
+        </View>
+    );
+};
 
 const Saloons = () => {
     const router = useRouter();
@@ -41,7 +138,7 @@ const Saloons = () => {
             try {
                 setLoading(true);
                 setError(null);
-                
+
                 // If coming from filtered services (has salonId), fetch only that specific salon
                 if (salonId) {
                     const data = await getSalonById(salonId, serviceId);
@@ -113,12 +210,12 @@ const Saloons = () => {
                         }}
                         resizeMode="contain"
                     />
-                    
+
                     {/* White Box - Centered */}
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <View
-                            style={{ 
-                                width: 300, 
+                            style={{
+                                width: 300,
                                 height: 195,
                                 backgroundColor: "white",
                                 borderRadius: 24,
@@ -144,23 +241,23 @@ const Saloons = () => {
                             </Text>
 
                             {/* Ellipses at bottom */}
-                            <View style={{ 
-                                position: "absolute", 
-                                bottom: 16, 
-                                flexDirection: "row" 
+                            <View style={{
+                                position: "absolute",
+                                bottom: 16,
+                                flexDirection: "row"
                             }}>
                                 <View
-                                    style={{ 
-                                        width: 11, 
+                                    style={{
+                                        width: 11,
                                         height: 11,
                                         backgroundColor: darkBrown,
                                         borderRadius: 5.5
                                     }}
                                 />
                                 <View
-                                    style={{ 
-                                        width: 11, 
-                                        height: 11, 
+                                    style={{
+                                        width: 11,
+                                        height: 11,
                                         marginLeft: 5,
                                         backgroundColor: darkBrown,
                                         borderRadius: 5.5
@@ -231,15 +328,15 @@ const Saloons = () => {
                     <>
                         {saloons.length > 0 ? (
                             saloons.map((saloon) => (
-                                <TouchableOpacity 
-                                    key={saloon.id} 
+                                <TouchableOpacity
+                                    key={saloon.id}
                                     style={{ alignItems: "center", marginTop: 24, position: "relative" }}
                                     onPress={() => {
                                         console.log(`Selected saloon: ${saloon.name} (ID: ${saloon.id})`);
                                         // Navigate to checkout with the selected saloon service
                                         router.push({
                                             pathname: "/(app)/checkout",
-                                            params: { 
+                                            params: {
                                                 saloonId: saloon.id,
                                                 saloonName: saloon.name,
                                                 serviceId: serviceId,
@@ -251,69 +348,19 @@ const Saloons = () => {
                                         });
                                     }}
                                 >
-                                    {/* First Box - Top Box (327x300) - Salon Picture */}
-                                    <View
-                                        style={{ 
-                                            width: 310, 
-                                            height: 200,
-                                            backgroundColor: lightBeige,
-                                            borderRadius: 24,
-                                            position: "absolute",
-                                            zIndex: 10,
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            overflow: "hidden"
-                                        }}
-                                    >
-                                        {saloon.imageUrl ? (
-                                            <Image
-                                                source={{ uri: saloon.imageUrl }}
-                                                style={{
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    borderRadius: 24
-                                                }}
-                                                resizeMode="cover"
-                                            />
-                                        ) : saloon.images && saloon.images.length > 0 ? (
-                                            <Image
-                                                source={{ uri: saloon.images[0] }}
-                                                style={{
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    borderRadius: 24
-                                                }}
-                                                resizeMode="cover"
-                                            />
-                                        ) : (
-                                            <View style={{
-                                                width: "100%",
-                                                height: "100%",
-                                                backgroundColor: lightBeige,
-                                                borderRadius: 24,
-                                                alignItems: "center",
-                                                justifyContent: "center"
-                                            }}>
-                                                <Ionicons name="business-outline" size={48} color={darkBrown} />
-                                                <Text style={{ 
-                                                    color: darkBrown, 
-                                                    fontFamily: "Philosopher-Regular",
-                                                    marginTop: 8,
-                                                    fontSize: 14
-                                                }}>
-                                                    {saloon.name}
-                                                </Text>
-                                            </View>
-                                        )}
-                                    </View>
+                                    {/* First Box - Top Box - Salon Picture with Auto-Swipe */}
+                                    <SaloonImageCarousel
+                                        images={saloon.images || (saloon.imageUrl ? [saloon.imageUrl] : [])}
+                                        saloonName={saloon.name}
+                                    />
 
                                     {/* Second Box - Bottom Box (327x200) - Salon Info */}
                                     <View
-                                        style={{ 
-                                            width: 310, 
-                                            height: 190, 
-                                            marginTop: 140, 
-                                            borderWidth: 2, 
+                                        style={{
+                                            width: 310,
+                                            height: 190,
+                                            marginTop: 140,
+                                            borderWidth: 2,
                                             borderColor: '#D7C3A7',
                                             backgroundColor: "white",
                                             borderRadius: 24,
@@ -335,10 +382,10 @@ const Saloons = () => {
                                                 </Text>
                                             </View>
 
-                                            <View style={{ 
-                                                borderBottomWidth: 1, 
-                                                marginTop: 8, 
-                                                borderBottomColor: beige 
+                                            <View style={{
+                                                borderBottomWidth: 2,
+                                                marginTop: 8,
+                                                borderBottomColor: beige
                                             }} />
 
                                             <View style={{ paddingHorizontal: 16 }}>
@@ -363,11 +410,11 @@ const Saloons = () => {
                                                     Price {saloon.price}€
                                                 </Text>
 
-                                                <View style={{ 
-                                                    flexDirection: "row", 
-                                                    alignItems: "center", 
-                                                    justifyContent: "space-between", 
-                                                    marginTop: 8 
+                                                <View style={{
+                                                    flexDirection: "row",
+                                                    alignItems: "center",
+                                                    justifyContent: "space-between",
+                                                    marginTop: 8
                                                 }}>
                                                     <Text
                                                         style={{
@@ -425,7 +472,7 @@ const Saloons = () => {
                                         opacity: 0.6,
                                     }}
                                 >
-                            Ei salonkeja tällä hetkellä tarjoa {serviceName}
+                                    Ei salonkeja tällä hetkellä tarjoa {serviceName}
                                 </Text>
                             </View>
                         )}

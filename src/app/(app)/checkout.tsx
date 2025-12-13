@@ -10,6 +10,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import BookingCalendar from '../components/BookingCalendar';
 import Header from '../components/Header';
 import SideMenu from '../components/SideMenu';
+import ReviewsSection from '../components/ReviewsSection';
 import { useAuth, useUser } from '@clerk/clerk-expo';
 
 
@@ -88,7 +89,7 @@ export default function CheckoutScreen() {
   useEffect(() => {
     const pDate = typeof params.date === 'string' && params.date.length > 0 ? params.date : null;
     const pTime = typeof params.time === 'string' && params.time.length > 0 ? params.time : null;
-    
+
     // Only update from params if local state is empty (preserve user's current selection)
     if (pDate && !selectedBookingDate) {
       setSelectedBookingDate(pDate);
@@ -96,7 +97,7 @@ export default function CheckoutScreen() {
     if (pTime && !selectedBookingTime) {
       setSelectedBookingTime(pTime);
     }
-    
+
     // Update customerInfo bookingTime if we have both date and time from params
     if (pDate && pTime && (!selectedBookingDate || !selectedBookingTime)) {
       const bookingDateTime = new Date(`${pDate}T${pTime}:00`);
@@ -394,34 +395,9 @@ export default function CheckoutScreen() {
             )}
           </View>
 
-          {/* Show selected appointment info */}
-          {selectedBookingDate && selectedBookingTime && (
-            <View style={{
-              marginBottom: 20,
-              padding: 16,
-              backgroundColor: '#D7C3A7',
-              borderRadius: 12,
-              borderWidth: 1,
-              borderColor: '#D4AF37'
-            }}>
-              <Text style={{
-                fontSize: 16,
-                fontFamily: 'Philosopher-Bold',
-                color: '#3C2C1E',
-                marginBottom: 8,
-                textAlign: 'center'
-              }}>
-                Valittu tapaaminen
-              </Text>
-              <Text style={{
-                fontSize: 14,
-                fontFamily: 'Philosopher-Regular',
-                color: '#3C2C1E',
-                textAlign: 'center'
-              }}>
-                {new Date(selectedBookingDate).toLocaleDateString()} at {selectedBookingTime}
-              </Text>
-            </View>
+          {/* Reviews Section */}
+          {params.saloonId && (
+            <ReviewsSection saloonId={params.saloonId} />
           )}
         </View>
       </ScrollView>

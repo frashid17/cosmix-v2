@@ -67,7 +67,11 @@ export default function SideMenu({ onClose }: SideMenuProps) {
       label: "Yrittäjille",
       onPress: () => {
         onClose();
-        router.push('/admin-webview');
+        if (isSignedIn) {
+          router.push('/admin-webview');
+        } else {
+          router.push('/sign-in?redirect=%2Fadmin-webview');
+        }
       }
     },
     { label: "Usein kysytyt kysymykset", onPress: () => { onClose(); router.push('/info?tab=faq'); } },

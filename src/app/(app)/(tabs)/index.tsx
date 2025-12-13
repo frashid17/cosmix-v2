@@ -4,19 +4,34 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import SideMenu from '../../components/SideMenu';
+import RatingPromptModal from '../../components/RatingPromptModal';
 import getCategories from '../../actions/get-categories';
-import { Category } from '../../types';
+import { getBookings } from '../../actions/get-bookings';
+import { Category, Booking } from '../../types';
 import Header from "../../components/Header";
+import { useAuth, useUser } from "@clerk/clerk-expo";
+import { API_ENDPOINTS } from "../../../../config/constants";
+
+const DISMISSED_RATINGS_KEY = '@cosmix_dismissed_rating_bookings';
 
 export default function Page() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isSignedIn } = useAuth();
+  const { user } = useUser();
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [heroText, setHeroText] = useState("Palvelut nyt!");
+
+  // Rating prompt modal state
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [pendingRatingBooking, setPendingRatingBooking] = useState<Booking | null>(null);
+  const [ratingServiceName, setRatingServiceName] = useState("");
+  const [ratingSalonName, setRatingSalonName] = useState("");
 
   // New color scheme based on provided HEX codes
   const darkBrown = "#423120";
@@ -25,6 +40,108 @@ export default function Page() {
   const white = "#FFFFFF";
 
   const [randomCategories, setRandomCategories] = useState<Category[]>([]);
+
+  // Helper to get service name from booking
+  const getServiceName = (b: Booking) => {
+    const anyB = b as any;
+    return (
+      anyB.subService?.name ||
+      anyB.service?.subService?.name ||
+      anyB.service?.name ||
+      anyB.subServiceName ||
+      anyB.serviceName ||
+      "Palvelu"
+    );
+  };
+
+  // Helper to get salon name from booking
+  const getSalonName = async (b: Booking): Promise<string> => {
+    const anyB = b as any;
+    const directName = anyB.salon?.name || anyB.saloon?.name || anyB.salonName || anyB.saloonName;
+    if (directName) return directName;
+
+    // Fetch salon name if not available
+    if (anyB.saloonId) {
+      try {
+        const response = await fetch(`${API_ENDPOINTS.SALONS}/${anyB.saloonId}`);
+        if (response.ok) {
+          const salon = await response.json();
+          return salon.name || "Salon";
+        }
+      } catch (error) {
+        console.error("Error fetching salon details:", error);
+      }
+    }
+    return "Salon";
+  };
+
+  // Check for unrated bookings on mount (auto rating popup)
+  useEffect(() => {
+    const checkUnratedBookings = async () => {
+      if (!isSignedIn || !user) return;
+
+      try {
+        const userId = user.id;
+        const userEmail = user.primaryEmailAddress?.emailAddress;
+
+        // Fetch user's bookings
+        const bookings = await getBookings(undefined, userId, userEmail);
+
+        // Filter for completed bookings without reviews
+        const unratedBookings = bookings.filter(
+          (b) => b.status === 'completed' && !b.hasReview
+        );
+
+        if (unratedBookings.length === 0) return;
+
+        // Get dismissed booking IDs from storage
+        const dismissedJson = await AsyncStorage.getItem(DISMISSED_RATINGS_KEY);
+        const dismissedIds: string[] = dismissedJson ? JSON.parse(dismissedJson) : [];
+
+        // Find first unrated booking that hasn't been dismissed
+        const bookingToRate = unratedBookings.find((b) => !dismissedIds.includes(b.id));
+
+        if (bookingToRate) {
+          const serviceName = getServiceName(bookingToRate);
+          const salonName = await getSalonName(bookingToRate);
+
+          setPendingRatingBooking(bookingToRate);
+          setRatingServiceName(serviceName);
+          setRatingSalonName(salonName);
+          setRatingModalVisible(true);
+        }
+      } catch (error) {
+        console.error("Error checking unrated bookings:", error);
+      }
+    };
+
+    // Small delay to let the app load first
+    const timer = setTimeout(checkUnratedBookings, 1500);
+    return () => clearTimeout(timer);
+  }, [isSignedIn, user]);
+
+  // Handle rating modal close (dismiss booking)
+  const handleRatingClose = async () => {
+    if (pendingRatingBooking) {
+      try {
+        // Store dismissed booking ID
+        const dismissedJson = await AsyncStorage.getItem(DISMISSED_RATINGS_KEY);
+        const dismissedIds: string[] = dismissedJson ? JSON.parse(dismissedJson) : [];
+        dismissedIds.push(pendingRatingBooking.id);
+        await AsyncStorage.setItem(DISMISSED_RATINGS_KEY, JSON.stringify(dismissedIds));
+      } catch (error) {
+        console.error("Error saving dismissed rating:", error);
+      }
+    }
+    setRatingModalVisible(false);
+    setPendingRatingBooking(null);
+  };
+
+  // Handle rating submitted
+  const handleRatingSubmitted = () => {
+    setRatingModalVisible(false);
+    setPendingRatingBooking(null);
+  };
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -443,7 +560,13 @@ export default function Page() {
                 justifyContent: "center",
                 alignItems: "center",
               }}
-              onPress={() => router.push("/admin-webview")}
+              onPress={() => {
+                if (isSignedIn) {
+                  router.push("/admin-webview");
+                } else {
+                  router.push("/sign-in?redirect=%2Fadmin-webview");
+                }
+              }}
               activeOpacity={0.8}
             >
               <Text style={{ color: darkBrown, fontSize: 25, fontFamily: "Philosopher-Bold", textAlign: "center" }}>
@@ -528,6 +651,16 @@ export default function Page() {
       >
         <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
+
+      {/* Rating Prompt Modal - auto shows for unrated completed bookings */}
+      <RatingPromptModal
+        visible={ratingModalVisible}
+        booking={pendingRatingBooking}
+        serviceName={ratingServiceName}
+        salonName={ratingSalonName}
+        onClose={handleRatingClose}
+        onRatingSubmitted={handleRatingSubmitted}
+      />
     </SafeAreaView>
   );
 }

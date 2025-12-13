@@ -10,6 +10,9 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { getBookings } from "../actions/get-bookings";
 import { Booking } from "../types";
@@ -53,13 +56,13 @@ function getServiceName(b: Booking) {
 }
 function getSalonName(b: Booking, salonNames: Record<string, string>) {
   const anyB = b as any;
-  
+
   // First try to get from fetched salon names
   if (anyB.saloonId && salonNames[anyB.saloonId]) {
     console.log("Using fetched salon name:", salonNames[anyB.saloonId]);
     return salonNames[anyB.saloonId];
   }
-  
+
   // Fallback to direct fields
   const salonName = (
     anyB.salon?.name ||
@@ -68,7 +71,7 @@ function getSalonName(b: Booking, salonNames: Record<string, string>) {
     anyB.saloonName ||
     "Salon"
   );
-  
+
   console.log("Extracted salon name:", salonName);
   return salonName;
 }
@@ -81,13 +84,14 @@ export default function BookingsScreen() {
   const { user } = useUser();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ view?: string }>();
-  
+
   // Rating modal state
   const [ratingModalVisible, setRatingModalVisible] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedRating, setSelectedRating] = useState(0);
   const [submittingRating, setSubmittingRating] = useState(false);
-  
+  const [reviewComment, setReviewComment] = useState("");
+
   // Determine which view to show: 'upcoming', 'past', or 'all' (default)
   const viewMode = params.view || 'all';
 
@@ -96,7 +100,7 @@ export default function BookingsScreen() {
     (b) => b.status === 'pending' || b.status === 'confirmed'
   );
   const pastBookings = bookings.filter((b) => b.status === 'completed');
-  
+
   // Get the title based on view mode
   const getTitle = () => {
     switch (viewMode) {
@@ -117,15 +121,15 @@ export default function BookingsScreen() {
       // Clerk uses user.id, not user.$id
       const userId = user?.id;
       const userEmail = user?.primaryEmailAddress?.emailAddress;
-      
+
       console.log("Fetching bookings for user");
       console.log("User ID:", userId);
       console.log("User Email:", userEmail);
-      
+
       const data = await getBookings(undefined, userId, userEmail);
       console.log("Bookings data received:", data);
       setBookings(data);
-      
+
       // Fetch salon names for each booking
       const salonNamePromises = data.map(async (booking: any) => {
         if (booking.saloonId && !salonNames[booking.saloonId]) {
@@ -134,7 +138,7 @@ export default function BookingsScreen() {
         }
         return null;
       });
-      
+
       const salonResults = await Promise.all(salonNamePromises);
       const newSalonNames: Record<string, string> = {};
       salonResults.forEach(result => {
@@ -142,7 +146,7 @@ export default function BookingsScreen() {
           newSalonNames[result.salonId] = result.salonName;
         }
       });
-      
+
       if (Object.keys(newSalonNames).length > 0) {
         setSalonNames(prev => ({ ...prev, ...newSalonNames }));
       }
@@ -188,12 +192,12 @@ export default function BookingsScreen() {
 
   const submitRating = async () => {
     if (!selectedBooking || selectedRating === 0) return;
-    
+
     setSubmittingRating(true);
     try {
       console.log(`Submitting rating ${selectedRating} for booking ${selectedBooking.id}`);
       console.log(`API URL: ${API_ENDPOINTS.REVIEWS}`);
-      
+
       const response = await fetch(API_ENDPOINTS.REVIEWS, {
         method: "POST",
         headers: {
@@ -202,6 +206,7 @@ export default function BookingsScreen() {
         body: JSON.stringify({
           bookingId: selectedBooking.id,
           rating: selectedRating,
+          comment: reviewComment.trim() || undefined,
         }),
       });
 
@@ -216,11 +221,11 @@ export default function BookingsScreen() {
 
       const result = JSON.parse(responseText);
       console.log("Rating submitted successfully:", result);
-      
+
       setRatingModalVisible(false);
       setSelectedBooking(null);
       setSelectedRating(0);
-      
+
       Alert.alert("Kiitos!", `Annoit arvosanan ${selectedRating}/5 ⭐`);
     } catch (error) {
       console.error("Error submitting rating:", error);
@@ -234,6 +239,7 @@ export default function BookingsScreen() {
     setRatingModalVisible(false);
     setSelectedBooking(null);
     setSelectedRating(0);
+    setReviewComment("");
   };
 
   if (loading) {
@@ -254,7 +260,7 @@ export default function BookingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       {/* Header */}
-      <Header 
+      <Header
         title="COSMIX"
         showBack={true}
         showMenu={true}
@@ -294,8 +300,8 @@ export default function BookingsScreen() {
             shadowRadius: 4,
             elevation: 2,
           }}>
-            <Text style={{ 
-              fontSize: 25, 
+            <Text style={{
+              fontSize: 25,
               fontFamily: "Philosopher-Bold",
               color: "#423120",
               textAlign: "center",
@@ -306,286 +312,286 @@ export default function BookingsScreen() {
           </View>
         </View>
 
-      {/* Tulevat hoidot - show only when viewMode is 'upcoming' or 'all' */}
-      {(viewMode === 'upcoming' || viewMode === 'all') && (
-        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
-          {viewMode === 'all' && (
-            <Text
-              style={{
-                fontSize: 25,
-                fontFamily: "Philosopher-Bold",
-                color: darkBrown,
-                borderBottomWidth: 1,
-                borderBottomColor: "#D9C7AF",
-                paddingBottom: 4,
-              }}
-            >
-              Tulevat hoidot
-            </Text>
-          )}
-
-          {upcomingBookings.length === 0 ? (
-            <View
-              style={{
-                marginTop: 20,
-                padding: 20,
-                borderWidth: 1,
-                borderColor: "#D9C7AF",
-                borderRadius: 12,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ 
-                color: "#666", 
-                fontSize: 15,
-                fontFamily: "Philosopher-Regular"
-              }}>
-                Ei tulevia varauksia.
+        {/* Tulevat hoidot - show only when viewMode is 'upcoming' or 'all' */}
+        {(viewMode === 'upcoming' || viewMode === 'all') && (
+          <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+            {viewMode === 'all' && (
+              <Text
+                style={{
+                  fontSize: 25,
+                  fontFamily: "Philosopher-Bold",
+                  color: darkBrown,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#D9C7AF",
+                  paddingBottom: 4,
+                }}
+              >
+                Tulevat hoidot
               </Text>
-            </View>
-          ) : (
-            <View
-              style={{
-                marginTop: 16,
-                borderWidth: 3,
-                borderColor: "#D9C7AF",
-                borderRadius: 12,
-                paddingVertical: 12,
-              }}
-            >
-               {upcomingBookings.map((b, i) => {
-                 const serviceName = getServiceName(b);
-                 const salonName = getSalonName(b, salonNames);
-                const bookingDate = new Date(b.bookingTime);
-                const dateStr = bookingDate.toLocaleDateString("fi-FI", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "numeric",
-                  year: "numeric",
-                });
-                const timeStr = bookingDate.toLocaleTimeString("fi-FI", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
+            )}
 
-                return (
-                   <View
-                     key={b.id}
-                     style={{
-                       paddingHorizontal: 16,
-                       paddingVertical: 10,
-                       flexDirection: "row",
-                       justifyContent: "space-between",
-                       alignItems: "flex-start",
-                     }}
-                   >
-                     <View style={{ flex: 1, paddingRight: 8 }}>
-                       <Text
-                         style={{
-                           fontSize: 17,
-                           fontFamily: "Philosopher-Bold",
-                           color: darkBrown,
-                           marginBottom: 4,
-                         }}
-                       >
-                         • {serviceName}
-                       </Text>
-                       <Text style={{ 
-                         color: "#666", 
-                         fontSize: 15,
-                         fontFamily: "Philosopher-Regular",
-                         marginLeft: 12
-                       }}>{dateStr}</Text>
-                       <Text style={{ 
-                         color: "#666", 
-                         fontSize: 15,
-                         fontFamily: "Philosopher-Regular",
-                         marginLeft: 12
-                       }}>
-                         klo {timeStr}
-                       </Text>
-                       <Text style={{ 
-                         color: "#666", 
-                         fontSize: 15, 
-                         marginTop: 2,
-                         fontFamily: "Philosopher-Regular",
-                         marginLeft: 12
-                       }}>
-                         {salonName} Salon
-                       </Text>
-                     </View>
+            {upcomingBookings.length === 0 ? (
+              <View
+                style={{
+                  marginTop: 20,
+                  padding: 20,
+                  borderWidth: 3,
+                  borderColor: "#D9C7AF",
+                  borderRadius: 12,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{
+                  color: "#666",
+                  fontSize: 15,
+                  fontFamily: "Philosopher-Bold"
+                }}>
+                  Ei tulevia varauksia.
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={{
+                  marginTop: 16,
+                  borderWidth: 3,
+                  borderColor: "#D9C7AF",
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                }}
+              >
+                {upcomingBookings.map((b, i) => {
+                  const serviceName = getServiceName(b);
+                  const salonName = getSalonName(b, salonNames);
+                  const bookingDate = new Date(b.bookingTime);
+                  const dateStr = bookingDate.toLocaleDateString("fi-FI", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "numeric",
+                    year: "numeric",
+                  });
+                  const timeStr = bookingDate.toLocaleTimeString("fi-FI", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
 
-                     <TouchableOpacity
-                       onPress={() => confirmCancel(b.id)}
-                       style={{
-                         backgroundColor: "#E9E2D8",
-                         borderRadius: 20,
-                         paddingHorizontal: 17,
-                         paddingVertical: 6,
-                       }}
-                       activeOpacity={0.8}
-                     >
-                       <Text
-                         style={{
-                           color: darkBrown,
-                           fontFamily: "Philosopher-Bold",
-                           fontSize: 15,
-                           textTransform: "lowercase",
-                         }}
-                       >
-                         peru
-                       </Text>
-                     </TouchableOpacity>
-                   </View>
-                );
-              })}
-            </View>
-          )}
-        </View>
-      )}
+                  return (
+                    <View
+                      key={b.id}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text
+                          style={{
+                            fontSize: 17,
+                            fontFamily: "Philosopher-Bold",
+                            color: darkBrown,
+                            marginBottom: 4,
+                          }}
+                        >
+                          • {serviceName}
+                        </Text>
+                        <Text style={{
+                          color: "#666",
+                          fontSize: 15,
+                          fontFamily: "Philosopher-Regular",
+                          marginLeft: 12
+                        }}>{dateStr}</Text>
+                        <Text style={{
+                          color: "#666",
+                          fontSize: 15,
+                          fontFamily: "Philosopher-Regular",
+                          marginLeft: 12
+                        }}>
+                          klo {timeStr}
+                        </Text>
+                        <Text style={{
+                          color: "#666",
+                          fontSize: 15,
+                          marginTop: 2,
+                          fontFamily: "Philosopher-Regular",
+                          marginLeft: 12
+                        }}>
+                          {salonName} Salon
+                        </Text>
+                      </View>
 
-      {/* Menneet hoidot (Past treatments) - show only when viewMode is 'past' or 'all' */}
-      {(viewMode === 'past' || viewMode === 'all') && (
-        <View style={{ marginTop: 32, paddingHorizontal: 20 }}>
-          {viewMode === 'all' && (
-            <Text
-              style={{
-                fontSize: 25,
-                fontFamily: "Philosopher-Bold",
-                color: darkBrown,
-                borderBottomWidth: 1,
-                borderBottomColor: "#D9C7AF",
-                paddingBottom: 4,
-              }}
-            >
-              Menneet hoidot
-            </Text>
-          )}
+                      <TouchableOpacity
+                        onPress={() => confirmCancel(b.id)}
+                        style={{
+                          backgroundColor: "#E9E2D8",
+                          borderRadius: 20,
+                          paddingHorizontal: 17,
+                          paddingVertical: 6,
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text
+                          style={{
+                            color: darkBrown,
+                            fontFamily: "Philosopher-Bold",
+                            fontSize: 15,
+                            textTransform: "lowercase",
+                          }}
+                        >
+                          peru
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
 
-          {pastBookings.length === 0 ? (
-            <View
-              style={{
-                marginTop: 20,
-                padding: 20,
-                borderWidth: 1,
-                borderColor: "#D9C7AF",
-                borderRadius: 12,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ 
-                color: "#666", 
-                fontSize: 15,
-                fontFamily: "Philosopher-Regular"
-              }}>
-                Ei menneitä hoitoja.
+        {/* Menneet hoidot (Past treatments) - show only when viewMode is 'past' or 'all' */}
+        {(viewMode === 'past' || viewMode === 'all') && (
+          <View style={{ marginTop: 32, paddingHorizontal: 20 }}>
+            {viewMode === 'all' && (
+              <Text
+                style={{
+                  fontSize: 25,
+                  fontFamily: "Philosopher-Bold",
+                  color: darkBrown,
+                  borderBottomWidth: 1,
+                  borderBottomColor: "#D9C7AF",
+                  paddingBottom: 4,
+                }}
+              >
+                Menneet hoidot
               </Text>
-            </View>
-          ) : (
-            <View
-              style={{
-                marginTop: 16,
-                borderWidth: 3,
-                borderColor: "#D9C7AF",
-                borderRadius: 12,
-                paddingVertical: 12,
-              }}
-            >
-               {pastBookings.map((b, i) => {
-                 const serviceName = getServiceName(b);
-                 const salonName = getSalonName(b, salonNames);
-                const bookingDate = new Date(b.bookingTime);
-                const dateStr = bookingDate.toLocaleDateString("fi-FI", {
-                  weekday: "short",
-                  day: "numeric",
-                  month: "numeric",
-                  year: "numeric",
-                });
-                const timeStr = bookingDate.toLocaleTimeString("fi-FI", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
+            )}
 
-                return (
-                   <View
-                     key={b.id}
-                     style={{
-                       paddingHorizontal: 16,
-                       paddingVertical: 10,
-                       flexDirection: "row",
-                       justifyContent: "space-between",
-                       alignItems: "flex-start",
-                     }}
-                   >
-                     <View style={{ flex: 1, paddingRight: 8 }}>
-                       <Text
-                         style={{
-                           fontSize: 17,
-                           fontFamily: "Philosopher-Bold",
-                           color: darkBrown,
-                           marginBottom: 4,
-                         }}
-                       >
-                         • {serviceName}
-                       </Text>
-                       <Text style={{ 
-                         color: "#666", 
-                         fontSize: 15,
-                         fontFamily: "Philosopher-Regular",
-                         marginLeft: 12
-                       }}>{dateStr}</Text>
-                       <Text style={{ 
-                         color: "#666", 
-                         fontSize: 15,
-                         fontFamily: "Philosopher-Regular",
-                         marginLeft: 12
-                       }}>
-                         klo {timeStr}
-                       </Text>
-                       <Text style={{ 
-                         color: "#666", 
-                         fontSize: 15, 
-                         marginTop: 2,
-                         fontFamily: "Philosopher-Regular",
-                         marginLeft: 12
-                       }}>
-                         {salonName} Salon
-                       </Text>
-                     </View>
+            {pastBookings.length === 0 ? (
+              <View
+                style={{
+                  marginTop: 20,
+                  padding: 20,
+                  borderWidth: 2,
+                  borderColor: "#D9C7AF",
+                  borderRadius: 12,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{
+                  color: "#666",
+                  fontSize: 15,
+                  fontFamily: "Philosopher-Bold"
+                }}>
+                  Ei menneitä hoitoja.
+                </Text>
+              </View>
+            ) : (
+              <View
+                style={{
+                  marginTop: 16,
+                  borderWidth: 3,
+                  borderColor: "#D9C7AF",
+                  borderRadius: 12,
+                  paddingVertical: 12,
+                }}
+              >
+                {pastBookings.map((b, i) => {
+                  const serviceName = getServiceName(b);
+                  const salonName = getSalonName(b, salonNames);
+                  const bookingDate = new Date(b.bookingTime);
+                  const dateStr = bookingDate.toLocaleDateString("fi-FI", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "numeric",
+                    year: "numeric",
+                  });
+                  const timeStr = bookingDate.toLocaleTimeString("fi-FI", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
 
-                     <TouchableOpacity
-                       onPress={() => handleRating(b)}
-                       style={{
-                         backgroundColor: beige,
-                         borderRadius: 20,
-                         paddingHorizontal: 14,
-                         paddingVertical: 6,
-                         flexDirection: "row",
-                         alignItems: "center",
-                         borderWidth: 1,
-                         borderColor: darkBrown,
-                       }}
-                       activeOpacity={0.8}
-                     >
-                       <Ionicons name="star" size={14} color={darkBrown} style={{ marginRight: 4 }} />
-                       <Text
-                         style={{
-                           color: darkBrown,
-                           fontFamily: "Philosopher-Bold",
-                           fontSize: 14,
-                         }}
-                       >
-                         arvostele
-                       </Text>
-                     </TouchableOpacity>
-                   </View>
-                );
-              })}
-            </View>
-          )}
-        </View>
-      )}
-    </ScrollView>
+                  return (
+                    <View
+                      key={b.id}
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <View style={{ flex: 1, paddingRight: 8 }}>
+                        <Text
+                          style={{
+                            fontSize: 17,
+                            fontFamily: "Philosopher-Bold",
+                            color: darkBrown,
+                            marginBottom: 4,
+                          }}
+                        >
+                          • {serviceName}
+                        </Text>
+                        <Text style={{
+                          color: "#666",
+                          fontSize: 15,
+                          fontFamily: "Philosopher-Regular",
+                          marginLeft: 12
+                        }}>{dateStr}</Text>
+                        <Text style={{
+                          color: "#666",
+                          fontSize: 15,
+                          fontFamily: "Philosopher-Regular",
+                          marginLeft: 12
+                        }}>
+                          klo {timeStr}
+                        </Text>
+                        <Text style={{
+                          color: "#666",
+                          fontSize: 15,
+                          marginTop: 2,
+                          fontFamily: "Philosopher-Regular",
+                          marginLeft: 12
+                        }}>
+                          {salonName} Salon
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        onPress={() => handleRating(b)}
+                        style={{
+                          backgroundColor: beige,
+                          borderRadius: 20,
+                          paddingHorizontal: 14,
+                          paddingVertical: 6,
+                          flexDirection: "row",
+                          alignItems: "center",
+                          borderWidth: 1,
+                          borderColor: darkBrown,
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="star" size={14} color={darkBrown} style={{ marginRight: 4 }} />
+                        <Text
+                          style={{
+                            color: darkBrown,
+                            fontFamily: "Philosopher-Bold",
+                            fontSize: 14,
+                          }}
+                        >
+                          arvostele
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
 
       {/* Rating Modal */}
       <Modal
@@ -594,140 +600,176 @@ export default function BookingsScreen() {
         animationType="fade"
         onRequestClose={closeRatingModal}
       >
-        <View style={{
-          flex: 1,
-          backgroundColor: "rgba(0, 0, 0, 0.5)",
-          justifyContent: "flex-end",
-        }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+        >
           <View style={{
-            backgroundColor: "white",
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingHorizontal: 24,
-            paddingTop: 24,
-            paddingBottom: insets.bottom + 24,
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            justifyContent: "flex-end",
           }}>
-            {/* Handle bar */}
             <View style={{
-              width: 40,
-              height: 4,
-              backgroundColor: "#E0CFB9",
-              borderRadius: 2,
-              alignSelf: "center",
-              marginBottom: 20,
-            }} />
-
-            {/* Title */}
-            <Text style={{
-              fontFamily: "Philosopher-Bold",
-              fontSize: 24,
-              color: darkBrown,
-              textAlign: "center",
-              marginBottom: 8,
+              backgroundColor: "white",
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingHorizontal: 24,
+              paddingTop: 24,
+              paddingBottom: insets.bottom + 24,
             }}>
-              Arvostele hoito
-            </Text>
+              {/* Handle bar */}
+              <View style={{
+                width: 40,
+                height: 4,
+                backgroundColor: "#E0CFB9",
+                borderRadius: 2,
+                alignSelf: "center",
+                marginBottom: 20,
+              }} />
 
-            {/* Service & Salon name */}
-            {selectedBooking && (
+              {/* Title */}
+              <Text style={{
+                fontFamily: "Philosopher-Bold",
+                fontSize: 24,
+                color: darkBrown,
+                textAlign: "center",
+                marginBottom: 8,
+              }}>
+                Arvostele hoito
+              </Text>
+
+              {/* Service & Salon name */}
+              {selectedBooking && (
+                <Text style={{
+                  fontFamily: "Philosopher-Regular",
+                  fontSize: 20,
+                  color: darkBrown,
+                  textAlign: "center",
+                  marginBottom: 24,
+                  opacity: 0.7,
+                }}>
+                  {getServiceName(selectedBooking)} - {getSalonName(selectedBooking, salonNames)}
+                </Text>
+              )}
+
+              {/* Star Rating */}
+              <View style={{
+                flexDirection: "row",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setSelectedRating(star)}
+                    style={{ paddingHorizontal: 8 }}
+                  >
+                    <Text style={{
+                      fontSize: 40,
+                      color: star <= selectedRating ? darkBrown : "#E0CFB9",
+                    }}>
+                      ★
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Rating description */}
               <Text style={{
                 fontFamily: "Philosopher-Regular",
                 fontSize: 20,
                 color: darkBrown,
                 textAlign: "center",
                 marginBottom: 24,
-                opacity: 0.7,
+
               }}>
-                {getServiceName(selectedBooking)} - {getSalonName(selectedBooking, salonNames)}
+                {selectedRating === 0 && "Valitse arvosana napauttamalla tähtiä"}
+                {selectedRating === 1 && "Huono kokemus 😞"}
+                {selectedRating === 2 && "Tyydyttävä 😐"}
+                {selectedRating === 3 && "Hyvä 🙂"}
+                {selectedRating === 4 && "Erittäin hyvä 😊"}
+                {selectedRating === 5 && "Erinomainen! 🤩"}
               </Text>
-            )}
 
-            {/* Star Rating */}
-            <View style={{
-              flexDirection: "row",
-              justifyContent: "center",
-              marginBottom: 16,
-            }}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity
-                  key={star}
-                  onPress={() => setSelectedRating(star)}
-                  style={{ paddingHorizontal: 8 }}
-                >
-                  <Text style={{
-                    fontSize: 40,
-                    color: star <= selectedRating ? darkBrown : "#E0CFB9",
-                  }}>
-                    ★
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Rating description */}
-            <Text style={{
-              fontFamily: "Philosopher-Regular",
-              fontSize: 20,
-              color: darkBrown,
-              textAlign: "center",
-              marginBottom: 24,
-              
-            }}>
-              {selectedRating === 0 && "Valitse arvosana napauttamalla tähtiä"}
-              {selectedRating === 1 && "Huono kokemus 😞"}
-              {selectedRating === 2 && "Tyydyttävä 😐"}
-              {selectedRating === 3 && "Hyvä 🙂"}
-              {selectedRating === 4 && "Erittäin hyvä 😊"}
-              {selectedRating === 5 && "Erinomainen! 🤩"}
-            </Text>
-
-            {/* Buttons */}
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: "#F5F5F5",
-                  paddingVertical: 16,
-                  borderRadius: 12,
-                  alignItems: "center",
-                }}
-                onPress={closeRatingModal}
-              >
+              {/* Comment Input */}
+              <View style={{ marginBottom: 24 }}>
                 <Text style={{
                   fontFamily: "Philosopher-Bold",
                   fontSize: 16,
                   color: darkBrown,
+                  marginBottom: 8,
                 }}>
-                  Peruuta
+                  Kirjoita arvostelu (valinnainen)
                 </Text>
-              </TouchableOpacity>
+                <TextInput
+                  style={{
+                    borderWidth: 1,
+                    borderColor: "#E0CFB9",
+                    borderRadius: 12,
+                    padding: 16,
+                    fontFamily: "Philosopher-Regular",
+                    fontSize: 16,
+                    color: darkBrown,
+                    minHeight: 100,
+                    textAlignVertical: "top",
+                  }}
+                  placeholder="Kerro kokemuksestasi..."
+                  placeholderTextColor="#999"
+                  multiline
+                  numberOfLines={4}
+                  value={reviewComment}
+                  onChangeText={setReviewComment}
+                />
+              </View>
 
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: selectedRating > 0 ? darkBrown : "#E0CFB9",
-                  paddingVertical: 16,
-                  borderRadius: 12,
-                  alignItems: "center",
-                }}
-                onPress={submitRating}
-                disabled={selectedRating === 0 || submittingRating}
-              >
-                {submittingRating ? (
-                  <ActivityIndicator color="white" />
-                ) : (
+              {/* Buttons */}
+              <View style={{ flexDirection: "row", gap: 12 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: "#F5F5F5",
+                    paddingVertical: 16,
+                    borderRadius: 12,
+                    alignItems: "center",
+                  }}
+                  onPress={closeRatingModal}
+                >
                   <Text style={{
                     fontFamily: "Philosopher-Bold",
                     fontSize: 16,
-                    color: "white",
+                    color: darkBrown,
                   }}>
-                    Lähetä
+                    Peruuta
                   </Text>
-                )}
-              </TouchableOpacity>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    backgroundColor: selectedRating > 0 ? darkBrown : "#E0CFB9",
+                    paddingVertical: 16,
+                    borderRadius: 12,
+                    alignItems: "center",
+                  }}
+                  onPress={submitRating}
+                  disabled={selectedRating === 0 || submittingRating}
+                >
+                  {submittingRating ? (
+                    <ActivityIndicator color="white" />
+                  ) : (
+                    <Text style={{
+                      fontFamily: "Philosopher-Bold",
+                      fontSize: 16,
+                      color: "white",
+                    }}>
+                      Lähetä
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

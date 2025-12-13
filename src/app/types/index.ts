@@ -107,6 +107,7 @@ export interface Booking {
     name: string;
     email: string;
   };
+  hasReview?: boolean;
 }
 
 // Default export to fix the warning
