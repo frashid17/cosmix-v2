@@ -2,7 +2,7 @@ node_modules
 .expo/
 .expo
 .env
-
+eas.json
 
 .DS_Store
 npm-debug.log*

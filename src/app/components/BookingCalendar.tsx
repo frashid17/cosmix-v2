@@ -165,17 +165,17 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: 20,
-          paddingVertical: 16,
-          paddingTop: Math.max(16, insets.top + 10),
+          paddingVertical: 26,
+          paddingTop: Math.max(16, insets.top + -10),
           borderBottomWidth: 1,
           borderBottomColor: '#E5DCC8',
           backgroundColor: 'white'
         }}>
-          <TouchableOpacity onPress={onClose} style={{ top: Math.max(0, insets.top - 20) }}>
-            <Ionicons name="close" size={24} color={darkBrown} />
+          <TouchableOpacity onPress={onClose} style={{ top: Math.max(0, insets.top - 60) }}>
+            <Ionicons name="close" size={40} color={darkBrown} />
           </TouchableOpacity>
 
-          <View style={{ alignItems: 'center', paddingTop: Math.max(0, insets.top - 20) }}>
+          <View style={{ alignItems: 'center', paddingTop: Math.max(0, insets.top - 100) }}>
             <Text style={{
               fontSize: 18,
               fontFamily: 'Philosopher-Bold',
@@ -419,7 +419,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
         {/* Confirm Button */}
         <View style={{
           padding: 20,
-          paddingBottom: Math.max(30, 20 + insets.bottom + 10),
+          paddingBottom: Math.max(30, 20 + insets.bottom + -22),
           backgroundColor: 'white',
           borderTopWidth: 1,
           borderTopColor: '#E5DCC8'

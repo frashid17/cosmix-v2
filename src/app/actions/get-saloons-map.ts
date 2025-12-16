@@ -1,4 +1,4 @@
-import { Salon } from '../../types/salon';
+import { Salon } from '../../../types/salon';
 import { API_BASE_URL } from '../../../config/constants';
 
 export interface MapSalonRequest {
@@ -10,13 +10,13 @@ export interface MapSalonRequest {
 export default async function getSaloonsMap(params?: MapSalonRequest): Promise<Salon[]> {
   try {
     let url = `${API_BASE_URL}/saloons/map`;
-    
+
     if (params) {
       const queryParams = new URLSearchParams();
       if (params.lat) queryParams.append('lat', params.lat.toString());
       if (params.lng) queryParams.append('lng', params.lng.toString());
       if (params.radius) queryParams.append('radius', params.radius.toString());
-      
+
       if (queryParams.toString()) {
         url += `?${queryParams.toString()}`;
       }
@@ -30,6 +30,7 @@ export default async function getSaloonsMap(params?: MapSalonRequest): Promise<S
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
       },
     });
 
@@ -44,7 +45,7 @@ export default async function getSaloonsMap(params?: MapSalonRequest): Promise<S
 
     const data = await response.json();
     console.log('Salons fetched successfully:', data.length, 'items');
-    
+
     // If no salons found nearby, try to get all salons without location filter
     if (data.length === 0 && params) {
       console.log('No nearby salons found, fetching all salons...');
@@ -54,16 +55,17 @@ export default async function getSaloonsMap(params?: MapSalonRequest): Promise<S
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
         },
       });
-      
+
       if (allResponse.ok) {
         const allData = await allResponse.json();
         console.log('All salons fetched:', allData.length, 'items');
         return allData;
       }
     }
-    
+
     return data;
   } catch (error) {
     console.error('Error fetching salons for map:', error);

@@ -40,7 +40,11 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
                 setLoading(true);
                 setError(null);
 
-                const response = await fetch(`${API_ENDPOINTS.REVIEWS}?saloonId=${saloonId}`);
+                const response = await fetch(`${API_ENDPOINTS.REVIEWS}?saloonId=${saloonId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
+                    },
+                });
 
                 if (!response.ok) {
                     throw new Error("Failed to fetch reviews");
@@ -123,7 +127,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
     }
 
     return (
-        <View style={{ marginTop: 20 }}>
+        <View style={{ marginTop: 20, marginBottom: 20 }}>
             {/* <Text style={{
                 fontSize: 20,
                 fontFamily: "Philosopher-Bold",
@@ -139,7 +143,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
                     key={review.id}
                     style={{
                         backgroundColor: "#FFFFFF",
-                        borderRadius: 12,
+                        borderRadius: 17,
                         padding: 16,
                         marginBottom: 15,
                         borderWidth: 1,
