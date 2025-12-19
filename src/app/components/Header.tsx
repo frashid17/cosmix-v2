@@ -36,7 +36,9 @@ export default function Header({
   // On Android, SafeAreaView doesn't always work, so we add padding
   // On iOS, we also add padding to ensure proper positioning
   // When disableSafeAreaPadding is true (Header is inside SafeAreaView), don't add padding
-  const topPadding = disableSafeAreaPadding ? 0 : insets.top;
+  // However, on Android, SafeAreaView often doesn't apply the top padding correctly,
+  // so we should only disable the padding on iOS to avoid the "all the way up" issue on Android.
+  const topPadding = (Platform.OS === 'ios' && disableSafeAreaPadding) ? 0 : insets.top;
 
   const handleBackPress = () => {
     if (onBackPress) {
