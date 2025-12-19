@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Alert } from "react-native";
+import React from "react";
+import { View, Text, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from "expo-font";
 import { useRouter } from "expo-router";
@@ -19,6 +20,7 @@ export default function SideMenu({ onClose }: SideMenuProps) {
   const { signOut } = useClerk();
   const { isSignedIn } = useAuth();
   const insets = useSafeAreaInsets();
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
 
   // Load all Philosopher font variants
   const [fontsLoaded] = useFonts({
@@ -30,6 +32,9 @@ export default function SideMenu({ onClose }: SideMenuProps) {
 
   // Handle sign out
   const handleSignOut = async () => {
+    if (isSigningOut) return;
+    
+    setIsSigningOut(true);
     try {
       await signOut();
       onClose();
@@ -41,6 +46,8 @@ export default function SideMenu({ onClose }: SideMenuProps) {
         'Kirjautuminen ulos epäonnistui. Yritä uudelleen.',
         [{ text: 'OK' }]
       );
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
@@ -109,25 +116,48 @@ export default function SideMenu({ onClose }: SideMenuProps) {
       </View>
 
       <View style={{ flex: 1, paddingHorizontal: 32, paddingTop: 15 }}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity
-            key={index}
-            onPress={item.onPress}
-            style={{ marginBottom: 24 }}
-          >
-            <Text
-              style={{
-                fontSize: 25,
-                fontFamily: "Philosopher-Bold",
-                textAlign: "right",
-                color: darkBrown,
-                lineHeight: 40,
-              }}
+        {menuItems.map((item, index) => {
+          const isSignOutItem = item.label === "Kirjaudu ulos";
+          const isLoading = isSignOutItem && isSigningOut;
+          
+          return (
+            <TouchableOpacity
+              key={index}
+              onPress={item.onPress}
+              disabled={isLoading}
+              style={{ marginBottom: 24, opacity: isLoading ? 0.6 : 1 }}
             >
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              {isLoading ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <ActivityIndicator size="small" color={darkBrown} style={{ marginRight: 8 }} />
+                  <Text
+                    style={{
+                      fontSize: 25,
+                      fontFamily: "Philosopher-Bold",
+                      textAlign: "right",
+                      color: darkBrown,
+                      lineHeight: 40,
+                    }}
+                  >
+                    {item.label}
+                  </Text>
+                </View>
+              ) : (
+                <Text
+                  style={{
+                    fontSize: 25,
+                    fontFamily: "Philosopher-Bold",
+                    textAlign: "right",
+                    color: darkBrown,
+                    lineHeight: 40,
+                  }}
+                >
+                  {item.label}
+                </Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );

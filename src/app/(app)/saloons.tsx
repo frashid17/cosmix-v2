@@ -233,11 +233,12 @@ const Saloons = () => {
                             <Text
                                 style={{
                                     fontFamily: "Philosopher-Bold",
-                                    fontSize: 40,
+                                    fontSize: 35,
                                     color: darkBrown,
+                                    textAlign: "center"
                                 }}
                             >
-                                {salonId ? `${serviceName || "Service"} ` : (categoryName || "Services")}
+                                {salonId ? `${serviceName || "Service"} ` : (serviceName || "Services")}
                             </Text>
 
                             {/* Ellipses at bottom */}

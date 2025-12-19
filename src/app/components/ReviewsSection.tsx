@@ -93,6 +93,19 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
         return "?";
     };
 
+    // Format date from ISO string to DD/MM/YYYY format
+    const formatDate = (dateString: string): string => {
+        try {
+            const date = new Date(dateString);
+            const day = date.getDate().toString().padStart(2, '0');
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            return `${day}/${month}/${year}`;
+        } catch (error) {
+            return '';
+        }
+    };
+
     if (loading) {
         return (
             <View style={{ padding: 24, alignItems: "center" }}>
@@ -128,17 +141,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
 
     return (
         <View style={{ marginTop: 20, marginBottom: 20 }}>
-            {/* <Text style={{
-                fontSize: 20,
-                fontFamily: "Philosopher-Bold",
-                color: darkBrown,
-                marginBottom: 16,
-                textAlign: "center",
-            }}>
-                Arvostelut ({reviews.length})
-            </Text> */}
-
-            {reviews.map((review) => (
+           {reviews.map((review) => (
                 <View
                     key={review.id}
                     style={{
@@ -178,14 +181,14 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
                             </Text>
                         </View>
 
-                        {/* Name and Verified Badge */}
+                        {/* Review Date */}
                         <View style={{ flex: 1 }}>
                             <Text style={{
                                 fontSize: 12,
-                                color: darkBrown, // Green color for verified
-                                fontFamily: "Philosopher-Regular",
+                                color: darkBrown,
+                                fontFamily: "Philosopher-Bold",
                             }}>
-                                ✓ Vahvistettu asiakas
+                                {formatDate(review.createdAt)}
                             </Text>
                         </View>
                     </View>

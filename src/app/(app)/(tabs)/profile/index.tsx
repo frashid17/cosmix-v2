@@ -9,6 +9,7 @@ import {
   StyleSheet,
   ScrollView,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { router } from "expo-router";
 import Header from "../../../components/Header";
@@ -20,6 +21,7 @@ export default function ProfilePage() {
   const { isSignedIn } = useAuth();
   const { user } = useUser();
   const [isMenuVisible, setMenuVisible] = React.useState(false);
+  const [isSigningOut, setIsSigningOut] = React.useState(false);
 
   const handleMenuPress = async (menuItem: string) => {
     switch (menuItem) {
@@ -54,12 +56,16 @@ export default function ProfilePage() {
         router.push("/sign-in");
         break;
       case "Kirjaudu ulos":
+        if (isSigningOut) return;
+        setIsSigningOut(true);
         try {
           await signOut();
           Alert.alert("Onnistui", "Olet kirjautunut ulos");
           router.replace("/");
         } catch (error) {
           Alert.alert("Virhe", "Kirjautuminen ulos epäonnistui");
+        } finally {
+          setIsSigningOut(false);
         }
         break;
     }
@@ -108,17 +114,25 @@ export default function ProfilePage() {
 
         {/* MENU */}
         <View style={styles.menuContainer}>
-          {menuItems.map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => handleMenuPress(item)}
-              style={styles.menuButton}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.menuButtonText}>{item}</Text>
-              <Ionicons name="arrow-forward" size={20} color="#423120" />
-            </TouchableOpacity>
-          ))}
+          {menuItems.map((item) => {
+            const isLoading = item === "Kirjaudu ulos" && isSigningOut;
+            return (
+              <TouchableOpacity
+                key={item}
+                onPress={() => handleMenuPress(item)}
+                style={[styles.menuButton, { opacity: isLoading ? 0.6 : 1 }]}
+                activeOpacity={0.7}
+                disabled={isLoading}
+              >
+                <Text style={styles.menuButtonText}>{item}</Text>
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#423120" />
+                ) : (
+                  <Ionicons name="arrow-forward" size={20} color="#423120" />
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Bottom Spacer */}

@@ -525,6 +525,13 @@ export default function ServicesPage() {
     
     // Show work types if service has them (for both salon and non-salon flows)
     if (hasWorkTypes) {
+      // Toggle: if clicking the same service that's already selected, close it
+      if (selectedServiceWithWorkTypes?.id === service.id) {
+        console.log('✅ Service already selected, closing work types');
+        setSelectedServiceWithWorkTypes(null);
+        return;
+      }
+      
       console.log('✅ Service has workTypes, showing work type selector');
       // Ensure workTypes is in the correct format
       const serviceWithWorkTypes = {
@@ -752,7 +759,7 @@ export default function ServicesPage() {
 
   // Karvanpoistot: sections per parent group with title, description, and two-column sub-service grid
   const renderKarvanpoistotSections = () => (
-    <View style={{ paddingHorizontal: 20, marginTop: 8 }}>
+    <View style={{ paddingHorizontal: 20, marginTop: 30 }}>
       {(groupedServices as any[]).map((g: any) => {
         const subs = (g.subServices || []).filter((s: any) => !!s?.name);
         const rows: any[] = [];
@@ -1063,8 +1070,8 @@ export default function ServicesPage() {
                   (uiVariant === 'karvanpoistot' && !salonId && subCategory ? hiuksetGroups : hiuksetGroups)
                   .map((service) => ({
                     ...service,
-                    subServices: (uiVariant === 'hiukset' && !salonId)
-                      ? filterHiuksetBySub(service.subServices || [], hiuksetSub)
+                    subServices: (uiVariant === 'hiukset' && !salonId && hiuksetSub)
+                      ? service.subServices // When hiuksetSub is set, hiuksetGroups already filtered to the correct parent, so show all subServices
                       : (uiVariant === 'karvanpoistot' && !salonId && subCategory)
                         ? (service.subServices || []).filter(svc => (svc.name || '').toLowerCase() === String(subCategory).toLowerCase())
                         : service.subServices,
@@ -1092,74 +1099,93 @@ export default function ServicesPage() {
 
                     {/* Sub Service Buttons */}
                     {service.subServices && service.subServices.length > 0 ? (
-                      service.subServices.map((subService) => (
-                        <View key={subService.id}>
-                          <TouchableOpacity
-                            activeOpacity={0.7}
-                            style={{
-                              backgroundColor: "white",
-                              borderRadius: 30,
-                              borderWidth: 3,
-                              borderColor: lightBrown,
-                              width: 330,
-                              minHeight: subService.description ? 140 : 84,
-                              justifyContent: "center",
-                              marginBottom: 12,
-                              alignSelf: "center",
-                              paddingVertical: 12,
-                              opacity: 1,
-                            }}
-                            onPress={() => handleServicePress(subService)}
-                          >
-                            <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
-                              <View style={{ flex: 1 }}>
-                                <Text
-                                  style={{
-                                    fontSize: 20,
-                                    color: darkBrown,
-                                    fontFamily: "Philosopher-Bold",
-                                  }}
-                                >
-                                  {subService.name}
-                                </Text>
-                                
-                                {/* Add description here */}
-                                {subService.description && (
+                      <>
+                        {service.subServices.map((subService) => (
+                          <View key={subService.id}>
+                            <TouchableOpacity
+                              activeOpacity={0.7}
+                              style={{
+                                backgroundColor: "white",
+                                borderRadius: 30,
+                                borderWidth: 3,
+                                borderColor: lightBrown,
+                                width: 330,
+                                minHeight: subService.description ? 140 : 84,
+                                justifyContent: "center",
+                                marginBottom: 12,
+                                alignSelf: "center",
+                                paddingVertical: 12,
+                                opacity: 1,
+                              }}
+                              onPress={() => handleServicePress(subService)}
+                            >
+                              <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
+                                <View style={{ flex: 1 }}>
                                   <Text
                                     style={{
-                                      fontSize: 15,
+                                      fontSize: 20,
                                       color: darkBrown,
                                       fontFamily: "Philosopher-Bold",
-                                      opacity: 0.6,
-                                      marginTop: 4,
-                                      lineHeight: 20,
                                     }}
-                                    numberOfLines={4}
                                   >
-                                        {formatDescription(subService.description)}
+                                    {subService.name}
+                                  </Text>
+                                  
+                                  {/* Add description here */}
+                                  {subService.description && (
+                                    <Text
+                                      style={{
+                                        fontSize: 15,
+                                        color: darkBrown,
+                                        fontFamily: "Philosopher-Bold",
+                                        opacity: 0.6,
+                                        marginTop: 4,
+                                        lineHeight: 20,
+                                      }}
+                                      numberOfLines={4}
+                                    >
+                                          {formatDescription(subService.description)}
+                                    </Text>
+                                  )}
+                                  
+                                </View>
+                                {subService.durationMinutes && (
+                                  <Text
+                                    style={{
+                                      fontSize: 14,
+                                      color: darkBrown,
+                                      fontFamily: "Philosopher-Regular",
+                                      opacity: 0.6,
+                                      marginTop: 2,
+                                    }}
+                                  >
+                                    {subService.durationMinutes} min
                                   </Text>
                                 )}
-                                
                               </View>
-                              {subService.durationMinutes && (
-                                <Text
-                                  style={{
-                                    fontSize: 14,
-                                    color: darkBrown,
-                                    fontFamily: "Philosopher-Regular",
-                                    opacity: 0.6,
-                                    marginTop: 2,
-                                  }}
-                                >
-                                  {subService.durationMinutes} min
-                                </Text>
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                          {/* Show work types if this service is selected */}
-                          {selectedServiceWithWorkTypes?.id === subService.id && renderWorkTypes(subService)}
-                        </View>
-                      ))
+                            </TouchableOpacity>
+                            {/* Show work types if this service is selected */}
+                            {selectedServiceWithWorkTypes?.id === subService.id && renderWorkTypes(subService)}
+                          </View>
+                        ))}
+                        {/* Custom style text for Letit */}
+                        {service.name === 'Letit' && (
+                          <Text
+                            style={{
+                              textAlign: "center",
+                              fontSize: 18,
+                              color: darkBrown,
+                              fontFamily: "Philosopher-Regular",
+                              opacity: 0.7,
+                              marginTop: 20,
+                              marginBottom: 12,
+                              paddingHorizontal: 20,
+                            }}
+                          >
+                            Custom-tyyli halukkaille — ota yhteyttä suoraan hoitolaan tai tekijään lisätietoja varten.
+                          </Text>
+                        )}
+                      </>
                     ) : (
                       // If no sub-services, show the main service as a clickable button
                       <View>

@@ -177,6 +177,7 @@ export default function SignIn() {
         {/* Arch-shaped container */}
         <View style={{
           width: 300,
+          height: 300,
           backgroundColor: lightBeige,
           borderTopLeftRadius: 150,
           borderTopRightRadius: 150,
@@ -188,11 +189,11 @@ export default function SignIn() {
         }}>
           {/* Title */}
           <Text style={{
-            fontSize: 28,
+            fontSize: 20,
             fontFamily: 'Philosopher-Bold',
             color: darkBrown,
             textAlign: 'center',
-            marginBottom: 40,
+            marginTop: 40,
           }}>
             Kirjaudu sisään
           </Text>
@@ -209,7 +210,7 @@ export default function SignIn() {
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: 16,
+              marginTop: 18,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.1,
@@ -251,6 +252,7 @@ export default function SignIn() {
               alignItems: 'center',
               justifyContent: 'center',
               shadowColor: '#000',
+              marginTop: 25,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.2,
               shadowRadius: 4,

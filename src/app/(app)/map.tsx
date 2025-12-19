@@ -1001,6 +1001,7 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     zIndex: 1000,
+    alignItems: 'center',
   },
   searchBar: {
     flexDirection: 'row',

@@ -29,8 +29,10 @@ export default function Header({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   
-  // On Android, add top padding for status bar since SafeAreaView doesn't always work
-  const topPadding = Platform.OS === 'android' ? insets.top : 0;
+  // Add top padding for status bar on both platforms
+  // On Android, SafeAreaView doesn't always work, so we add padding
+  // On iOS, we also add padding to ensure proper positioning
+  const topPadding = insets.top;
 
   const handleBackPress = () => {
     if (onBackPress) {
