@@ -604,6 +604,7 @@ export default function AdminWebViewScreen() {
                 showBack={true}
                 showMenu={false}
                 onBackPress={handleGoBack}
+                disableSafeAreaPadding={true}
             />
 
             {/* Error Display */}

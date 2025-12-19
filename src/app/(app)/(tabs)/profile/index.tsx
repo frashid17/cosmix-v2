@@ -73,19 +73,19 @@ export default function ProfilePage() {
 
   const menuItems = isSignedIn
     ? [
-        "Tulevat hoidot",
-        "Menneet hoidot",
-        "Asetukset",
-        "Kieli",
-        "Kirjaudu ulos",
-      ]
+      "Tulevat hoidot",
+      "Menneet hoidot",
+      "Asetukset",
+      "Kieli",
+      "Kirjaudu ulos",
+    ]
     : [
-        "Tulevat hoidot",
-        "Menneet hoidot",
-        "Asetukset",
-        "Kieli",
-        "Kirjaudu sisään",
-      ];
+      "Tulevat hoidot",
+      "Menneet hoidot",
+      "Asetukset",
+      "Kieli",
+      "Kirjaudu sisään",
+    ];
 
   // Get user's first name for display
   const displayName = user?.firstName || user?.fullName?.split(' ')[0] || 'Käyttäjä';
@@ -93,12 +93,13 @@ export default function ProfilePage() {
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <Header 
+      <Header
         title="COSMIX"
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
         onMenuPress={() => setMenuVisible(true)}
+        disableSafeAreaPadding={true}
       />
 
       <ScrollView showsVerticalScrollIndicator={false}>

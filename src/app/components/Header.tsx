@@ -10,6 +10,8 @@ interface HeaderProps {
   showBack?: boolean;
   onMenuPress?: () => void;
   onBackPress?: () => void;
+  /** Set to true when Header is inside SafeAreaView to prevent double padding on iOS */
+  disableSafeAreaPadding?: boolean;
 }
 
 const darkBrown = "#423120";
@@ -24,15 +26,17 @@ export default function Header({
   showMenu = true,
   showBack = false,
   onMenuPress,
-  onBackPress
+  onBackPress,
+  disableSafeAreaPadding = false
 }: HeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  
+
   // Add top padding for status bar on both platforms
   // On Android, SafeAreaView doesn't always work, so we add padding
   // On iOS, we also add padding to ensure proper positioning
-  const topPadding = insets.top;
+  // When disableSafeAreaPadding is true (Header is inside SafeAreaView), don't add padding
+  const topPadding = disableSafeAreaPadding ? 0 : insets.top;
 
   const handleBackPress = () => {
     if (onBackPress) {

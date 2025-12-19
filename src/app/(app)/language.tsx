@@ -52,10 +52,11 @@ export default function LanguagePage() {
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
-        onMenuPress={() => {}}
+        onMenuPress={() => { }}
+        disableSafeAreaPadding={true}
       />
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -63,7 +64,7 @@ export default function LanguagePage() {
         <View style={styles.card}>
           {/* Title */}
           <Text style={styles.title}>Kieli</Text>
-          
+
           {/* Horizontal line */}
           <View style={styles.titleLine} />
 

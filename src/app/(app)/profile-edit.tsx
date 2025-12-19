@@ -77,7 +77,7 @@ export default function ProfileEditPage() {
     try {
       // TODO: Implement update user API call here
       // await updateUser({ name, email, phone });
-      
+
       Alert.alert("Onnistui", "Tiedot tallennettiin onnistuneesti", [
         { text: "OK", onPress: () => router.back() }
       ]);
@@ -105,9 +105,10 @@ export default function ProfileEditPage() {
         showMenu={true}
         onBackPress={() => router.back()}
         onMenuPress={() => setMenuVisible(true)}
+        disableSafeAreaPadding={true}
       />
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -115,13 +116,13 @@ export default function ProfileEditPage() {
         <View style={styles.card}>
           {/* Title */}
           <Text style={styles.title}>Asetukset</Text>
-          
+
           {/* Horizontal line */}
           <View style={styles.titleLine} />
 
           {/* Form Fields */}
           <View style={styles.formContainer}>
-            
+
             {/* Käyttäjänimi (Username) */}
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Käyttäjänimi</Text>

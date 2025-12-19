@@ -199,7 +199,7 @@ export default function Page() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
       {/* FIXED HEADER - Outside ScrollView */}
-      <Header onMenuPress={() => setMenuVisible(true)} />
+      <Header onMenuPress={() => setMenuVisible(true)} disableSafeAreaPadding={true} />
 
       {/* SCROLLABLE CONTENT */}
       <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>

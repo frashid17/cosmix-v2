@@ -34,23 +34,23 @@ const useWarmUpBrowser = () => {
 export default function SignIn() {
   // Warm up browser on component mount
   useWarmUpBrowser();
-  
+
   const router = useRouter();
   const params = useLocalSearchParams<{ redirect?: string }>();
   const { isSignedIn, isLoaded: isClerkLoaded } = useAuth();
-  
+
   // Let Clerk handle redirect URL automatically
-  const { startOAuthFlow: startGoogleOAuth } = useOAuth({ 
+  const { startOAuthFlow: startGoogleOAuth } = useOAuth({
     strategy: "oauth_google",
   });
-  const { startOAuthFlow: startAppleOAuth } = useOAuth({ 
+  const { startOAuthFlow: startAppleOAuth } = useOAuth({
     strategy: "oauth_apple",
   });
 
   const [isLoading, setIsLoading] = React.useState(false);
   const [loadingProvider, setLoadingProvider] = React.useState<'google' | 'apple' | null>(null);
   const [isMenuVisible, setMenuVisible] = React.useState(false);
-  
+
   // Handle OAuth session completion on mount
   useEffect(() => {
     WebBrowser.maybeCompleteAuthSession();
@@ -73,7 +73,7 @@ export default function SignIn() {
 
   const handleGoogleSignIn = useCallback(async () => {
     if (isLoading) return;
-    
+
     // Check if Clerk is loaded
     if (!isClerkLoaded) {
       Alert.alert(
@@ -82,13 +82,13 @@ export default function SignIn() {
       );
       return;
     }
-    
+
     setIsLoading(true);
     setLoadingProvider('google');
 
     try {
       const result = await startGoogleOAuth();
-      
+
       if (result?.createdSessionId && result?.setActive) {
         await result.setActive({ session: result.createdSessionId });
         redirectTo();
@@ -100,13 +100,13 @@ export default function SignIn() {
         redirectTo();
         return;
       }
-      
+
       // Ignore these non-error cases
       const errorCode = err?.errors?.[0]?.code;
       const errorMessage = err?.message || '';
-      
+
       if (
-        errorCode === 'user_cancelled' || 
+        errorCode === 'user_cancelled' ||
         errorCode === 'session_exists' ||
         errorMessage.includes('user cancelled') ||
         errorMessage.includes('toString') // Ignore this known Clerk bug
@@ -114,16 +114,16 @@ export default function SignIn() {
         // Check if we're signed in despite the error
         return;
       }
-      
+
       // Show user-friendly error for real failures
       let displayMessage = 'Yritä uudelleen hetken kuluttua.';
-      
+
       if (errorMessage.includes('Too many requests')) {
         displayMessage = 'Liian monta yritystä. Odota hetki ja yritä uudelleen.';
       } else if (err?.errors?.[0]?.longMessage) {
         displayMessage = err.errors[0].longMessage;
       }
-      
+
       Alert.alert("Virhe", displayMessage);
     } finally {
       setIsLoading(false);
@@ -133,7 +133,7 @@ export default function SignIn() {
 
   const handleAppleSignIn = useCallback(async () => {
     if (isLoading) return;
-    
+
     setIsLoading(true);
     setLoadingProvider('apple');
 
@@ -149,7 +149,7 @@ export default function SignIn() {
       }
     } catch (err: any) {
       console.error('Apple OAuth error:', JSON.stringify(err, null, 2));
-      
+
       // Don't show error for user cancellation
       if (err?.errors?.[0]?.code !== 'user_cancelled') {
         Alert.alert(
@@ -171,6 +171,7 @@ export default function SignIn() {
         showMenu={true}
         onBackPress={() => router.back()}
         onMenuPress={() => setMenuVisible(true)}
+        disableSafeAreaPadding={true}
       />
 
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -279,10 +280,10 @@ export default function SignIn() {
               </>
             )}
           </TouchableOpacity>
-          
+
         </View>
 
-       
+
       </View>
 
       {/* Modal for the side menu */}

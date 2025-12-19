@@ -43,28 +43,28 @@ const SalonSector = () => {
             try {
                 setLoading(true);
                 setError(null);
-                
+
                 // Fetch all salons and find the specific one
                 const allSalons = await getSaloonsMap();
                 const foundSalon = allSalons.find(s => s.id === salonId);
-                
+
                 if (!foundSalon) {
                     throw new Error('Salon not found');
                 }
-                
+
                 setSalon(foundSalon);
-                
+
                 // Fetch services for this salon
                 const salonServices = await getServicesBySalon(salonId);
                 setServices(salonServices);
-                
+
                 // If no services found, fetch all categories as fallback
                 if (salonServices.length === 0) {
                     console.log('No services found for salon, fetching all categories as fallback');
                     const categories = await getCategories();
                     setAllCategories(categories);
                 }
-                
+
                 console.log('Fetched salon:', foundSalon);
                 console.log('Fetched services:', salonServices);
             } catch (err) {
@@ -85,12 +85,12 @@ const SalonSector = () => {
         // If we have services, extract categories from them
         if (services.length > 0) {
             const categoryMap = new Map<string, { id: string; name: string; count: number }>();
-            
+
             services.forEach(service => {
                 if (service.category) {
                     const categoryId = service.category.id;
                     const categoryName = service.category.name;
-                    
+
                     if (categoryMap.has(categoryId)) {
                         const existing = categoryMap.get(categoryId)!;
                         categoryMap.set(categoryId, { ...existing, count: existing.count + 1 });
@@ -99,28 +99,28 @@ const SalonSector = () => {
                     }
                 }
             });
-            
+
             return Array.from(categoryMap.values());
         }
-        
+
         // If no services, return all categories as fallback
         if (allCategories.length > 0) {
             return allCategories.map(cat => ({ id: cat.id, name: cat.name, count: 0 }));
         }
-        
+
         return [];
     };
 
     const categories = getCategoriesFromServices();
 
     const onCategoryPress = (categoryName: string) => {
-        router.push({ 
-            pathname: "/services", 
-            params: { 
-                categoryName, 
+        router.push({
+            pathname: "/services",
+            params: {
+                categoryName,
                 salonId: salonId,
-                salonName: salonName || salon?.name 
-            } 
+                salonName: salonName || salon?.name
+            }
         });
     };
 
@@ -133,6 +133,7 @@ const SalonSector = () => {
                 showMenu={true}
                 onBackPress={() => router.back()}
                 onMenuPress={() => setMenuVisible(true)}
+                disableSafeAreaPadding={true}
             />
 
             {/* SCROLLABLE CONTENT */}
@@ -168,12 +169,12 @@ const SalonSector = () => {
                         }}
                         resizeMode="contain"
                     />
-                    
+
                     {/* White Box - Centered */}
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <View
-                            style={{ 
-                                width: 300, 
+                            style={{
+                                width: 300,
                                 height: 195,
                                 backgroundColor: "white",
                                 borderRadius: 24,
@@ -201,41 +202,41 @@ const SalonSector = () => {
                             </Text>
 
                             {/* Ellipses at bottom */}
-                            <View style={{ 
-                                position: "absolute", 
-                                bottom: 16, 
-                                flexDirection: "row" 
+                            <View style={{
+                                position: "absolute",
+                                bottom: 16,
+                                flexDirection: "row"
                             }}>
                                 <View
-                                    style={{ 
-                                        width: 11, 
+                                    style={{
+                                        width: 11,
                                         height: 11,
                                         backgroundColor: darkBrown,
                                         borderRadius: 5.5
                                     }}
                                 />
                                 <View
-                                    style={{ 
-                                        width: 11, 
-                                        height: 11, 
+                                    style={{
+                                        width: 11,
+                                        height: 11,
                                         marginLeft: 5,
                                         backgroundColor: darkBrown,
                                         borderRadius: 5.5
                                     }}
                                 />
                                 <View
-                                    style={{ 
-                                        width: 11, 
-                                        height: 11, 
+                                    style={{
+                                        width: 11,
+                                        height: 11,
                                         marginLeft: 5,
                                         backgroundColor: darkBrown,
                                         borderRadius: 5.5
                                     }}
                                 />
                                 <View
-                                    style={{ 
-                                        width: 11, 
-                                        height: 11, 
+                                    style={{
+                                        width: 11,
+                                        height: 11,
                                         marginLeft: 5,
                                         backgroundColor: darkBrown,
                                         borderRadius: 5.5
@@ -258,7 +259,7 @@ const SalonSector = () => {
                                 marginTop: 10,
                             }}
                         >
-                            
+
                         </Text>
                     </View>
                 )}
@@ -297,14 +298,14 @@ const SalonSector = () => {
                 {!loading && !error && salon && (
                     <>
                         {/* Single Salon Card */}
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={{ alignItems: "center", marginTop: 24, position: "relative" }}
                             activeOpacity={1}
                         >
                             {/* First Box - Top Box (310x200) - Salon Picture */}
                             <View
-                                style={{ 
-                                    width: 310, 
+                                style={{
+                                    width: 310,
                                     height: 200,
                                     backgroundColor: lightBeige,
                                     borderRadius: 24,
@@ -335,8 +336,8 @@ const SalonSector = () => {
                                         justifyContent: "center"
                                     }}>
                                         <Ionicons name="business-outline" size={48} color={darkBrown} />
-                                        <Text style={{ 
-                                            color: darkBrown, 
+                                        <Text style={{
+                                            color: darkBrown,
                                             fontFamily: "Philosopher-Regular",
                                             marginTop: 8,
                                             fontSize: 14
@@ -349,11 +350,11 @@ const SalonSector = () => {
 
                             {/* Second Box - Bottom Box (310x190) - Salon Info */}
                             <View
-                                style={{ 
-                                    width: 310, 
-                                    height: 190, 
-                                    marginTop: 140, 
-                                    borderWidth: 2, 
+                                style={{
+                                    width: 310,
+                                    height: 190,
+                                    marginTop: 140,
+                                    borderWidth: 2,
                                     borderColor: chipBeige,
                                     backgroundColor: "white",
                                     borderRadius: 24,
@@ -362,7 +363,7 @@ const SalonSector = () => {
                                 }}
                             >
                                 <View style={{ marginTop: 40 }}>
-                                  
+
 
                                     <View style={{ paddingHorizontal: 16 }}>
                                         <Text
@@ -375,11 +376,11 @@ const SalonSector = () => {
                                         >
                                             {salon.shortIntro || 'No description'}
                                         </Text>
-                                        <View style={{ 
-                                        borderBottomWidth: 1, 
-                                        marginTop: 8, 
-                                        borderBottomColor: beige 
-                                    }} />
+                                        <View style={{
+                                            borderBottomWidth: 1,
+                                            marginTop: 8,
+                                            borderBottomColor: beige
+                                        }} />
                                         <Text
                                             style={{
                                                 fontFamily: "Philosopher-Bold",
@@ -390,16 +391,16 @@ const SalonSector = () => {
                                         >
                                             Location: {salon.address || 'Not specified'}
                                         </Text>
-                                        <View style={{ 
-                                        borderBottomWidth: 1, 
-                                        marginTop: 8, 
-                                        borderBottomColor: beige 
-                                    }} />
+                                        <View style={{
+                                            borderBottomWidth: 1,
+                                            marginTop: 8,
+                                            borderBottomColor: beige
+                                        }} />
 
-                                        <View style={{ 
-                                            flexDirection: "row", 
-                                            alignItems: "center", 
-                                            marginTop: 4 
+                                        <View style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            marginTop: 4
                                         }}>
                                             <Text
                                                 style={{
@@ -440,8 +441,8 @@ const SalonSector = () => {
                         {categories.length > 0 && (
                             <View style={{ paddingHorizontal: 20, marginTop: 32 }}>
                                 {/* Section title */}
-                                <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Bold', fontSize:30 , textAlign: 'center' }}>
-                                Kaikki palvelut
+                                <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Bold', fontSize: 30, textAlign: 'center' }}>
+                                    Kaikki palvelut
                                 </Text>
 
                                 {/* Categories Chips grid - Same layout as Suosituimmat palvelut (2-1-2-1 pattern) */}
@@ -450,12 +451,12 @@ const SalonSector = () => {
                                     {categories.length > 0 && (
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
                                             {categories.slice(0, 2).map((category) => (
-                                                <Chip 
-                                                    key={category.id} 
-                                                    label={category.name} 
-                                                    onPress={() => onCategoryPress(category.name)} 
-                                                    color={chipBeige} 
-                                                    textColor={darkBrown} 
+                                                <Chip
+                                                    key={category.id}
+                                                    label={category.name}
+                                                    onPress={() => onCategoryPress(category.name)}
+                                                    color={chipBeige}
+                                                    textColor={darkBrown}
                                                 />
                                             ))}
                                             {categories.length === 1 && (
@@ -463,29 +464,29 @@ const SalonSector = () => {
                                             )}
                                         </View>
                                     )}
-                                    
+
                                     {/* Second row - 1 chip centered */}
                                     {categories.length > 2 && (
                                         <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
-                                            <Chip 
-                                                label={categories[2].name} 
-                                                onPress={() => onCategoryPress(categories[2].name)} 
-                                                color={chipBeige} 
-                                                textColor={darkBrown} 
+                                            <Chip
+                                                label={categories[2].name}
+                                                onPress={() => onCategoryPress(categories[2].name)}
+                                                color={chipBeige}
+                                                textColor={darkBrown}
                                             />
                                         </View>
                                     )}
-                                    
+
                                     {/* Third row - 2 chips */}
                                     {categories.length > 3 && (
                                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
                                             {categories.slice(3, 5).map((category) => (
-                                                <Chip 
-                                                    key={category.id} 
-                                                    label={category.name} 
-                                                    onPress={() => onCategoryPress(category.name)} 
-                                                    color={chipBeige} 
-                                                    textColor={darkBrown} 
+                                                <Chip
+                                                    key={category.id}
+                                                    label={category.name}
+                                                    onPress={() => onCategoryPress(category.name)}
+                                                    color={chipBeige}
+                                                    textColor={darkBrown}
                                                 />
                                             ))}
                                             {categories.length === 4 && (
@@ -493,19 +494,19 @@ const SalonSector = () => {
                                             )}
                                         </View>
                                     )}
-                                    
+
                                     {/* Fourth row - 1 chip centered */}
                                     {categories.length > 5 && (
                                         <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
-                                            <Chip 
-                                                label={categories[5].name} 
-                                                onPress={() => onCategoryPress(categories[5].name)} 
-                                                color={chipBeige} 
-                                                textColor={darkBrown} 
+                                            <Chip
+                                                label={categories[5].name}
+                                                onPress={() => onCategoryPress(categories[5].name)}
+                                                color={chipBeige}
+                                                textColor={darkBrown}
                                             />
                                         </View>
                                     )}
-                                    
+
                                     {/* Additional rows following the same pattern if more categories */}
                                     {categories.length > 6 && categories.slice(6).map((category, idx) => {
                                         const position = idx % 3;
@@ -514,18 +515,18 @@ const SalonSector = () => {
                                             const nextCategory = categories[6 + idx + 1];
                                             return (
                                                 <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
-                                                    <Chip 
-                                                        label={category.name} 
-                                                        onPress={() => onCategoryPress(category.name)} 
-                                                        color={chipBeige} 
-                                                        textColor={darkBrown} 
+                                                    <Chip
+                                                        label={category.name}
+                                                        onPress={() => onCategoryPress(category.name)}
+                                                        color={chipBeige}
+                                                        textColor={darkBrown}
                                                     />
                                                     {nextCategory ? (
-                                                        <Chip 
-                                                            label={nextCategory.name} 
-                                                            onPress={() => onCategoryPress(nextCategory.name)} 
-                                                            color={chipBeige} 
-                                                            textColor={darkBrown} 
+                                                        <Chip
+                                                            label={nextCategory.name}
+                                                            onPress={() => onCategoryPress(nextCategory.name)}
+                                                            color={chipBeige}
+                                                            textColor={darkBrown}
                                                         />
                                                     ) : (
                                                         <View style={{ width: 147 }} />
@@ -535,11 +536,11 @@ const SalonSector = () => {
                                         } else if (position === 2) {
                                             return (
                                                 <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20 }}>
-                                                    <Chip 
-                                                        label={category.name} 
-                                                        onPress={() => onCategoryPress(category.name)} 
-                                                        color={chipBeige} 
-                                                        textColor={darkBrown} 
+                                                    <Chip
+                                                        label={category.name}
+                                                        onPress={() => onCategoryPress(category.name)}
+                                                        color={chipBeige}
+                                                        textColor={darkBrown}
                                                     />
                                                 </View>
                                             );
@@ -595,61 +596,61 @@ function Chip({ label, onPress, color, textColor }: { label: string; onPress: ()
     const [containerWidth, setContainerWidth] = useState(0);
     const [textWidth, setTextWidth] = useState(0);
     const translateX = useRef(new Animated.Value(0)).current;
-  
+
     const H_PADDING = 16; // internal horizontal padding so text doesn't touch edges
     const effectiveWidth = Math.max(0, containerWidth - H_PADDING * 2);
     const shouldScroll = textWidth > effectiveWidth && effectiveWidth > 0;
-  
+
     useEffect(() => {
-      let loop: Animated.CompositeAnimation | null = null;
-      if (shouldScroll) {
-        // Start centered if possible, then animate to left and back
-        translateX.setValue(0);
-        const distance = textWidth - effectiveWidth;
-        loop = Animated.loop(
-          Animated.sequence([
-            Animated.timing(translateX, {
-              toValue: -distance,
-              duration: Math.min(14000, 5000 + distance * 30),
-              easing: Easing.linear,
-              useNativeDriver: true,
-            }),
-            Animated.timing(translateX, {
-              toValue: 0,
-              duration: 1000,
-              easing: Easing.linear,
-              useNativeDriver: true,
-            }),
-          ])
-        );
-        loop.start();
-      }
-      return () => {
-        if (loop) loop.stop();
-      };
+        let loop: Animated.CompositeAnimation | null = null;
+        if (shouldScroll) {
+            // Start centered if possible, then animate to left and back
+            translateX.setValue(0);
+            const distance = textWidth - effectiveWidth;
+            loop = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(translateX, {
+                        toValue: -distance,
+                        duration: Math.min(14000, 5000 + distance * 30),
+                        easing: Easing.linear,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(translateX, {
+                        toValue: 0,
+                        duration: 1000,
+                        easing: Easing.linear,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            loop.start();
+        }
+        return () => {
+            if (loop) loop.stop();
+        };
     }, [shouldScroll, textWidth, effectiveWidth, translateX]);
-  
+
     return (
-      <TouchableOpacity
-        onPress={onPress}
-        style={{ backgroundColor: color, width: 147, height: 45 }}
-        className="rounded-full items-center justify-center"
-      >
-        <View
-          style={{ width: "100%", overflow: "hidden", alignItems: "center", paddingHorizontal: H_PADDING }}
-          onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+        <TouchableOpacity
+            onPress={onPress}
+            style={{ backgroundColor: color, width: 147, height: 45 }}
+            className="rounded-full items-center justify-center"
         >
-          <Animated.View style={{ transform: [{ translateX: shouldScroll ? translateX : 0 }], alignItems: "center" }}>
-            <Text
-              onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
-              numberOfLines={1}
-              style={{ color: textColor, fontFamily: 'Philosopher-Bold', fontSize: 15, textAlign: 'center' }}
+            <View
+                style={{ width: "100%", overflow: "hidden", alignItems: "center", paddingHorizontal: H_PADDING }}
+                onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
             >
-              {label}
-            </Text>
-          </Animated.View>
-        </View>
-      </TouchableOpacity>
+                <Animated.View style={{ transform: [{ translateX: shouldScroll ? translateX : 0 }], alignItems: "center" }}>
+                    <Text
+                        onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
+                        numberOfLines={1}
+                        style={{ color: textColor, fontFamily: 'Philosopher-Bold', fontSize: 15, textAlign: 'center' }}
+                    >
+                        {label}
+                    </Text>
+                </Animated.View>
+            </View>
+        </TouchableOpacity>
     );
 }
 

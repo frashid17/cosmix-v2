@@ -78,11 +78,11 @@ export default function ServicesPage() {
             'Content-Type': 'application/json',
           },
         });
-        
+
         if (!res.ok) {
           throw new Error(`Failed to fetch services: ${res.status} ${res.statusText}`);
         }
-        
+
         const data = await res.json();
         setAllServices(data);
       } catch (err) {
@@ -134,12 +134,12 @@ export default function ServicesPage() {
 
   const onSalonPress = (salon: Salon) => {
     // Navigate to salon-sector page
-    router.push({ 
-      pathname: "/salon-sector", 
-      params: { 
+    router.push({
+      pathname: "/salon-sector",
+      params: {
         salonId: salon.id,
-        salonName: salon.name 
-      } 
+        salonName: salon.name
+      }
     });
   };
 
@@ -150,24 +150,24 @@ export default function ServicesPage() {
       setSearchType('category');
       return;
     }
-    
+
     // Check salon matches
-    const salonMatches = salons.filter(s => 
-      s.name.toLowerCase().includes(q) || 
+    const salonMatches = salons.filter(s =>
+      s.name.toLowerCase().includes(q) ||
       s.address?.toLowerCase().includes(q) ||
       s.shortIntro?.toLowerCase().includes(q)
     ).length;
-    
+
     // Check category matches
-    const categoryMatches = categories.filter(c => 
+    const categoryMatches = categories.filter(c =>
       c.name.toLowerCase().includes(q)
     ).length;
-    
+
     // Check service/sub-service matches
-    const serviceMatches = allServices.filter(s => 
+    const serviceMatches = allServices.filter(s =>
       s.name.toLowerCase().includes(q)
     ).length;
-    
+
     // Priority: salon > service > category
     if (salonMatches > 0 && salonMatches >= categoryMatches && salonMatches >= serviceMatches) {
       setSearchType('salon');
@@ -181,31 +181,31 @@ export default function ServicesPage() {
   const filteredCategoryNames = query.trim().length === 0
     ? []
     : categories
-        .map((c) => c.name)
-        .filter(Boolean)
-        .filter((name) => name.toLowerCase().includes(query.trim().toLowerCase()));
+      .map((c) => c.name)
+      .filter(Boolean)
+      .filter((name) => name.toLowerCase().includes(query.trim().toLowerCase()));
 
   const filteredSalons = query.trim().length === 0
     ? []
     : salons.filter((salon) => {
-        const q = query.trim().toLowerCase();
-        return (
-          salon.name.toLowerCase().includes(q) ||
-          salon.address?.toLowerCase().includes(q) ||
-          salon.shortIntro?.toLowerCase().includes(q)
-        );
-      });
+      const q = query.trim().toLowerCase();
+      return (
+        salon.name.toLowerCase().includes(q) ||
+        salon.address?.toLowerCase().includes(q) ||
+        salon.shortIntro?.toLowerCase().includes(q)
+      );
+    });
 
   // Filter services (including sub-services) - only sub-services (those with parentServiceId)
   const filteredServices = query.trim().length === 0
     ? []
     : allServices.filter((service) => {
-        const q = query.trim().toLowerCase();
-        return (
-          service.name.toLowerCase().includes(q) &&
-          service.parentServiceId // Only show sub-services (services that have a parent)
-        );
-      });
+      const q = query.trim().toLowerCase();
+      return (
+        service.name.toLowerCase().includes(q) &&
+        service.parentServiceId // Only show sub-services (services that have a parent)
+      );
+    });
 
   const onServicePress = (service: Service) => {
     // Navigate to saloons page with serviceId to show salons that provide this service
@@ -226,7 +226,7 @@ export default function ServicesPage() {
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: lightBeige }}>
       {/* Fixed header to match Home */}
-      <Header showBack={true} onMenuPress={() => setMenuVisible(true)} onBackPress={() => router.back()} />
+      <Header showBack={true} onMenuPress={() => setMenuVisible(true)} onBackPress={() => router.back()} disableSafeAreaPadding={true} />
 
       {/* Side menu modal */}
       <Modal visible={isMenuVisible} animationType="slide" transparent={false} onRequestClose={() => setMenuVisible(false)} statusBarTranslucent={true}>
@@ -284,12 +284,12 @@ export default function ServicesPage() {
                   {chunkArray(filteredSalons, 2).map((row, idx) => (
                     <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
                       {row.map((salon) => (
-                        <Chip 
-                          key={salon.id} 
-                          label={salon.name} 
-                          onPress={() => onSalonPress(salon)} 
-                          color={chipBeige} 
-                          textColor={darkBrown} 
+                        <Chip
+                          key={salon.id}
+                          label={salon.name}
+                          onPress={() => onSalonPress(salon)}
+                          color={chipBeige}
+                          textColor={darkBrown}
                         />
                       ))}
                       {row.length === 1 && (
@@ -304,12 +304,12 @@ export default function ServicesPage() {
                   {chunkArray(filteredServices, 2).map((row, idx) => (
                     <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
                       {row.map((service) => (
-                        <Chip 
-                          key={service.id} 
-                          label={service.name} 
-                          onPress={() => onServicePress(service)} 
-                          color={chipBeige} 
-                          textColor={darkBrown} 
+                        <Chip
+                          key={service.id}
+                          label={service.name}
+                          onPress={() => onServicePress(service)}
+                          color={chipBeige}
+                          textColor={darkBrown}
                         />
                       ))}
                       {row.length === 1 && (
@@ -359,58 +359,58 @@ export default function ServicesPage() {
                     {popularCategories.length > 0 && (
                       <View className="flex-row justify-between mb-5 px-2">
                         {popularCategories.slice(0, 2).map((category) => (
-                          <Chip 
-                            key={category.id} 
-                            label={category.name} 
-                            onPress={() => onChipPress(category.name)} 
-                            color={chipBeige} 
-                            textColor={darkBrown} 
+                          <Chip
+                            key={category.id}
+                            label={category.name}
+                            onPress={() => onChipPress(category.name)}
+                            color={chipBeige}
+                            textColor={darkBrown}
                           />
                         ))}
                         {popularCategories.length === 1 && <View style={{ width: 147 }} />}
                       </View>
                     )}
-                    
+
                     {/* Second row - 1 category centered */}
                     {popularCategories.length > 2 && (
                       <View className="flex-row justify-center mb-5">
-                        <Chip 
-                          label={popularCategories[2].name} 
-                          onPress={() => onChipPress(popularCategories[2].name)} 
-                          color={chipBeige} 
-                          textColor={darkBrown} 
+                        <Chip
+                          label={popularCategories[2].name}
+                          onPress={() => onChipPress(popularCategories[2].name)}
+                          color={chipBeige}
+                          textColor={darkBrown}
                         />
                       </View>
                     )}
-                    
+
                     {/* Third row - 2 categories */}
                     {popularCategories.length > 3 && (
                       <View className="flex-row justify-between mb-5 px-2">
                         {popularCategories.slice(3, 5).map((category) => (
-                          <Chip 
-                            key={category.id} 
-                            label={category.name} 
-                            onPress={() => onChipPress(category.name)} 
-                            color={chipBeige} 
-                            textColor={darkBrown} 
+                          <Chip
+                            key={category.id}
+                            label={category.name}
+                            onPress={() => onChipPress(category.name)}
+                            color={chipBeige}
+                            textColor={darkBrown}
                           />
                         ))}
                         {popularCategories.length === 4 && <View style={{ width: 147 }} />}
                       </View>
                     )}
-                    
+
                     {/* Fourth row - 1 category centered */}
                     {popularCategories.length > 5 && (
                       <View className="flex-row justify-center mb-5">
-                        <Chip 
-                          label={popularCategories[5].name} 
-                          onPress={() => onChipPress(popularCategories[5].name)} 
-                          color={chipBeige} 
-                          textColor={darkBrown} 
+                        <Chip
+                          label={popularCategories[5].name}
+                          onPress={() => onChipPress(popularCategories[5].name)}
+                          color={chipBeige}
+                          textColor={darkBrown}
                         />
                       </View>
                     )}
-                    
+
                     {/* Continue pattern for remaining categories */}
                     {popularCategories.length > 6 && popularCategories.slice(6).map((category, idx) => {
                       const position = idx % 3;
@@ -418,18 +418,18 @@ export default function ServicesPage() {
                         const nextCategory = popularCategories[6 + idx + 1];
                         return (
                           <View key={category.id} className="flex-row justify-between mb-5 px-2">
-                            <Chip 
-                              label={category.name} 
-                              onPress={() => onChipPress(category.name)} 
-                              color={chipBeige} 
-                              textColor={darkBrown} 
+                            <Chip
+                              label={category.name}
+                              onPress={() => onChipPress(category.name)}
+                              color={chipBeige}
+                              textColor={darkBrown}
                             />
                             {nextCategory ? (
-                              <Chip 
-                                label={nextCategory.name} 
-                                onPress={() => onChipPress(nextCategory.name)} 
-                                color={chipBeige} 
-                                textColor={darkBrown} 
+                              <Chip
+                                label={nextCategory.name}
+                                onPress={() => onChipPress(nextCategory.name)}
+                                color={chipBeige}
+                                textColor={darkBrown}
                               />
                             ) : (
                               <View style={{ width: 147 }} />
@@ -439,11 +439,11 @@ export default function ServicesPage() {
                       } else if (position === 2) {
                         return (
                           <View key={category.id} className="flex-row justify-center mb-5">
-                            <Chip 
-                              label={category.name} 
-                              onPress={() => onChipPress(category.name)} 
-                              color={chipBeige} 
-                              textColor={darkBrown} 
+                            <Chip
+                              label={category.name}
+                              onPress={() => onChipPress(category.name)}
+                              color={chipBeige}
+                              textColor={darkBrown}
                             />
                           </View>
                         );
@@ -471,28 +471,28 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
   return out;
 }
 
-function SalonCard({ 
-  salon, 
-  onPress, 
-  darkBrown, 
-  lightBeige, 
-  beige 
-}: { 
-  salon: Salon; 
-  onPress: () => void; 
-  darkBrown: string; 
-  lightBeige: string; 
+function SalonCard({
+  salon,
+  onPress,
+  darkBrown,
+  lightBeige,
+  beige
+}: {
+  salon: Salon;
+  onPress: () => void;
+  darkBrown: string;
+  lightBeige: string;
   beige: string;
 }) {
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={{ alignItems: "center", marginBottom: 24, position: "relative" }}
       onPress={onPress}
     >
       {/* Top Box - Salon Picture */}
       <View
-        style={{ 
-          width: 310, 
+        style={{
+          width: 310,
           height: 200,
           backgroundColor: lightBeige,
           borderRadius: 24,
@@ -523,8 +523,8 @@ function SalonCard({
             justifyContent: "center"
           }}>
             <Ionicons name="business-outline" size={48} color={darkBrown} />
-            <Text style={{ 
-              color: darkBrown, 
+            <Text style={{
+              color: darkBrown,
               fontFamily: "Philosopher-Regular",
               marginTop: 8,
               fontSize: 14
@@ -537,11 +537,11 @@ function SalonCard({
 
       {/* Bottom Box - Salon Info */}
       <View
-        style={{ 
-          width: 310, 
-          height: 190, 
-          marginTop: 140, 
-          borderWidth: 2, 
+        style={{
+          width: 310,
+          height: 190,
+          marginTop: 140,
+          borderWidth: 2,
           borderColor: beige,
           backgroundColor: "white",
           borderRadius: 24,
@@ -563,10 +563,10 @@ function SalonCard({
             </Text>
           </View>
 
-          <View style={{ 
-            borderBottomWidth: 1, 
-            marginTop: 8, 
-            borderBottomColor: beige 
+          <View style={{
+            borderBottomWidth: 1,
+            marginTop: 8,
+            borderBottomColor: beige
           }} />
 
           <View style={{ paddingHorizontal: 16 }}>
@@ -591,11 +591,11 @@ function SalonCard({
               Location: {salon.address || 'Not specified'}
             </Text>
 
-            <View style={{ 
-              flexDirection: "row", 
-              alignItems: "center", 
-              justifyContent: "flex-end", 
-              marginTop: 8 
+            <View style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              marginTop: 8
             }}>
               {/* Star Rating - 5 stars total */}
               {(() => {

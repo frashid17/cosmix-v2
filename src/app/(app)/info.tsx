@@ -58,10 +58,10 @@ export default function InfoPage() {
                     <View>
                         <Text style={styles.sectionTitle}>Tietoja meistä</Text>
                         <Text style={styles.paragraph}>
-                        COSMIX on ensisijainen kauneus- ja hyvinvointipalveluiden kohteesi. Yhdistämme sinut huippuammattilaisiin hiusten, kynsien, hieronnan ja muiden alojen parissa.
+                            COSMIX on ensisijainen kauneus- ja hyvinvointipalveluiden kohteesi. Yhdistämme sinut huippuammattilaisiin hiusten, kynsien, hieronnan ja muiden alojen parissa.
                         </Text>
                         <Text style={styles.paragraph}>
-                        Missiomme on tehdä itsehoidosta helppoa ja helppoa kaikille. Tarvitsetpa sitten nopeaa siistimistä tai kokonaisen kylpyläpäivän, me hoidamme kaiken.  
+                            Missiomme on tehdä itsehoidosta helppoa ja helppoa kaikille. Tarvitsetpa sitten nopeaa siistimistä tai kokonaisen kylpyläpäivän, me hoidamme kaiken.
                         </Text>
                     </View>
                 );
@@ -70,7 +70,7 @@ export default function InfoPage() {
                     <View>
                         <Text style={styles.sectionTitle}>Ota yhteyttä</Text>
                         <Text style={styles.paragraph}>
-                        Onko sinulla kysyttävää tai palautetta? Kuulemme mielellämme sinusta!
+                            Onko sinulla kysyttävää tai palautetta? Kuulemme mielellämme sinusta!
                         </Text>
 
                         <View style={styles.contactItem}>
@@ -94,19 +94,19 @@ export default function InfoPage() {
                     <View>
                         <Text style={styles.sectionTitle}>Käyttöehdot</Text>
                         <Text style={styles.paragraph}>
-                        Tervetuloa COSMIXiin. Käyttämällä sovellustamme hyväksyt nämä ehdot.
+                            Tervetuloa COSMIXiin. Käyttämällä sovellustamme hyväksyt nämä ehdot.
                         </Text>
                         <Text style={styles.subTitle}>1. Käyttäjätilit</Text>
                         <Text style={styles.paragraph}>
-                        Olet vastuussa Google-/Apple-tilisi luottamuksellisuuden säilyttämisestä.
+                            Olet vastuussa Google-/Apple-tilisi luottamuksellisuuden säilyttämisestä.
                         </Text>
                         <Text style={styles.subTitle}>2. Varaukset</Text>
                         <Text style={styles.paragraph}>
-                        Varaukset riippuvat saatavuudesta ja palveluntarjoajan vahvistuksesta.
+                            Varaukset riippuvat saatavuudesta ja palveluntarjoajan vahvistuksesta.
                         </Text>
                         <Text style={styles.subTitle}>3. Peruutukset</Text>
                         <Text style={styles.paragraph}>
-                        Peruutukset on tehtävä vähintään 24 tuntia etukäteen maksujen välttämiseksi.
+                            Peruutukset on tehtävä vähintään 24 tuntia etukäteen maksujen välttämiseksi.
                         </Text>
                     </View>
                 );
@@ -115,15 +115,15 @@ export default function InfoPage() {
                     <View>
                         <Text style={styles.sectionTitle}>Tietosuojalausunto</Text>
                         <Text style={styles.paragraph}>
-                        Tietosuojasi on meille tärkeää. Tässä käytännössä selitetään, miten keräämme ja käytämme tietojasi.
+                            Tietosuojasi on meille tärkeää. Tässä käytännössä selitetään, miten keräämme ja käytämme tietojasi.
                         </Text>
                         <Text style={styles.subTitle}>Tiedonkeruu</Text>
                         <Text style={styles.paragraph}>
-                        Keräämme tietoja, jotka annat meille suoraan, esimerkiksi luodessasi tilin tai varatessasi palvelun.
+                            Keräämme tietoja, jotka annat meille suoraan, esimerkiksi luodessasi tilin tai varatessasi palvelun.
                         </Text>
                         <Text style={styles.subTitle}>Datan käyttö</Text>
                         <Text style={styles.paragraph}>
-                        Käytämme tietojasi palvelujemme tarjoamiseen ja parantamiseen, maksujen käsittelyyn ja viestintään kanssasi.
+                            Käytämme tietojasi palvelujemme tarjoamiseen ja parantamiseen, maksujen käsittelyyn ja viestintään kanssasi.
                         </Text>
                     </View>
                 );
@@ -138,6 +138,7 @@ export default function InfoPage() {
                 showBack={true}
                 onBackPress={() => router.back()}
                 showMenu={true}
+                disableSafeAreaPadding={true}
             />
 
             <View style={{ height: 70, backgroundColor: white, paddingVertical: 10 }}>

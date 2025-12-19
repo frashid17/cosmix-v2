@@ -171,6 +171,7 @@ const Categories: React.FC = () => {
         showMenu={true}
         onBackPress={() => router.back()}
         onMenuPress={() => setMenuVisible(true)}
+        disableSafeAreaPadding={true}
       />
 
       {/* Content with padding */}

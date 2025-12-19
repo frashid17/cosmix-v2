@@ -175,6 +175,7 @@ const Saloons = () => {
                 showMenu={true}
                 onBackPress={() => router.back()}
                 onMenuPress={() => setMenuVisible(true)}
+                disableSafeAreaPadding={true}
             />
 
             {/* SCROLLABLE CONTENT */}

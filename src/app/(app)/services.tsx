@@ -841,6 +841,7 @@ export default function ServicesPage() {
           }
         }}
         onMenuPress={() => setMenuVisible(true)}
+        disableSafeAreaPadding={true}
       />
 
       {/* Salon Info Header - Show when coming from map */}

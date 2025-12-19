@@ -149,13 +149,13 @@ export default function MapScreen() {
         lng: userLocation?.longitude,
         radius: 10
       });
-      
+
       // Filter out salons without coordinates and check if we have valid salons
-      const validSalons = salonsData.filter(salon => 
-        salon.latitude && salon.longitude && 
+      const validSalons = salonsData.filter(salon =>
+        salon.latitude && salon.longitude &&
         salon.latitude !== null && salon.longitude !== null
       );
-      
+
       if (validSalons.length > 0) {
         setSalons(validSalons);
       } else {
@@ -342,7 +342,7 @@ export default function MapScreen() {
   // Extract services from salon data as fallback
   const extractServicesFromSalons = (salonData: MapSalon[]): Service[] => {
     const serviceMap = new Map<string, Service>();
-    
+
     salonData.forEach(salon => {
       // Check if salon has saloonServices
       if (salon.saloonServices && Array.isArray(salon.saloonServices)) {
@@ -361,7 +361,7 @@ export default function MapScreen() {
         });
       }
     });
-    
+
     return Array.from(serviceMap.values());
   };
 
@@ -403,7 +403,7 @@ export default function MapScreen() {
         return { s, score };
       })
       .filter(x => x.score > 0)
-      .sort((a,b) => b.score - a.score)
+      .sort((a, b) => b.score - a.score)
       .map(x => x.s);
     setFilteredSalons(sal);
   };
@@ -412,17 +412,17 @@ export default function MapScreen() {
     try {
       setSearchLoading(true);
       setSearchVisible(false);
-      
+
       // Filter salons that offer this service
       // For now, we'll show all salons since we don't have service data in MapSalon
       // In a real implementation, you'd need to fetch salon services or include them in the map data
       const salonsWithService = salons; // Show all salons for now
-      
+
       if (salonsWithService.length > 0) {
         // Calculate center point of salons with this service
         const avgLat = salonsWithService.reduce((sum, salon) => sum + salon.latitude, 0) / salonsWithService.length;
         const avgLng = salonsWithService.reduce((sum, salon) => sum + salon.longitude, 0) / salonsWithService.length;
-        
+
         // Send message to WebView to zoom to these salons
         if (webViewRef) {
           const message = JSON.stringify({
@@ -433,7 +433,7 @@ export default function MapScreen() {
           });
           webViewRef.postMessage(message);
         }
-        
+
         Alert.alert(
           'Palvelu löytyi!',
           `Löytyi ${salonsWithService.length} salon ${service.name} palvelulla. Kartta on keskitetty näihin saloneihin.`,
@@ -458,7 +458,7 @@ export default function MapScreen() {
   const generateMapHTML = () => {
     const centerLat = userLocation?.latitude || 60.1699;
     const centerLng = userLocation?.longitude || 24.9384;
-    
+
     const markers = salons.map(salon => ({
       id: salon.id,
       name: salon.name,
@@ -684,7 +684,7 @@ export default function MapScreen() {
   const handleWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      
+
       if (data.type === 'viewServices') {
         // Navigate to services page with salon information
         const salon = salons.find(s => s.id === data.salonId);
@@ -692,7 +692,7 @@ export default function MapScreen() {
           // Navigate to services page - you can pass salon info as params
           router.push({
             pathname: '/services',
-            params: { 
+            params: {
               salonId: salon.id,
               salonName: salon.name,
               categoryName: 'Kaikki palvelut' // or get from salon services
@@ -733,12 +733,13 @@ export default function MapScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: white }]}>
       {/* Cosmix Header */}
-      <Header 
-        title="COSMIX" 
-        showBack={true} 
+      <Header
+        title="COSMIX"
+        showBack={true}
         showMenu={true}
         onMenuPress={() => setMenuVisible(true)}
         onBackPress={() => router.back()}
+        disableSafeAreaPadding={true}
       />
 
       {/* Map */}
@@ -760,7 +761,7 @@ export default function MapScreen() {
             </View>
           )}
         />
-        
+
         {/* Floating Search Bar */}
         <View style={[styles.searchContainer, { bottom: 100 + insets.bottom }]}>
           <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={handleSearchPress}>
@@ -797,124 +798,124 @@ export default function MapScreen() {
         >
           <View style={styles.searchModalOverlay}>
             <View style={[styles.searchModalContent, { paddingBottom: insets.bottom + 20 }]}>
-            {/* Search Header */}
-            <View style={styles.searchHeader}>
-              <Text style={[styles.searchTitle, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
-                Etsi palvelua
-              </Text>
-              <TouchableOpacity onPress={() => setSearchVisible(false)}>
-                <Ionicons name="close" size={24} color={darkBrown} />
-              </TouchableOpacity>
-            </View>
+              {/* Search Header */}
+              <View style={styles.searchHeader}>
+                <Text style={[styles.searchTitle, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                  Etsi palvelua
+                </Text>
+                <TouchableOpacity onPress={() => setSearchVisible(false)}>
+                  <Ionicons name="close" size={24} color={darkBrown} />
+                </TouchableOpacity>
+              </View>
 
-            {/* Search Input */}
-            <View style={styles.searchInputContainer}>
-              <Ionicons name="search" size={20} color={darkBrown} style={styles.searchInputIcon} />
-              <TextInput
-                style={[styles.searchInput, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}
-                placeholder="Kirjoita palvelun nimi..."
-                placeholderTextColor="#999"
-                value={searchQuery}
-                onChangeText={handleSearchQuery}
-                autoFocus={true}
-                returnKeyType="search"
-                onSubmitEditing={() => {
-                  if (filteredSalons.length > 0) {
-                    centerMapOnSalon(filteredSalons[0]);
-                  } else if (filteredServices.length > 0) {
-                    handleServiceSelect(filteredServices[0]);
-                  }
-                }}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity 
-                  style={styles.searchButton}
-                  onPress={() => {
+              {/* Search Input */}
+              <View style={styles.searchInputContainer}>
+                <Ionicons name="search" size={20} color={darkBrown} style={styles.searchInputIcon} />
+                <TextInput
+                  style={[styles.searchInput, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}
+                  placeholder="Kirjoita palvelun nimi..."
+                  placeholderTextColor="#999"
+                  value={searchQuery}
+                  onChangeText={handleSearchQuery}
+                  autoFocus={true}
+                  returnKeyType="search"
+                  onSubmitEditing={() => {
                     if (filteredSalons.length > 0) {
                       centerMapOnSalon(filteredSalons[0]);
                     } else if (filteredServices.length > 0) {
                       handleServiceSelect(filteredServices[0]);
                     }
                   }}
-                  disabled={filteredSalons.length === 0 && filteredServices.length === 0}
-                >
-                  <Ionicons 
-                    name="arrow-forward" 
-                    size={20} 
-                    color={(filteredSalons.length > 0 || filteredServices.length > 0) ? darkBrown : "#ccc"} 
-                  />
-                </TouchableOpacity>
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity
+                    style={styles.searchButton}
+                    onPress={() => {
+                      if (filteredSalons.length > 0) {
+                        centerMapOnSalon(filteredSalons[0]);
+                      } else if (filteredServices.length > 0) {
+                        handleServiceSelect(filteredServices[0]);
+                      }
+                    }}
+                    disabled={filteredSalons.length === 0 && filteredServices.length === 0}
+                  >
+                    <Ionicons
+                      name="arrow-forward"
+                      size={20}
+                      color={(filteredSalons.length > 0 || filteredServices.length > 0) ? darkBrown : "#ccc"}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Search Action Button */}
+
+
+
+              {/* Salons and Services List */}
+              {searchLoading ? (
+                <View style={styles.searchLoadingContainer}>
+                  <ActivityIndicator size="large" color={darkBrown} />
+                  <Text style={[styles.searchLoadingText, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}>
+                    Ladataan palveluja...
+                  </Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={[
+                    ...filteredSalons.map(s => ({ type: 'salon', key: `salon-${s.id}`, salon: s })),
+                    ...filteredServices.map(s => ({ type: 'service', key: `service-${s.id}`, service: s })),
+                  ]}
+                  keyExtractor={(item) => item.key}
+                  style={styles.servicesList}
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => {
+                    const it: any = item;
+                    return it.type === 'salon' ? (
+                      <TouchableOpacity
+                        style={styles.serviceItem}
+                        onPress={() => navigateToSalonSector(it.salon)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.serviceName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                          {it.salon.name}
+                        </Text>
+                        {it.salon.address ? (
+                          <Text style={[styles.serviceDescription, { color: '#666', fontFamily: 'Philosopher-Regular' }]}>
+                            {it.salon.address}
+                          </Text>
+                        ) : null}
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity
+                        style={styles.serviceItem}
+                        onPress={() => handleServiceSelect(it.service)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.serviceName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                          {it.service.name}
+                        </Text>
+                        {it.service.description && (
+                          <Text style={[styles.serviceDescription, { color: '#666', fontFamily: 'Philosopher-Regular' }]}>
+                            {it.service.description}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  }}
+                  ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                      <Text style={[styles.emptyText, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}>
+                        {searchQuery ? 'Ei tuloksia – kokeile toista hakusanaa' : 'Aloita kirjoittamalla palvelun tai salon nimen'}
+                      </Text>
+                    </View>
+                  }
+                />
               )}
             </View>
-
-            {/* Search Action Button */}
-           
-
-
-            {/* Salons and Services List */}
-            {searchLoading ? (
-              <View style={styles.searchLoadingContainer}>
-                <ActivityIndicator size="large" color={darkBrown} />
-                <Text style={[styles.searchLoadingText, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}>
-                  Ladataan palveluja...
-                </Text>
-              </View>
-            ) : (
-              <FlatList
-                data={[
-                  ...filteredSalons.map(s => ({ type: 'salon', key: `salon-${s.id}`, salon: s })),
-                  ...filteredServices.map(s => ({ type: 'service', key: `service-${s.id}`, service: s })),
-                ]}
-                keyExtractor={(item) => item.key}
-                style={styles.servicesList}
-                contentContainerStyle={{ paddingBottom: 20 }}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                renderItem={({ item }) => {
-                  const it: any = item;
-                  return it.type === 'salon' ? (
-                    <TouchableOpacity
-                      style={styles.serviceItem}
-                      onPress={() => navigateToSalonSector(it.salon)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.serviceName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
-                        {it.salon.name}
-                      </Text>
-                      {it.salon.address ? (
-                        <Text style={[styles.serviceDescription, { color: '#666', fontFamily: 'Philosopher-Regular' }]}> 
-                          {it.salon.address}
-                        </Text>
-                      ) : null}
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.serviceItem}
-                      onPress={() => handleServiceSelect(it.service)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.serviceName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
-                        {it.service.name}
-                      </Text>
-                      {it.service.description && (
-                        <Text style={[styles.serviceDescription, { color: '#666', fontFamily: 'Philosopher-Regular' }]}> 
-                          {it.service.description}
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  );
-                }}
-                ListEmptyComponent={
-                  <View style={styles.emptyContainer}>
-                    <Text style={[styles.emptyText, { color: darkBrown, fontFamily: 'Philosopher-Regular' }]}>
-                      {searchQuery ? 'Ei tuloksia – kokeile toista hakusanaa' : 'Aloita kirjoittamalla palvelun tai salon nimen'}
-                    </Text>
-                  </View>
-                }
-              />
-            )}
           </View>
-        </View>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>

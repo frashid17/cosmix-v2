@@ -168,7 +168,7 @@ export default function CheckoutScreen() {
   if (!saloonService) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
-        <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} />
+        <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} disableSafeAreaPadding={true} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <Ionicons name="alert-circle-outline" size={64} color="#423120" style={{ marginBottom: 16, opacity: 0.5 }} />
           <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#423120', textAlign: 'center', marginBottom: 8 }}>
@@ -207,7 +207,7 @@ export default function CheckoutScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
       {/* Header */}
-      <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} />
+      <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} disableSafeAreaPadding={true} />
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 + insets.bottom }}>
         <View style={{ paddingHorizontal: 24, paddingBottom: 24, alignContent: 'center', justifyContent: 'center', marginTop: 24 }}>
