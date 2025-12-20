@@ -24,7 +24,7 @@ export default function ServicesPage() {
   });
 
   const darkBrown = "#423120";
-  const lightBeige = "#F4EDE5";
+  const lightBeige = "#ffffffff";
   const chipBeige = "#D7C3A7";
 
   // Popular categories (home-provided API)

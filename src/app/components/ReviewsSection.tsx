@@ -141,7 +141,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
 
     return (
         <View style={{ marginTop: 20, marginBottom: 20 }}>
-           {reviews.map((review) => (
+            {reviews.map((review) => (
                 <View
                     key={review.id}
                     style={{
@@ -149,7 +149,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
                         borderRadius: 17,
                         padding: 16,
                         marginBottom: 15,
-                        borderWidth: 1,
+                        borderWidth: 3,
                         borderColor: "#E0D7CA",
                         shadowColor: "#423120",
                         shadowOffset: { width: 0, height: 1 },

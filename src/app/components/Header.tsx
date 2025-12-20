@@ -65,12 +65,8 @@ export default function Header({
       style={{
         backgroundColor: white,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#f8f8f8',
+        borderBottomColor: '#ffffffff',
         elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
         width: width,
         alignSelf: 'stretch',
         paddingTop: topPadding,

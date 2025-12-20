@@ -205,7 +205,7 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F4EDE5' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#ffffff' }}>
       {/* Header */}
       <Header title="COSMIX" showBack={true} showMenu={true} onBackPress={() => router.back()} onMenuPress={() => setMenuVisible(true)} disableSafeAreaPadding={true} />
 
@@ -226,7 +226,7 @@ export default function CheckoutScreen() {
               shadowOpacity: 0.1,
               shadowRadius: 4,
               elevation: 2,
-              borderWidth: 1,
+              borderWidth: 3,
               borderColor: '#E0D7CA'
             }}>
               {servicesToDisplay.map((service, index) => (
@@ -269,10 +269,10 @@ export default function CheckoutScreen() {
 
               <View style={{
                 paddingTop: 16,
-                borderTopWidth: 1,
+                borderTopWidth: 2,
                 borderTopColor: '#E0D7CA'
               }}>
-                <View style={{
+                {/* <View style={{
                   flexDirection: 'row',
                   justifyContent: 'space-between',
                   marginBottom: 8
@@ -291,7 +291,7 @@ export default function CheckoutScreen() {
                   }}>
                     {totalDuration} minutes
                   </Text>
-                </View>
+                </View> */}
                 <View style={{
                   flexDirection: 'row',
                   justifyContent: 'space-between',

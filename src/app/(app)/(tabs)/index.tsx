@@ -197,7 +197,7 @@ export default function Page() {
   const categoryRows = chunkArray(displayCategories, 2);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
       {/* FIXED HEADER - Outside ScrollView */}
       <Header onMenuPress={() => setMenuVisible(true)} disableSafeAreaPadding={true} />
 
