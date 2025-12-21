@@ -114,6 +114,7 @@ export default function ServicesPage() {
           // This is a fallback since salon API might not return workTypes
           normalizedData.forEach((service: any, index: number) => {
             const isKynnet = service.category?.name === 'Kynnet' || service.categoryId === '1dca56ac-d3b1-4e3c-986e-ad9b11aa6794';
+            const isHiukset = service.category?.name === 'Hiukset' || service.parentService?.category?.name === 'Hiukset';
             const needsWorkTypes = !service.workTypes || (Array.isArray(service.workTypes) && service.workTypes.length === 0);
 
             if (isKynnet && needsWorkTypes) {
@@ -122,6 +123,12 @@ export default function ServicesPage() {
                 workTypes: ['UUDET', 'POISTO', 'HUOLTO']
               };
               console.log(`✅ Added default workTypes to ${service.name} (Kynnet category)`);
+            } else if (isHiukset && needsWorkTypes) {
+              normalizedData[index] = {
+                ...service,
+                workTypes: ['Ei lisäkkeitä', 'Lyhyet', 'Keskipitkät', 'Pitkät']
+              };
+              console.log(`✅ Added default workTypes to ${service.name} (Hiukset category)`);
             }
           });
 
@@ -501,10 +508,12 @@ export default function ServicesPage() {
 
     // Check if category is "Kynnet" - if so, use default workTypes if service doesn't have them
     const isKynnetCategory = service.category?.name === 'Kynnet' || service.categoryId === '1dca56ac-d3b1-4e3c-986e-ad9b11aa6794';
+    const isHiuksetCategory = service.category?.name === 'Hiukset' || service.parentService?.category?.name === 'Hiukset';
 
     // If no workTypes or empty array, and category is Kynnet, use default workTypes immediately
     if (isKynnetCategory && (!workTypes || (Array.isArray(workTypes) && workTypes.length === 0))) {
       workTypes = ['UUDET', 'POISTO', 'HUOLTO'];
+
     } else if ((!workTypes || (Array.isArray(workTypes) && workTypes.length === 0)) && service.parentService) {
       // If still no workTypes, check parent service (for non-Kynnet categories)
       const parentWorkTypes = service.parentService.workTypes || (service.parentService as any).work_types || (service.parentService as any).WorkTypes;
@@ -637,7 +646,11 @@ export default function ServicesPage() {
     const mapping: Record<string, string> = {
       'UUDET': 'Uudet',
       'POISTO': 'Poisto',
-      'HUOLTO': 'Huolto'
+      'HUOLTO': 'Huolto',
+      'EI_LISAKKEITA': 'Ei lisäkkeitä',
+      'LYHYET': 'Lyhyet',
+      'KESKIPITKAT': 'Keskipitkät',
+      'PITKAT': 'Pitkät'
     };
     return mapping[workType] || workType;
   };
@@ -681,7 +694,7 @@ export default function ServicesPage() {
               >
                 <Text
                   style={{
-                    fontSize: 20,
+                    fontSize: 18,
                     color: darkBrown,
                     fontFamily: 'Philosopher-Bold',
                   }}
@@ -695,7 +708,7 @@ export default function ServicesPage() {
                     width: 3,
                     height: 24,
                     backgroundColor: lightBrown,
-                    marginHorizontal: 4,
+                    marginHorizontal: -7,
                   }}
                 />
               )}
@@ -714,16 +727,17 @@ export default function ServicesPage() {
     'Kampaukset',
     'Hoidot',
     'Hiustenpidennykset',
-    'Permanantti',
+    'Permanentti',
     'Letit',
   ];
 
   const renderHiuksetSubList = () => (
     <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
       {HIUKSET_SUBCATS.map((label) => (
-        <TouchableOpacity
+        < TouchableOpacity
           key={label}
-          onPress={() => router.push({ pathname: '/services', params: { categoryName, uiVariant: 'hiukset', subCategory: label } })}
+          onPress={() => router.push({ pathname: '/services', params: { categoryName, uiVariant: 'hiukset', subCategory: label } })
+          }
           style={{
             backgroundColor: 'white',
             borderWidth: 3,
@@ -742,9 +756,9 @@ export default function ServicesPage() {
         >
           <Text style={{ color: darkBrown, fontFamily: 'Philosopher-Bold', fontSize: 18 }} numberOfLines={1}>{label}</Text>
           <Ionicons name="arrow-forward" size={22} color={darkBrown} />
-        </TouchableOpacity>
+        </TouchableOpacity >
       ))}
-    </View>
+    </View >
   );
 
   const filterHiuksetBySub = (list: Service[], sub?: string) => {

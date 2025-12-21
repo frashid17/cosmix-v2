@@ -522,7 +522,7 @@ export default function Page() {
                       fontSize: 16,
                     }}
                   >
-                    Lisaa
+                    Lisää
                   </Text>
                 </TouchableOpacity>
               </View>

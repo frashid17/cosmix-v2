@@ -232,14 +232,25 @@ const Saloons = () => {
                         >
                             {/* Title */}
                             <Text
+                                numberOfLines={2}
+                                adjustsFontSizeToFit
+                                minimumFontScale={0.5}
                                 style={{
+                                    width: "100%",
+                                    paddingHorizontal: 10,
                                     fontFamily: "Philosopher-Bold",
-                                    fontSize: 35,
+                                    fontSize: 30,
                                     color: darkBrown,
                                     textAlign: "center"
                                 }}
                             >
-                                {salonId ? `${serviceName || "Service"} ` : (serviceName || "Services")}
+                                {(() => {
+                                    const text = salonId ? (serviceName || "Service") : (serviceName || "Services");
+                                    const trimmed = text.trim();
+                                    const firstSpace = trimmed.indexOf(" ");
+                                    if (firstSpace === -1) return text;
+                                    return trimmed.slice(0, firstSpace) + "\n" + trimmed.slice(firstSpace + 1);
+                                })()}
                             </Text>
 
                             {/* Ellipses at bottom */}
