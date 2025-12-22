@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Image, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +39,8 @@ export default function MapScreen() {
   const [filteredSalons, setFilteredSalons] = useState<MapSalon[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [webViewRef, setWebViewRef] = useState<WebView | null>(null);
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const cardsFlatListRef = useRef<FlatList>(null);
 
   // Color scheme
   const darkBrown = "#423120";
@@ -278,6 +280,33 @@ export default function MapScreen() {
       setLoading(false);
     }
   };
+
+  // Sync FlatList when selectedSalon changes externally (e.g., marker click)
+  useEffect(() => {
+    if (selectedSalon && salons.length > 0) {
+      const index = salons.findIndex(s => s.id === selectedSalon.id);
+      if (index !== -1 && index !== activeCardIndex) {
+        setActiveCardIndex(index);
+        // Use setTimeout to ensure FlatList is ready
+        setTimeout(() => {
+          try {
+            cardsFlatListRef.current?.scrollToIndex({ 
+              index, 
+              animated: true,
+              viewPosition: 0.5 
+            });
+          } catch {
+            // Fallback to scrollToOffset if scrollToIndex fails
+            const cardWidth = Dimensions.get('window').width - 50;
+            cardsFlatListRef.current?.scrollToOffset({ 
+              offset: index * (cardWidth + 20), 
+              animated: true 
+            });
+          }
+        }, 100);
+      }
+    }
+  }, [selectedSalon?.id, salons.length]);
 
   const onMarkerPress = (salon: MapSalon) => {
     setSelectedSalon(salon);
@@ -584,25 +613,12 @@ export default function MapScreen() {
             container.appendChild(labelEl);
             container.appendChild(el);
             
-            // No automatic redirect - let the popup handle the interaction
-
-            const popup = new mapboxgl.Popup({ offset: 25 })
-              .setHTML(\`
-                
-                <div style="margin-top: 12px;">
-                  <button class="popup-button" onclick="window.ReactNativeWebView.postMessage(JSON.stringify({type: 'viewServices', salonId: '\${salon.id}', salonName: '\${salon.name}'}))" style="width: 100%;">
-                    Katso palvelut
-                  </button>
-                </div>
-              \`);
-
-            // Create single marker with both icon and label
+            // Create single marker with both icon and label (no popup button)
             const marker = new mapboxgl.Marker({
               element: container,
               anchor: 'center'
             })
             .setLngLat([salon.lng, salon.lat])
-            .setPopup(popup)
             .addTo(map);
           });
 
@@ -763,14 +779,96 @@ export default function MapScreen() {
         />
 
         {/* Floating Search Bar */}
-        <View style={[styles.searchContainer, { bottom: 100 + insets.bottom }]}>
+        {/* <View style={[styles.searchContainer, { bottom: 100 + insets.bottom }]}>
           <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={handleSearchPress}>
             <Ionicons name="search" size={31} color={darkBrown} style={styles.searchIcon} />
             <Text style={[styles.searchText, { color: darkBrown }]}>
               Etsi hoitoja lähelläsi
             </Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
+
+        {/* Bottom Swipeable Cards */}
+        {salons.length > 0 && (
+          <View style={[styles.cardsContainer, { bottom: 50 + insets.bottom }]}>
+            <FlatList
+              ref={cardsFlatListRef}
+              data={salons}
+              keyExtractor={(item) => item.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              pagingEnabled={false}
+              // One-swipe-per-card snapping
+              snapToInterval={Dimensions.get('window').width - 30} // cardWidth (W-50) + marginRight (20)
+              snapToAlignment="start"
+              decelerationRate="fast"
+              contentContainerStyle={styles.cardsContentContainer}
+              scrollEnabled={true}
+              bounces={false}
+              getItemLayout={(data, index) => {
+                const length = Dimensions.get('window').width - 30; // must match snapToInterval
+                const offset = 20 + index * length; // left padding 20 + index * itemLength
+                return { length, offset, index };
+              }}
+              onViewableItemsChanged={({ viewableItems }) => {
+                if (viewableItems.length > 0 && viewableItems[0].index !== null) {
+                  const index = viewableItems[0].index;
+                  const salon = salons[index];
+                  setActiveCardIndex(index);
+                  setSelectedSalon(salon);
+                  // Move map camera to the active card's salon
+                  centerMapOnSalon(salon);
+                }
+              }}
+              viewabilityConfig={{
+                itemVisiblePercentThreshold: 50,
+              }}
+              renderItem={({ item: salon, index }) => (
+                <TouchableOpacity
+                  style={styles.card}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    // Navigate to services page with salon information (same as "Katso palvelut" button)
+                    router.push({
+                      pathname: '/services',
+                      params: {
+                        salonId: salon.id,
+                        salonName: salon.name,
+                        categoryName: 'Kaikki palvelut'
+                      }
+                    });
+                  }}
+                >
+                  {/* Thumbnail Image */}
+                  <Image
+                    source={{
+                      uri: salon.images && salon.images.length > 0
+                        ? salon.images[0].url
+                        : 'https://via.placeholder.com/80x80?text=No+Image'
+                    }}
+                    style={styles.cardThumbnail}
+                    resizeMode="cover"
+                  />
+                  
+                  {/* Card Content */}
+                  <View style={styles.cardContent}>
+                    <Text style={styles.cardName} numberOfLines={1}>
+                      {salon.name}
+                    </Text>
+                    
+                    {/* Rating Row */}
+                    <View style={styles.cardRatingRow}>
+                      <Text style={styles.cardRating}>
+                        {salon.averageRating ? salon.averageRating.toFixed(1) : salon.rating?.toFixed(1) || '0.0'}
+                      </Text>
+                      <Text style={styles.cardStar}>⭐ • Salonki</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        )}
       </View>
 
       {/* Modal for the side menu */}
@@ -1142,5 +1240,70 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     textAlign: 'center',
+  },
+  // Bottom Swipeable Cards Styles
+  cardsContainer: {
+    position: 'absolute',
+    bottom: 50, // Position above bottom tab bar (typical tab bar height is ~60-80px)
+    left: 0,
+    right: 0,
+    height: 120,
+  },
+  cardsContentContainer: {
+    paddingLeft: 20,
+    paddingRight: 20, // Standard padding, will be adjusted per card
+  },
+  card: {
+    width: Dimensions.get('window').width - 50, // Smaller width to show peek of next card (reduced peek)
+    height: 90,
+    backgroundColor: '#D7C3A7',
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 20,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: '#423120',
+  },
+  cardThumbnail: {
+    width: 76,
+    height: 76,
+    borderRadius: 12,
+    backgroundColor: '#F4EDE5',
+  },
+  cardContent: {
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'center',
+  },
+  cardName: {
+    fontSize: 18,
+    fontFamily: 'Philosopher-Bold',
+    color: '#423120',
+    marginBottom: 6,
+  },
+  cardRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end', // Align rating number and star on the same baseline
+  },
+  cardRating: {
+    fontSize: 16,
+    fontFamily: 'Philosopher-Bold',
+    color: '#423120',
+    marginRight: 4,
+  },
+  cardStar: {
+    fontSize: 16,
+    color: '#423120',
+    fontFamily: 'Philosopher-Bold',
+    marginBottom: 1, // Tiny adjustment so the star visually lines up with the number
   },
 });
