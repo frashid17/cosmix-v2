@@ -600,7 +600,6 @@ export default function AdminWebViewScreen() {
                 3. Set showBack to true so you can exit the screen (optional, set to false if preferred)
             */}
             <Header
-                title="cosmix"
                 showBack={true}
                 showMenu={false}
                 onBackPress={handleGoBack}
@@ -633,7 +632,7 @@ export default function AdminWebViewScreen() {
                 {isCheckingAdmin ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={darkBrown} />
-                        <Text style={styles.loadingText}>Checking access...</Text>
+                        
                     </View>
                 ) : webViewSource ? (
                     <>

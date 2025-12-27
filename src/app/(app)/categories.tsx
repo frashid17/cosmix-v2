@@ -20,6 +20,7 @@ const Categories: React.FC = () => {
   const buttonBorderRadius = 30;
   const baseButtonColor = "#D7C3A7";
   const baseTextColor = "#423120";
+  const lightBeige = "#ffffffff";
   const baseFontSize = 18;
   const basePaddingVertical = 14;
   const basePaddingHorizontal = 24;
@@ -164,7 +165,7 @@ const Categories: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: lightBeige }}>
       {/* Header - Full Width */}
       <Header
         showBack={true}

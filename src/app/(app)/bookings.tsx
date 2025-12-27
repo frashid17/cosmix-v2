@@ -627,10 +627,29 @@ export default function BookingsScreen() {
                 marginBottom: 20,
               }} />
 
+              {/* Close Button */}
+              <TouchableOpacity
+                style={{
+                  position: 'absolute',
+                  top: 20,
+                  right: 20,
+                  zIndex: 10,
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: '#F4EDE5',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+                onPress={closeRatingModal}
+              >
+                <Ionicons name="close" size={24} color={darkBrown} />
+              </TouchableOpacity>
+
               {/* Title */}
               <Text style={{
                 fontFamily: "Philosopher-Bold",
-                fontSize: 24,
+                fontSize: 20,
                 color: darkBrown,
                 textAlign: "center",
                 marginBottom: 8,
@@ -642,7 +661,7 @@ export default function BookingsScreen() {
               {selectedBooking && (
                 <Text style={{
                   fontFamily: "Philosopher-Regular",
-                  fontSize: 20,
+                  fontSize: 18,
                   color: darkBrown,
                   textAlign: "center",
                   marginBottom: 24,
@@ -657,19 +676,24 @@ export default function BookingsScreen() {
                 flexDirection: "row",
                 justifyContent: "center",
                 marginBottom: 16,
+                gap: 4,
               }}>
                 {[1, 2, 3, 4, 5].map((star) => (
                   <TouchableOpacity
                     key={star}
                     onPress={() => setSelectedRating(star)}
-                    style={{ paddingHorizontal: 8 }}
+                    activeOpacity={0.7}
+                    style={{
+                      padding: 8,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
                   >
-                    <Text style={{
-                      fontSize: 40,
-                      color: star <= selectedRating ? darkBrown : "#E0CFB9",
-                    }}>
-                      ★
-                    </Text>
+                    <Ionicons
+                      name={star <= selectedRating ? "star" : "star-outline"}
+                      size={36}
+                      color={star <= selectedRating ? darkBrown : "#E0CFB9"}
+                    />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -677,11 +701,10 @@ export default function BookingsScreen() {
               {/* Rating description */}
               <Text style={{
                 fontFamily: "Philosopher-Regular",
-                fontSize: 20,
+                fontSize: 18,
                 color: darkBrown,
                 textAlign: "center",
                 marginBottom: 24,
-
               }}>
                 {selectedRating === 0 && "Valitse arvosana napauttamalla tähtiä"}
                 {selectedRating === 1 && "Huono kokemus 😞"}
@@ -724,24 +747,7 @@ export default function BookingsScreen() {
 
               {/* Buttons */}
               <View style={{ flexDirection: "row", gap: 12 }}>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: "#F5F5F5",
-                    paddingVertical: 16,
-                    borderRadius: 12,
-                    alignItems: "center",
-                  }}
-                  onPress={closeRatingModal}
-                >
-                  <Text style={{
-                    fontFamily: "Philosopher-Bold",
-                    fontSize: 16,
-                    color: darkBrown,
-                  }}>
-                    Peruuta
-                  </Text>
-                </TouchableOpacity>
+
 
                 <TouchableOpacity
                   style={{

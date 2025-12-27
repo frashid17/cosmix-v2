@@ -60,6 +60,10 @@ export default function Header({
     }
   };
 
+  const handleTitlePress = () => {
+    router.push('/');
+  };
+
   return (
     <View
       style={{
@@ -108,20 +112,26 @@ export default function Header({
             right: 0,
             alignItems: "center",
             justifyContent: "center",
-            pointerEvents: "none",
+            pointerEvents: "box-none",
           }}
         >
-          <Text
-            style={{
-              fontSize: 20,
-              fontFamily: "Philosopher-Bold",
-              fontWeight: "700",
-              color: darkBrown,
-              letterSpacing: 3,
-            }}
+          <TouchableOpacity
+            onPress={handleTitlePress}
+            activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            {title}
-          </Text>
+            <Text
+              style={{
+                fontSize: 20,
+                fontFamily: "Philosopher-Bold",
+                fontWeight: "700",
+                color: darkBrown,
+                letterSpacing: 3,
+              }}
+            >
+              {title}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* Menu Button (right side) */}

@@ -170,7 +170,6 @@ const Saloons = () => {
         <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
             {/* Header - Fixed at Top */}
             <Header
-                title="COSMIX"
                 showBack={true}
                 showMenu={true}
                 onBackPress={() => router.back()}
@@ -192,7 +191,7 @@ const Saloons = () => {
                         style={{
                             position: "absolute",
                             top: 97,
-                            left: -45,
+                            left: -48,
                             width: 220,
                             height: 200,
                             opacity: 0.9,
@@ -204,7 +203,7 @@ const Saloons = () => {
                         style={{
                             position: "absolute",
                             top: 18,
-                            right: -45,
+                            right: -48,
                             width: 220,
                             height: 200,
                             opacity: 0.9,
@@ -216,7 +215,7 @@ const Saloons = () => {
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <View
                             style={{
-                                width: 300,
+                                width: 310,
                                 height: 195,
                                 backgroundColor: "white",
                                 borderRadius: 24,
@@ -247,9 +246,24 @@ const Saloons = () => {
                                 {(() => {
                                     const text = salonId ? (serviceName || "Service") : (serviceName || "Services");
                                     const trimmed = text.trim();
-                                    const firstSpace = trimmed.indexOf(" ");
-                                    if (firstSpace === -1) return text;
-                                    return trimmed.slice(0, firstSpace) + "\n" + trimmed.slice(firstSpace + 1);
+                                    const words = trimmed.split(/\s+/).filter(word => word.length > 0);
+                                    
+                                    // If 2 words, keep both on first line
+                                    if (words.length === 2) {
+                                        return words.join(" ");
+                                    }
+                                    
+                                    // If exactly 3 words, first 2 words on top line, remaining 1 on second line
+                                    if (words.length === 3) {
+                                        return words.slice(0, 2).join(" ") + "\n" + words[2];
+                                    }
+                                    
+                                    // For 4+ words, keep original behavior (first word on top, rest on bottom)
+                                    if (words.length > 3) {
+                                        return words[0] + "\n" + words.slice(1).join(" ");
+                                    }
+                                    
+                                    return text;
                                 })()}
                             </Text>
 

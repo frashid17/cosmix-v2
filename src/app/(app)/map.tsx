@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Image, Dimensions } from 'react-native';
+import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Image, Dimensions, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +33,9 @@ export default function MapScreen() {
   const [selectedSalon, setSelectedSalon] = useState<MapSalon | null>(null);
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [isSearchVisible, setSearchVisible] = useState(false);
+  const [isSalonDetailVisible, setSalonDetailVisible] = useState(false);
+  const [selectedSalonForDetail, setSelectedSalonForDetail] = useState<MapSalon | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState<Service[]>([]);
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
@@ -156,7 +159,7 @@ export default function MapScreen() {
       const validSalons = salonsData.filter(salon =>
         salon.latitude && salon.longitude &&
         salon.latitude !== null && salon.longitude !== null
-      );
+      ) as unknown as MapSalon[];
 
       if (validSalons.length > 0) {
         setSalons(validSalons);
@@ -290,17 +293,17 @@ export default function MapScreen() {
         // Use setTimeout to ensure FlatList is ready
         setTimeout(() => {
           try {
-            cardsFlatListRef.current?.scrollToIndex({ 
-              index, 
+            cardsFlatListRef.current?.scrollToIndex({
+              index,
               animated: true,
-              viewPosition: 0.5 
+              viewPosition: 0.5
             });
           } catch {
             // Fallback to scrollToOffset if scrollToIndex fails
             const cardWidth = Dimensions.get('window').width - 50;
-            cardsFlatListRef.current?.scrollToOffset({ 
-              offset: index * (cardWidth + 20), 
-              animated: true 
+            cardsFlatListRef.current?.scrollToOffset({
+              offset: index * (cardWidth + 20),
+              animated: true
             });
           }
         }, 100);
@@ -364,6 +367,58 @@ export default function MapScreen() {
       params: {
         salonId: salon.id,
         salonName: salon.name
+      }
+    });
+  };
+
+  // Handle salon card click - show detail modal
+  const handleSalonCardPress = (salon: MapSalon) => {
+    setSelectedSalonForDetail(salon);
+    setSalonDetailVisible(true);
+  };
+
+  // Close salon detail modal
+  const closeSalonDetailModal = () => {
+    setSalonDetailVisible(false);
+    setSelectedSalonForDetail(null);
+  };
+
+  // Handle directions button
+  const handleDirections = (salon: MapSalon) => {
+    const url = Platform.select({
+      ios: `maps://app?daddr=${salon.latitude},${salon.longitude}`,
+      android: `google.navigation:q=${salon.latitude},${salon.longitude}`,
+    });
+
+    if (url) {
+      Linking.openURL(url).catch(() => {
+        // Fallback to web maps
+        const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${salon.latitude},${salon.longitude}`;
+        Linking.openURL(webUrl);
+      });
+    }
+  };
+
+  // Handle call button
+  const handleCall = (salon: MapSalon) => {
+    // Check if salon has phone number - for now, show alert
+    // You can add phone field to MapSalon interface if available
+    Alert.alert(
+      'Puhelin',
+      'Puhelinnumero ei ole saatavilla tälle salonille.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // Navigate to services
+  const handleViewServices = (salon: MapSalon) => {
+    closeSalonDetailModal();
+    router.push({
+      pathname: '/services',
+      params: {
+        salonId: salon.id,
+        salonName: salon.name,
+        categoryName: 'Kaikki palvelut'
       }
     });
   };
@@ -511,6 +566,8 @@ export default function MapScreen() {
         <style>
           body { margin: 0; padding: 0; }
           #map { width: 100%; height: 100vh; }
+          a { pointer-events: none; }
+          * { -webkit-touch-callout: none; -webkit-user-select: none; }
           .mapboxgl-popup-content {
             border-radius: 12px;
             padding: 16px;
@@ -578,6 +635,15 @@ export default function MapScreen() {
             center: [${centerLng}, ${centerLat}],
             zoom: 13
           });
+
+          // Prevent any default link behavior
+          document.addEventListener('click', function(e) {
+            if (e.target.tagName === 'A' || e.target.closest('a')) {
+              e.preventDefault();
+              e.stopPropagation();
+              return false;
+            }
+          }, true);
 
           // Add user location marker
           ${userLocation ? `
@@ -768,6 +834,14 @@ export default function MapScreen() {
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
+          onShouldStartLoadWithRequest={(request) => {
+            // Only allow initial load, block all other navigation
+            if (request.navigationType === 'other') {
+              return true; // Allow initial load
+            }
+            return false; // Block all other navigation attempts
+          }}
+          allowsBackForwardNavigationGestures={false}
           renderLoading={() => (
             <View style={styles.webViewLoading}>
               <ActivityIndicator size="large" color={darkBrown} />
@@ -827,17 +901,7 @@ export default function MapScreen() {
                 <TouchableOpacity
                   style={styles.card}
                   activeOpacity={0.8}
-                  onPress={() => {
-                    // Navigate to services page with salon information (same as "Katso palvelut" button)
-                    router.push({
-                      pathname: '/services',
-                      params: {
-                        salonId: salon.id,
-                        salonName: salon.name,
-                        categoryName: 'Kaikki palvelut'
-                      }
-                    });
-                  }}
+                  onPress={() => handleSalonCardPress(salon)}
                 >
                   {/* Thumbnail Image */}
                   <Image
@@ -849,13 +913,13 @@ export default function MapScreen() {
                     style={styles.cardThumbnail}
                     resizeMode="cover"
                   />
-                  
+
                   {/* Card Content */}
                   <View style={styles.cardContent}>
                     <Text style={styles.cardName} numberOfLines={1}>
                       {salon.name}
                     </Text>
-                    
+
                     {/* Rating Row */}
                     <View style={styles.cardRatingRow}>
                       <Text style={styles.cardRating}>
@@ -1015,6 +1079,121 @@ export default function MapScreen() {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Salon Detail Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={isSalonDetailVisible}
+        onRequestClose={closeSalonDetailModal}
+      >
+        <View style={styles.salonDetailOverlay}>
+          <TouchableOpacity
+            style={styles.salonDetailBackdrop}
+            activeOpacity={1}
+            onPress={closeSalonDetailModal}
+          />
+          <View
+            style={[
+              styles.salonDetailContent,
+              {
+                width: '100%',
+                // transform: [{ translateY: slideAnim }],
+              },
+            ]}
+          >
+            {selectedSalonForDetail && (
+              <>
+                {/* Close Button */}
+                <TouchableOpacity
+                  style={styles.salonDetailCloseButton}
+                  onPress={closeSalonDetailModal}
+                >
+                  <Ionicons name="close" size={28} color={darkBrown} />
+                </TouchableOpacity>
+
+                {/* Salon Image */}
+                <View style={styles.salonDetailImageContainer}>
+                  {selectedSalonForDetail.images && selectedSalonForDetail.images.length > 0 ? (
+                    <Image
+                      source={{ uri: selectedSalonForDetail.images[0].url }}
+                      style={styles.salonDetailImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.salonDetailImage, styles.salonDetailImagePlaceholder]}>
+                      <Ionicons name="business-outline" size={64} color={darkBrown} />
+                    </View>
+                  )}
+                </View>
+
+                {/* Salon Info */}
+                <View style={styles.salonDetailInfo}>
+                  {/* Salon Name */}
+                  <Text style={[styles.salonDetailName, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                    {selectedSalonForDetail.name}
+                  </Text>
+
+                  {/* Rating */}
+                  <View style={styles.salonDetailRatingRow}>
+                    <Text style={[styles.salonDetailRating, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                      {selectedSalonForDetail.averageRating ? selectedSalonForDetail.averageRating.toFixed(1) : selectedSalonForDetail.rating?.toFixed(1) || '0.0'}
+                    </Text>
+                    <Text style={[styles.salonDetailStar, { color: darkBrown }]}>
+                      ⭐
+                    </Text>
+                    <Text style={[styles.salonDetailReviewCount, { color: '#666', fontFamily: 'Philosopher-Regular' }]}>
+                      • {selectedSalonForDetail.reviewCount || 0} arvostelua
+                    </Text>
+                  </View>
+
+                  {/* Short Intro */}
+                  {selectedSalonForDetail.shortIntro && (
+                    <Text style={[styles.salonDetailIntro, { color: '#666', fontFamily: 'Philosopher-Regular' }]}>
+                      {selectedSalonForDetail.shortIntro}
+                    </Text>
+                  )}
+
+                  {/* Action Buttons */}
+                  <View style={styles.salonDetailActions}>
+                    {/* Directions Button */}
+                    <TouchableOpacity
+                      style={[styles.salonDetailActionButton, styles.salonDetailActionButtonPrimary]}
+                      onPress={() => handleDirections(selectedSalonForDetail)}
+                    >
+                      <Ionicons name="navigate" size={20} color={white} />
+                      <Text style={[styles.salonDetailActionButtonText, { color: white, fontFamily: 'Philosopher-Bold' }]}>
+                        Reitti
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Call Button */}
+                    <TouchableOpacity
+                      style={[styles.salonDetailActionButton, styles.salonDetailActionButtonSecondary]}
+                      onPress={() => handleCall(selectedSalonForDetail)}
+                    >
+                      <Ionicons name="call" size={20} color={darkBrown} />
+                      <Text style={[styles.salonDetailActionButtonText, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}>
+                        Soita
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* View Services Button */}
+                  <TouchableOpacity
+                    style={[styles.salonDetailServicesButton, { backgroundColor: darkBrown }]}
+                    onPress={() => handleViewServices(selectedSalonForDetail)}
+                  >
+                    <Text style={[styles.salonDetailServicesButtonText, { color: white, fontFamily: 'Philosopher-Bold' }]}>
+                      Katso palvelut
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1305,5 +1484,136 @@ const styles = StyleSheet.create({
     color: '#423120',
     fontFamily: 'Philosopher-Bold',
     marginBottom: 1, // Tiny adjustment so the star visually lines up with the number
+  },
+  // Salon Detail Modal Styles
+  salonDetailOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'transparent',
+  },
+  salonDetailBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  salonDetailContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    maxHeight: '90%',
+    minHeight: 400,
+    paddingBottom: 40,
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: -2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 10,
+  },
+  salonDetailCloseButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  salonDetailImageContainer: {
+    width: '100%',
+    height: 300,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    overflow: 'hidden',
+  },
+  salonDetailImage: {
+    width: '100%',
+    height: '100%',
+  },
+  salonDetailImagePlaceholder: {
+    backgroundColor: '#F4EDE5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  salonDetailInfo: {
+    padding: 20,
+  },
+  salonDetailName: {
+    fontSize: 28,
+    marginBottom: 8,
+  },
+  salonDetailRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  salonDetailRating: {
+    fontSize: 18,
+    marginRight: 4,
+  },
+  salonDetailStar: {
+    fontSize: 18,
+    marginRight: 4,
+  },
+  salonDetailReviewCount: {
+    fontSize: 16,
+  },
+  salonDetailIntro: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  salonDetailActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  salonDetailActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    gap: 8,
+  },
+  salonDetailActionButtonPrimary: {
+    backgroundColor: '#423120',
+  },
+  salonDetailActionButtonSecondary: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#423120',
+  },
+  salonDetailActionButtonText: {
+    fontSize: 16,
+  },
+  salonDetailServicesButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  salonDetailServicesButtonText: {
+    fontSize: 18,
   },
 });
