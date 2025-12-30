@@ -351,7 +351,7 @@ const SalonSector = () => {
                             {/* Second Box - Bottom Box (310x190) - Salon Info */}
                             <View
                                 style={{
-                                    width: 310,
+                                    width: 335,
                                     height: 190,
                                     marginTop: 140,
                                     borderWidth: 2,
@@ -449,7 +449,7 @@ const SalonSector = () => {
                                 <View style={{ marginTop: 20 }}>
                                     {/* First row - 2 chips */}
                                     {categories.length > 0 && (
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 4 }}>
                                             {categories.slice(0, 2).map((category) => (
                                                 <Chip
                                                     key={category.id}
@@ -460,7 +460,7 @@ const SalonSector = () => {
                                                 />
                                             ))}
                                             {categories.length === 1 && (
-                                                <View style={{ width: 147 }} />
+                                                <View style={{ width: 150 }} />
                                             )}
                                         </View>
                                     )}
@@ -479,7 +479,7 @@ const SalonSector = () => {
 
                                     {/* Third row - 2 chips */}
                                     {categories.length > 3 && (
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 4 }}>
                                             {categories.slice(3, 5).map((category) => (
                                                 <Chip
                                                     key={category.id}
@@ -490,7 +490,7 @@ const SalonSector = () => {
                                                 />
                                             ))}
                                             {categories.length === 4 && (
-                                                <View style={{ width: 147 }} />
+                                                <View style={{ width: 150 }} />
                                             )}
                                         </View>
                                     )}
@@ -514,7 +514,7 @@ const SalonSector = () => {
                                         if (position === 0) {
                                             const nextCategory = categories[6 + idx + 1];
                                             return (
-                                                <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
+                                                <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 4 }}>
                                                     <Chip
                                                         label={category.name}
                                                         onPress={() => onCategoryPress(category.name)}
@@ -529,7 +529,7 @@ const SalonSector = () => {
                                                             textColor={darkBrown}
                                                         />
                                                     ) : (
-                                                        <View style={{ width: 147 }} />
+                                                        <View style={{ width: 150 }} />
                                                     )}
                                                 </View>
                                             );
@@ -633,7 +633,7 @@ function Chip({ label, onPress, color, textColor }: { label: string; onPress: ()
     return (
         <TouchableOpacity
             onPress={onPress}
-            style={{ backgroundColor: color, width: 147, height: 45 }}
+            style={{ backgroundColor: color, width: 150, height: 45 }}
             className="rounded-full items-center justify-center"
         >
             <View

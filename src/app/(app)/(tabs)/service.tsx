@@ -279,57 +279,35 @@ export default function ServicesPage() {
                   </Text>
                 </View>
               ) : searchType === 'salon' && filteredSalons.length > 0 ? (
-                <View>
-                  {/* Salon Names as Chips */}
-                  {chunkArray(filteredSalons, 2).map((row, idx) => (
-                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
-                      {row.map((salon) => (
-                        <Chip
-                          key={salon.id}
-                          label={salon.name}
-                          onPress={() => onSalonPress(salon)}
-                          color={chipBeige}
-                          textColor={darkBrown}
-                        />
-                      ))}
-                      {row.length === 1 && (
-                        <View style={{ width: 147 }} />
-                      )}
-                    </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 8 }}>
+                  {filteredSalons.map((salon) => (
+                    <Chip
+                      key={salon.id}
+                      label={salon.name}
+                      onPress={() => onSalonPress(salon)}
+                      color={chipBeige}
+                      textColor={darkBrown}
+                      fullWidth={true}
+                    />
                   ))}
                 </View>
               ) : searchType === 'service' && filteredServices.length > 0 ? (
-                <View>
-                  {/* Sub-Services as Chips */}
-                  {chunkArray(filteredServices, 2).map((row, idx) => (
-                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
-                      {row.map((service) => (
-                        <Chip
-                          key={service.id}
-                          label={service.name}
-                          onPress={() => onServicePress(service)}
-                          color={chipBeige}
-                          textColor={darkBrown}
-                        />
-                      ))}
-                      {row.length === 1 && (
-                        <View style={{ width: 147 }} />
-                      )}
-                    </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 8 }}>
+                  {filteredServices.map((service) => (
+                    <Chip
+                      key={service.id}
+                      label={service.name}
+                      onPress={() => onServicePress(service)}
+                      color={chipBeige}
+                      textColor={darkBrown}
+                      fullWidth={true}
+                    />
                   ))}
                 </View>
               ) : searchType === 'category' && filteredCategoryNames.length > 0 ? (
-                <View>
-                  {/* Render results in the same 2-per-row layout */}
-                  {chunkArray(filteredCategoryNames, 2).map((row, idx) => (
-                    <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 8 }}>
-                      {row.map((name) => (
-                        <Chip key={name} label={name} onPress={() => onChipPress(name)} color={chipBeige} textColor={darkBrown} />
-                      ))}
-                      {row.length === 1 && (
-                        <View style={{ width: 147 }} />
-                      )}
-                    </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 8 }}>
+                  {filteredCategoryNames.map((name) => (
+                    <Chip key={name} label={name} onPress={() => onChipPress(name)} color={chipBeige} textColor={darkBrown} fullWidth={true} />
                   ))}
                 </View>
               ) : (
@@ -365,9 +343,10 @@ export default function ServicesPage() {
                             onPress={() => onChipPress(category.name)}
                             color={chipBeige}
                             textColor={darkBrown}
+                            fixedWidth={true}
                           />
                         ))}
-                        {popularCategories.length === 1 && <View style={{ width: 147 }} />}
+                        {popularCategories.length === 1 && <View style={{ width: 155 }} />}
                       </View>
                     )}
 
@@ -379,6 +358,7 @@ export default function ServicesPage() {
                           onPress={() => onChipPress(popularCategories[2].name)}
                           color={chipBeige}
                           textColor={darkBrown}
+                          fixedWidth={true}
                         />
                       </View>
                     )}
@@ -393,9 +373,10 @@ export default function ServicesPage() {
                             onPress={() => onChipPress(category.name)}
                             color={chipBeige}
                             textColor={darkBrown}
+                            fixedWidth={true}
                           />
                         ))}
-                        {popularCategories.length === 4 && <View style={{ width: 147 }} />}
+                        {popularCategories.length === 4 && <View style={{ width: 155 }} />}
                       </View>
                     )}
 
@@ -407,6 +388,7 @@ export default function ServicesPage() {
                           onPress={() => onChipPress(popularCategories[5].name)}
                           color={chipBeige}
                           textColor={darkBrown}
+                          fixedWidth={true}
                         />
                       </View>
                     )}
@@ -423,6 +405,7 @@ export default function ServicesPage() {
                               onPress={() => onChipPress(category.name)}
                               color={chipBeige}
                               textColor={darkBrown}
+                              fixedWidth={true}
                             />
                             {nextCategory ? (
                               <Chip
@@ -430,9 +413,10 @@ export default function ServicesPage() {
                                 onPress={() => onChipPress(nextCategory.name)}
                                 color={chipBeige}
                                 textColor={darkBrown}
+                                fixedWidth={true}
                               />
                             ) : (
-                              <View style={{ width: 147 }} />
+                              <View style={{ width: 155 }} />
                             )}
                           </View>
                         );
@@ -444,6 +428,7 @@ export default function ServicesPage() {
                               onPress={() => onChipPress(category.name)}
                               color={chipBeige}
                               textColor={darkBrown}
+                              fixedWidth={true}
                             />
                           </View>
                         );
@@ -627,64 +612,27 @@ function SalonCard({
   );
 }
 
-function Chip({ label, onPress, color, textColor }: { label: string; onPress: () => void; color: string; textColor: string }) {
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [textWidth, setTextWidth] = useState(0);
-  const translateX = useRef(new Animated.Value(0)).current;
-
-  const H_PADDING = 16; // internal horizontal padding so text doesn't touch edges
-  const effectiveWidth = Math.max(0, containerWidth - H_PADDING * 2);
-  const shouldScroll = textWidth > effectiveWidth && effectiveWidth > 0;
-
-  useEffect(() => {
-    let loop: Animated.CompositeAnimation | null = null;
-    if (shouldScroll) {
-      // Start centered if possible, then animate to left and back
-      translateX.setValue(0);
-      const distance = textWidth - effectiveWidth;
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(translateX, {
-            toValue: -distance,
-            duration: Math.min(14000, 5000 + distance * 30),
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-          Animated.timing(translateX, {
-            toValue: 0,
-            duration: 1000,
-            easing: Easing.linear,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      loop.start();
-    }
-    return () => {
-      if (loop) loop.stop();
-    };
-  }, [shouldScroll, textWidth, effectiveWidth, translateX]);
-
+function Chip({ label, onPress, color, textColor, fixedWidth, fullWidth }: { label: string; onPress: () => void; color: string; textColor: string; fixedWidth?: boolean; fullWidth?: boolean }) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={{ backgroundColor: color, width: 147, height: 45 }}
-      className="rounded-full items-center justify-center"
+      style={{
+        backgroundColor: color,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+        ...(fixedWidth ? { width: 150 } : {}),
+        ...(fullWidth ? { width: '100%' } : {}),
+      }}
     >
-      <View
-        style={{ width: "100%", overflow: "hidden", alignItems: "center", paddingHorizontal: H_PADDING }}
-        onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+      <Text
+        numberOfLines={1}
+        style={{ color: textColor, fontFamily: 'Philosopher-Bold', fontSize: 15, textAlign: 'center' }}
       >
-        <Animated.View style={{ transform: [{ translateX: shouldScroll ? translateX : 0 }], alignItems: "center" }}>
-          <Text
-            onLayout={(e) => setTextWidth(e.nativeEvent.layout.width)}
-            numberOfLines={1}
-            style={{ color: textColor, fontFamily: 'Philosopher-Bold', fontSize: 15, textAlign: 'center' }}
-          >
-            {label}
-          </Text>
-        </Animated.View>
-      </View>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
