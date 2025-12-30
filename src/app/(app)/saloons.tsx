@@ -30,7 +30,7 @@ const SaloonImageCarousel = ({ images, saloonName }: { images: string[], saloonN
         return (
             <View
                 style={{
-                    width: 310,
+                    width: 335,
                     height: 200,
                     backgroundColor: lightBeige,
                     borderRadius: 24,
@@ -57,7 +57,7 @@ const SaloonImageCarousel = ({ images, saloonName }: { images: string[], saloonN
     return (
         <View
             style={{
-                width: 310,
+                width: 335,
                 height: 200,
                 backgroundColor: lightBeige,
                 borderRadius: 24,
@@ -191,7 +191,7 @@ const Saloons = () => {
                         style={{
                             position: "absolute",
                             top: 97,
-                            left: -48,
+                            left: -49,
                             width: 220,
                             height: 200,
                             opacity: 0.9,
@@ -203,7 +203,7 @@ const Saloons = () => {
                         style={{
                             position: "absolute",
                             top: 18,
-                            right: -48,
+                            right: -49,
                             width: 220,
                             height: 200,
                             opacity: 0.9,
@@ -215,7 +215,7 @@ const Saloons = () => {
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <View
                             style={{
-                                width: 310,
+                                width: 335,
                                 height: 195,
                                 backgroundColor: "white",
                                 borderRadius: 24,
@@ -238,7 +238,7 @@ const Saloons = () => {
                                     width: "100%",
                                     paddingHorizontal: 10,
                                     fontFamily: "Philosopher-Bold",
-                                    fontSize: 30,
+                                    fontSize: 21,
                                     color: darkBrown,
                                     textAlign: "center"
                                 }}
@@ -247,22 +247,17 @@ const Saloons = () => {
                                     const text = salonId ? (serviceName || "Service") : (serviceName || "Services");
                                     const trimmed = text.trim();
                                     const words = trimmed.split(/\s+/).filter(word => word.length > 0);
-                                    
+
                                     // If 2 words, keep both on first line
                                     if (words.length === 2) {
                                         return words.join(" ");
                                     }
-                                    
-                                    // If exactly 3 words, first 2 words on top line, remaining 1 on second line
-                                    if (words.length === 3) {
-                                        return words.slice(0, 2).join(" ") + "\n" + words[2];
-                                    }
-                                    
+
                                     // For 4+ words, keep original behavior (first word on top, rest on bottom)
                                     if (words.length > 3) {
                                         return words[0] + "\n" + words.slice(1).join(" ");
                                     }
-                                    
+
                                     return text;
                                 })()}
                             </Text>
@@ -298,16 +293,7 @@ const Saloons = () => {
                 {loading && (
                     <View style={{ alignItems: "center", marginTop: 80 }}>
                         <ActivityIndicator size="large" color={darkBrown} />
-                        <Text
-                            style={{
-                                fontFamily: "Philosopher-Bold",
-                                fontSize: 16,
-                                color: darkBrown,
-                                marginTop: 10,
-                            }}
-                        >
-                            Loading saloons...
-                        </Text>
+
                     </View>
                 )}
 
@@ -384,7 +370,7 @@ const Saloons = () => {
                                     {/* Second Box - Bottom Box (327x200) - Salon Info */}
                                     <View
                                         style={{
-                                            width: 310,
+                                            width: 335,
                                             height: 190,
                                             marginTop: 140,
                                             borderWidth: 2,

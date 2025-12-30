@@ -305,7 +305,7 @@ const SalonSector = () => {
                             {/* First Box - Top Box (310x200) - Salon Picture */}
                             <View
                                 style={{
-                                    width: 310,
+                                    width: 335,
                                     height: 200,
                                     backgroundColor: lightBeige,
                                     borderRadius: 24,
