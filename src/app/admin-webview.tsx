@@ -9,6 +9,7 @@ import {
     RefreshControl,
     SafeAreaView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useRouter } from 'expo-router';
 import { useClerk, useAuth } from '@clerk/clerk-expo';
@@ -26,6 +27,7 @@ const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || 'dev-admin-key-ch
 
 export default function AdminWebViewScreen() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const webViewRef = useRef<WebView | null>(null);
     const finalUrlRef = useRef<string | null>(null);
     const { signOut } = useClerk();
@@ -568,8 +570,27 @@ export default function AdminWebViewScreen() {
       }, { passive: false });
     `;
 
+    // CSS to handle safe area insets for mobile bottom nav
+    const safeAreaCSS = `
+      (function() {
+        const style = document.createElement('style');
+        style.textContent = \`
+          nav[class*="fixed"][class*="bottom-0"] {
+            padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+          }
+          @supports (padding: max(0px)) {
+            nav[class*="fixed"][class*="bottom-0"] {
+              padding-bottom: max(env(safe-area-inset-bottom), 16px) !important;
+            }
+          }
+        \`;
+        document.head.appendChild(style);
+      })();
+    `;
+
     const injectedJavaScript = `
     ${disableZoomScript}
+    ${safeAreaCSS}
     ${getTokenInjectionScript(authToken)}
     // Persist admin bearer in cookie for all subsequent requests
     try {
@@ -628,7 +649,7 @@ export default function AdminWebViewScreen() {
             )}
 
             {/* WebView */}
-            <View style={styles.webViewContainer}>
+            <View style={[styles.webViewContainer, { paddingBottom: insets.bottom }]}>
                 {isCheckingAdmin ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={darkBrown} />
