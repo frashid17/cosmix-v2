@@ -1,12 +1,14 @@
 // src/app/(app)/services.tsx
-import React, { useState, useEffect, useMemo } from "react";
-import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Modal, Image } from "react-native";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Modal,Animated, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from 'expo-font';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import getServicesByCategory from "../actions/get-services";
 import getServicesBySalon from "../actions/get-services-by-salon";
+import getSaloonsMap from "../actions/get-saloons-map";
 import { Service } from "../types";
+import { Salon } from "../../../types/salon";
 import Header from "../components/Header";
 import SideMenu from "../components/SideMenu";
 
@@ -32,6 +34,80 @@ export default function ServicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [dynamicCategoryName, setDynamicCategoryName] = useState<string>('');
   const [isMenuVisible, setMenuVisible] = useState(false);
+  
+  // Salon state for hero carousel
+  const [salon, setSalon] = useState<Salon | null>(null);
+  // Hero box carousel state: 0 = title, 1+ = images
+  const [heroContentIndex, setHeroContentIndex] = useState(0);
+
+  // Get salon images array - use useMemo to prevent recalculation issues
+  const salonImages = useMemo(() => {
+    return salon?.images?.map(img => img.url).filter((url): url is string => Boolean(url)) || [];
+  }, [salon?.images]);
+
+  // Total pages: number of images
+  const totalPages = salonImages.length;
+
+  // Animated opacity values for smooth fade transitions
+  const fadeAnims = useRef<Animated.Value[]>([]).current;
+
+  // Initialize animated values when totalPages or salonImages change
+  useEffect(() => {
+    // Ensure we have enough animated values for all images
+    if (totalPages > 0) {
+      // Reset array if it's the wrong size
+      if (fadeAnims.length !== totalPages) {
+        fadeAnims.length = 0; // Clear existing
+        for (let i = 0; i < totalPages; i++) {
+          fadeAnims.push(new Animated.Value(i === 0 ? 1 : 0));
+        }
+      }
+    }
+  }, [totalPages, salonImages.length]);
+
+  // Reset carousel to start from Title when images load
+  useEffect(() => {
+    if (salonImages.length > 0) {
+      setHeroContentIndex(0);
+      // Reset animations: Title (index 0) = 1, others = 0
+      fadeAnims.forEach((anim, i) => {
+        anim.setValue(i === 0 ? 1 : 0);
+      });
+    }
+  }, [salonImages.length, fadeAnims]);
+
+  // Auto-transition effect for hero box with smooth fade
+  useEffect(() => {
+    if (salonImages.length === 0 || totalPages === 0) return; // No images to cycle through
+
+    const interval = setInterval(() => {
+      setHeroContentIndex(prevIndex => {
+        const nextIndex = (prevIndex + 1) % totalPages;
+        const currentIndex = prevIndex; // Capture current index before update
+
+        // Animate fade in next (smoother 1000ms transition)
+        // We keep the previous image opaque until the new one fully covers it
+        // This prevents the "dip" where background shows through
+        if (fadeAnims[nextIndex]) {
+          Animated.timing(fadeAnims[nextIndex], {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }).start(() => {
+            // After transition is complete, hide the previous one
+            if (fadeAnims[currentIndex]) {
+              fadeAnims[currentIndex].setValue(0);
+            }
+          });
+        }
+
+        return nextIndex;
+      });
+    }, 3000); // 3 seconds per slide
+
+    return () => clearInterval(interval);
+  }, [salonImages.length, totalPages, fadeAnims]);
+
   const formatDescription = (text?: string) =>
     text ? text.replace(/\s+/g, " ").trim() : "";
 
@@ -269,6 +345,37 @@ export default function ServicesPage() {
       setHiuksetSub(subCategory);
     }
   }, [uiVariant, subCategory]);
+
+  // Fetch salon data when salonId is available (for carousel)
+  useEffect(() => {
+    const fetchSalonData = async () => {
+      if (!salonId) {
+        setSalon(null);
+        return;
+      }
+
+      try {
+        // Fetch all salons and find the specific one
+        const allSalons = await getSaloonsMap();
+        const foundSalon = allSalons.find(s => s.id === salonId);
+        
+        if (foundSalon) {
+          setSalon(foundSalon);
+          console.log('Fetched salon for carousel:', foundSalon.name, 'Images:', foundSalon.images?.length);
+        } else {
+          console.warn('Salon not found for ID:', salonId);
+          setSalon(null);
+        }
+      } catch (err) {
+        console.error('Error fetching salon data for carousel:', err);
+        setSalon(null);
+      }
+    };
+
+    if (salonId) {
+      fetchSalonData();
+    }
+  }, [salonId]);
 
   if (!fontsLoaded) {
     return null;
@@ -894,79 +1001,98 @@ export default function ServicesPage() {
 
             {/* White Box - Centered */}
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <View
-                style={{
-                  width: 300,
-                  height: 195,
-                  backgroundColor: "white",
-                  borderRadius: 24,
-                  alignItems: "center",
-                  justifyContent: "center",
-                  shadowColor: "#000",
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 3,
-                  position: "relative"
-                }}
-              >
-                {/* Title */}
-                <Text
-                  style={{
-                    fontFamily: "Philosopher-Bold",
-                    fontSize: 40,
-                    color: darkBrown,
-                    textAlign: "center",
-                    paddingHorizontal: 16
-                  }}
-                >
-                  {(salonName || "Salon") + " Salonki"}
-                </Text>
+                        <View
+                            style={{
+                                width: 300,
+                                height: 195,
+                                backgroundColor: "white",
+                                borderRadius: 24,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                shadowColor: "#000",
+                                shadowOffset: { width: 0, height: 2 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 4,
+                                elevation: 3,
+                                position: "relative",
+                                overflow: "hidden"
+                            }}
+                        >
+                            {/* Images - each rendered with absolute positioning, animates opacity */}
+                            {salonImages.length > 0 && fadeAnims.length >= salonImages.length ? (
+                                salonImages.map((imageUrl, index) => {
+                                    const animValue = fadeAnims[index];
+                                    if (!animValue) return null;
+                                    return (
+                                        <Animated.Image
+                                            key={`salon-image-${index}`}
+                                            source={{ uri: imageUrl }}
+                                            style={{
+                                                width: "100%",
+                                                height: "100%",
+                                                borderRadius: 24,
+                                                position: "absolute",
+                                                opacity: animValue,
+                                                zIndex: heroContentIndex === index ? 10 : 0
+                                            }}
+                                            resizeMode="cover"
+                                        />
+                                    );
+                                })
+                            ) : (
+                                /* Fallback if no images - Show Title */
+                                <View
+                                    style={{
+                                        flex: 1,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: "white"
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            fontFamily: "Philosopher-Bold",
+                                            fontSize: 40,
+                                            color: darkBrown,
+                                            textAlign: "center",
+                                            paddingHorizontal: 16
+                                        }}
+                                    >
+                                        {salonName || salon?.name || "Salon"} Salonki
+                                    </Text>
+                                </View>
+                            )}
 
-                {/* Ellipses at bottom */}
-                <View style={{
-                  position: "absolute",
-                  bottom: 16,
-                  flexDirection: "row"
-                }}>
-                  <View
-                    style={{
-                      width: 11,
-                      height: 11,
-                      backgroundColor: darkBrown,
-                      borderRadius: 5.5
-                    }}
-                  />
-                  <View
-                    style={{
-                      width: 11,
-                      height: 11,
-                      marginLeft: 5,
-                      backgroundColor: darkBrown,
-                      borderRadius: 5.5
-                    }}
-                  />
-                  <View
-                    style={{
-                      width: 11,
-                      height: 11,
-                      marginLeft: 5,
-                      backgroundColor: darkBrown,
-                      borderRadius: 5.5
-                    }}
-                  />
-                  <View
-                    style={{
-                      width: 11,
-                      height: 11,
-                      marginLeft: 5,
-                      backgroundColor: darkBrown,
-                      borderRadius: 5.5
-                    }}
-                  />
-                </View>
-              </View>
-            </View>
+                            {/* Ellipses at bottom - indicate current page */}
+                            {salonImages.length > 1 && (
+                                <View style={{
+                                    position: "absolute",
+                                    bottom: 16,
+                                    flexDirection: "row",
+                                    zIndex: 20
+                                }}>
+                                    {/* Generate ellipses based on total pages (images only), max 4 */}
+                                    {Array.from({ length: Math.min(totalPages, 4) }).map((_, index) => {
+                                        // If we have more pages than dots, keep the last dot active for subsequent pages
+                                        const isActive = heroContentIndex === index || (index === 3 && heroContentIndex > 3);
+
+                                        return (
+                                            <View
+                                                key={index}
+                                                style={{
+                                                    width: 11,
+                                                    height: 11,
+                                                    marginLeft: index > 0 ? 5 : 0,
+                                                    backgroundColor: isActive ? darkBrown : beige,
+                                                    borderRadius: 5.5
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
+                    </View>
           </View>
         ) : (
           // Normal hero section

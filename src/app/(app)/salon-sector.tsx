@@ -256,45 +256,21 @@ const SalonSector = () => {
                             }}
                         >
                             {/* Images - each rendered with absolute positioning, animates opacity */}
-                            {salonImages.length > 0 ? (
-                                salonImages.map((imageUrl, index) => (
-                                    <Animated.Image
-                                        key={index}
-                                        source={{ uri: imageUrl }}
-                                        style={{
-                                            width: "100%",
-                                            height: "100%",
-                                            borderRadius: 24,
-                                            position: "absolute",
-                                            opacity: fadeAnims[index] || 0,
-                                            zIndex: heroContentIndex === index ? 10 : 0
-                                        }}
-                                        resizeMode="cover"
-                                    />
-                                ))
-                            ) : (
-                                /* Fallback if no images - Show Title */
-                                <View
+                            {salonImages.length > 0 && salonImages.map((imageUrl, index) => (
+                                <Animated.Image
+                                    key={index}
+                                    source={{ uri: imageUrl }}
                                     style={{
-                                        flex: 1,
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        backgroundColor: "white"
+                                        width: "100%",
+                                        height: "100%",
+                                        borderRadius: 24,
+                                        position: "absolute",
+                                        opacity: fadeAnims[index] || 0,
+                                        zIndex: heroContentIndex === index ? 10 : 0
                                     }}
-                                >
-                                    <Text
-                                        style={{
-                                            fontFamily: "Philosopher-Bold",
-                                            fontSize: 40,
-                                            color: darkBrown,
-                                            textAlign: "center",
-                                            paddingHorizontal: 16
-                                        }}
-                                    >
-                                        {salonName || salon?.name || "Salon"} Salonki
-                                    </Text>
-                                </View>
-                            )}
+                                    resizeMode="cover"
+                                />
+                            ))}
 
                             {/* Ellipses at bottom - indicate current page */}
                             {salonImages.length > 1 && (

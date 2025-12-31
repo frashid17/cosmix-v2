@@ -353,9 +353,14 @@ const Saloons = () => {
                                             return words.slice(0, 2).join(" ") + "\n" + words[2];
                                         }
 
-                                        // For 4+ words, keep original behavior (first word on top, rest on bottom)
-                                        if (words.length > 3) {
+                                        // If 4 words, first word on top, rest on bottom
+                                        if (words.length === 4) {
                                             return words[0] + "\n" + words.slice(1).join(" ");
+                                        }
+
+                                        // For 5+ words, 3 words on top, 2 words on bottom
+                                        if (words.length >= 5) {
+                                            return words.slice(0, 3).join(" ") + "\n" + words.slice(3).join(" ");
                                         }
 
                                         return text;

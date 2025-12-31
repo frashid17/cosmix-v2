@@ -41,6 +41,7 @@ export default function MapScreen() {
   const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [filteredSalons, setFilteredSalons] = useState<MapSalon[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [displayedSalons, setDisplayedSalons] = useState<MapSalon[]>([]); // Salons to display in cards
   const [webViewRef, setWebViewRef] = useState<WebView | null>(null);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
   const cardsFlatListRef = useRef<FlatList>(null);
@@ -163,6 +164,7 @@ export default function MapScreen() {
 
       if (validSalons.length > 0) {
         setSalons(validSalons);
+        setDisplayedSalons(validSalons); // Initialize displayed salons
       } else {
         // Use fallback data if no valid salons found
         const fallbackSalons = serviceProviders.map(provider => ({
@@ -200,6 +202,7 @@ export default function MapScreen() {
           updatedAt: new Date().toISOString()
         }));
         setSalons(fallbackSalons);
+        setDisplayedSalons(fallbackSalons); // Initialize displayed salons
       }
     } catch (error) {
       console.error('Error fetching salons from API, using fallback data:', error);
@@ -239,6 +242,7 @@ export default function MapScreen() {
         updatedAt: new Date().toISOString()
       }));
       setSalons(fallbackSalons);
+      setDisplayedSalons(fallbackSalons); // Initialize displayed salons
     } finally {
       setSalonsLoading(false);
     }
@@ -464,32 +468,18 @@ export default function MapScreen() {
       .trim();
     const q = normalize(query);
     if (q.length === 0) {
-      setFilteredServices(services);
+      // Show all salons when search is empty
+      setDisplayedSalons(salons);
       setFilteredSalons([]);
       return;
     }
-    // Services filter
-    const svc = services.filter(service => normalize(service.name).includes(q));
-    setFilteredServices(svc);
-    // Salons filter with scoring
-    const tokens = q.split(' ').filter(Boolean);
-    const sal = salons
-      .map((s) => {
-        const name = normalize(s.name);
-        const addr = normalize(s.address || '');
-        const hay = `${name} ${addr}`;
-        let score = 0;
-        for (const t of tokens) {
-          if (name.startsWith(t)) score += 3;
-          else if (name.includes(t)) score += 2;
-          else if (hay.includes(t)) score += 1;
-        }
-        return { s, score };
-      })
-      .filter(x => x.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map(x => x.s);
-    setFilteredSalons(sal);
+    // Only filter salons by name
+    const filtered = salons.filter((salon) => {
+      const name = normalize(salon.name);
+      return name.includes(q);
+    });
+    setDisplayedSalons(filtered);
+    setFilteredSalons(filtered);
   };
 
   const handleServiceSelect = async (service: Service) => {
@@ -824,9 +814,26 @@ export default function MapScreen() {
         disableSafeAreaPadding={true}
       />
 
+      {/* Search Bar - Top of screen, same style as service.tsx */}
+      <View style={styles.topSearchContainer}>
+        <View style={styles.topSearchBar}>
+          <Ionicons name="search" size={20} color={darkBrown} style={styles.topSearchIcon} />
+          <TextInput
+            style={[styles.topSearchText, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}
+            value={searchQuery}
+            onChangeText={handleSearchQuery}
+            placeholder="Etsi Salonki.."
+            placeholderTextColor="#999"
+            returnKeyType="search"
+          />
+        </View>
+      </View>
+
       {/* Map */}
       <View style={styles.mapContainer}>
+        
         <WebView
+        
           ref={setWebViewRef}
           source={{ html: generateMapHTML() }}
           style={styles.map}
@@ -834,14 +841,26 @@ export default function MapScreen() {
           javaScriptEnabled={true}
           domStorageEnabled={true}
           startInLoadingState={true}
+          nestedScrollEnabled={true}
           onShouldStartLoadWithRequest={(request) => {
-            // Only allow initial load, block all other navigation
-            if (request.navigationType === 'other') {
-              return true; // Allow initial load
+            // Allow initial load and data URLs (for map interactions)
+            if (request.navigationType === 'other' || request.url.startsWith('data:')) {
+              return true; // Allow initial load and data URLs
             }
-            return false; // Block all other navigation attempts
+            // Block external navigation (links, etc.) but allow mapbox resources
+            if (request.url.startsWith('http://') || request.url.startsWith('https://')) {
+              // Allow mapbox resources
+              if (request.url.includes('mapbox.com') || request.url.includes('mapboxgl')) {
+                return true;
+              }
+              return false; // Block other external links
+            }
+            return true; // Allow other navigation (map interactions)
           }}
+          
           allowsBackForwardNavigationGestures={false}
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}
           renderLoading={() => (
             <View style={styles.webViewLoading}>
               <ActivityIndicator size="large" color={darkBrown} />
@@ -852,22 +871,12 @@ export default function MapScreen() {
           )}
         />
 
-        {/* Floating Search Bar */}
-        {/* <View style={[styles.searchContainer, { bottom: 100 + insets.bottom }]}>
-          <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={handleSearchPress}>
-            <Ionicons name="search" size={31} color={darkBrown} style={styles.searchIcon} />
-            <Text style={[styles.searchText, { color: darkBrown }]}>
-              Etsi hoitoja lähelläsi
-            </Text>
-          </TouchableOpacity>
-        </View> */}
-
         {/* Bottom Swipeable Cards */}
-        {salons.length > 0 && (
+        {displayedSalons.length > 0 && (
           <View style={[styles.cardsContainer, { bottom: 50 + insets.bottom }]}>
             <FlatList
               ref={cardsFlatListRef}
-              data={salons}
+              data={displayedSalons}
               keyExtractor={(item) => item.id}
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -887,7 +896,7 @@ export default function MapScreen() {
               onViewableItemsChanged={({ viewableItems }) => {
                 if (viewableItems.length > 0 && viewableItems[0].index !== null) {
                   const index = viewableItems[0].index;
-                  const salon = salons[index];
+                  const salon = displayedSalons[index];
                   setActiveCardIndex(index);
                   setSelectedSalon(salon);
                   // Move map camera to the active card's salon
@@ -1272,6 +1281,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     opacity: 0.8,
+  },
+  // Top Search Bar Styles (same as service.tsx)
+  topSearchContainer: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+    backgroundColor: '#FFFFFF',
+    zIndex: 10,
+  },
+  topSearchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#423120',
+    width: 320,
+    height: 80,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  topSearchIcon: {
+    marginRight: 12,
+  },
+  topSearchText: {
+    flex: 1,
+    fontSize: 23,
   },
   searchContainer: {
     position: 'absolute',
