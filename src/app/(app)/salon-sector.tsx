@@ -482,7 +482,7 @@ const SalonSector = () => {
                                                 />
                                             ))}
                                             {categories.length === 1 && (
-                                                <View style={{ width: 150 }} />
+                                                <View style={{ width: 160 }} />
                                             )}
                                         </View>
                                     )}
@@ -512,7 +512,7 @@ const SalonSector = () => {
                                                 />
                                             ))}
                                             {categories.length === 4 && (
-                                                <View style={{ width: 150 }} />
+                                                <View style={{ width: 160 }} />
                                             )}
                                         </View>
                                     )}
@@ -551,7 +551,7 @@ const SalonSector = () => {
                                                             textColor={darkBrown}
                                                         />
                                                     ) : (
-                                                        <View style={{ width: 150 }} />
+                                                        <View style={{ width: 160 }} />
                                                     )}
                                                 </View>
                                             );
@@ -655,7 +655,7 @@ function Chip({ label, onPress, color, textColor }: { label: string; onPress: ()
     return (
         <TouchableOpacity
             onPress={onPress}
-            style={{ backgroundColor: color, width: 150, height: 45 }}
+            style={{ backgroundColor: color, width: 160, height: 45 }}
             className="rounded-full items-center justify-center"
         >
             <View

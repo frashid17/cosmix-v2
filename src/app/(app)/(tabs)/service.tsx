@@ -346,7 +346,7 @@ export default function ServicesPage() {
                             fixedWidth={true}
                           />
                         ))}
-                        {popularCategories.length === 1 && <View style={{ width: 155 }} />}
+                        {popularCategories.length === 1 && <View style={{ width: 160 }} />}
                       </View>
                     )}
 
@@ -376,7 +376,7 @@ export default function ServicesPage() {
                             fixedWidth={true}
                           />
                         ))}
-                        {popularCategories.length === 4 && <View style={{ width: 155 }} />}
+                        {popularCategories.length === 4 && <View style={{ width: 160 }} />}
                       </View>
                     )}
 
@@ -416,7 +416,7 @@ export default function ServicesPage() {
                                 fixedWidth={true}
                               />
                             ) : (
-                              <View style={{ width: 155 }} />
+                              <View style={{ width: 160 }} />
                             )}
                           </View>
                         );
@@ -623,7 +623,7 @@ function Chip({ label, onPress, color, textColor, fixedWidth, fullWidth }: { lab
         borderRadius: 25,
         alignItems: 'center',
         justifyContent: 'center',
-        ...(fixedWidth ? { width: 150 } : {}),
+        ...(fixedWidth ? { width: 160 } : {}),
         ...(fullWidth ? { width: '100%' } : {}),
       }}
     >
