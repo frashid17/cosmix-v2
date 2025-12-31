@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Animated, PanResponder, GestureResponderEvent, PanResponderGestureState } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 import getSaloonsByService, { SaloonData } from "../actions/get-saloons-by-service";
 import getSalonById from "../actions/get-salon-by-id";
@@ -115,6 +116,7 @@ const SaloonImageCarousel = ({ images, saloonName }: { images: string[], saloonN
 
 const Saloons = () => {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const { serviceName, categoryName, serviceId, salonId, workType } = useLocalSearchParams<{
         serviceName?: string;
         serviceId?: string;
@@ -266,7 +268,7 @@ const Saloons = () => {
             {/* SCROLLABLE CONTENT */}
             <ScrollView
                 style={{ flex: 1, backgroundColor: "white" }}
-                contentContainerStyle={{ paddingBottom: 100 }}
+                contentContainerStyle={{ paddingBottom: 120 + insets.bottom }}
                 showsVerticalScrollIndicator={false}
             >
                 {/* HERO SECTION */}
