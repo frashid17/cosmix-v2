@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { SafeAreaView, View, Text, TextInput, TouchableOpacity, ScrollView, Modal, Animated, Easing, ActivityIndicator, Image } from "react-native";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Header from "../../components/Header";
 import SideMenu from "../../components/SideMenu";
 import { useFonts } from "expo-font";
@@ -13,6 +14,7 @@ import { API_ENDPOINTS } from "@/config/constants";
 
 export default function ServicesPage() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [isMenuVisible, setMenuVisible] = useState(false);
 
@@ -233,7 +235,7 @@ export default function ServicesPage() {
         <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
 
-      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom }} showsVerticalScrollIndicator={false}>
         <View className="px-5 pt-6">
           {/* Search bar - same style as in Map */}
           <View style={{ alignItems: "center" }}>
@@ -335,7 +337,7 @@ export default function ServicesPage() {
                   <>
                     {/* First row - 2 categories */}
                     {popularCategories.length > 0 && (
-                      <View className="flex-row justify-between mb-5 px-2">
+                      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
                         {popularCategories.slice(0, 2).map((category) => (
                           <Chip
                             key={category.id}
@@ -365,7 +367,7 @@ export default function ServicesPage() {
 
                     {/* Third row - 2 categories */}
                     {popularCategories.length > 3 && (
-                      <View className="flex-row justify-between mb-5 px-2">
+                      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
                         {popularCategories.slice(3, 5).map((category) => (
                           <Chip
                             key={category.id}
@@ -399,7 +401,7 @@ export default function ServicesPage() {
                       if (position === 0) {
                         const nextCategory = popularCategories[6 + idx + 1];
                         return (
-                          <View key={category.id} className="flex-row justify-between mb-5 px-2">
+                          <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
                             <Chip
                               label={category.name}
                               onPress={() => onChipPress(category.name)}

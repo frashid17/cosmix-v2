@@ -678,24 +678,32 @@ export default function BookingsScreen() {
                 marginBottom: 16,
                 gap: 4,
               }}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity
-                    key={star}
-                    onPress={() => setSelectedRating(star)}
-                    activeOpacity={0.7}
-                    style={{
-                      padding: 8,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Ionicons
-                      name={star <= selectedRating ? "star" : "star-outline"}
-                      size={36}
-                      color={star <= selectedRating ? darkBrown : "#E0CFB9"}
-                    />
-                  </TouchableOpacity>
-                ))}
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const isSelected = star <= selectedRating;
+                  const starColor = isSelected ? darkBrown : "#E0CFB9";
+                  return (
+                    <TouchableOpacity
+                      key={`star-${star}-${selectedRating}`}
+                      onPress={() => setSelectedRating(star)}
+                      activeOpacity={0.7}
+                      style={{
+                        padding: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 36,
+                          color: starColor,
+                          fontFamily: 'Philosopher-Bold',
+                        }}
+                      >
+                        ★
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
 
               {/* Rating description */}

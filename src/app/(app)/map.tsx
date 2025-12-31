@@ -658,7 +658,7 @@ export default function MapScreen() {
             const el = document.createElement('div');
             el.className = 'salon-marker';
             el.style.cursor = 'pointer';
-            el.innerHTML = '🧖‍♀️';
+            el.innerHTML = '✂️';
             
             // Create the label
             const labelEl = document.createElement('div');

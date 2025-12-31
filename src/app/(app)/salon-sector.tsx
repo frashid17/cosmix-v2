@@ -471,7 +471,7 @@ const SalonSector = () => {
                                 <View style={{ marginTop: 20 }}>
                                     {/* First row - 2 chips */}
                                     {categories.length > 0 && (
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 4 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
                                             {categories.slice(0, 2).map((category) => (
                                                 <Chip
                                                     key={category.id}
@@ -501,7 +501,7 @@ const SalonSector = () => {
 
                                     {/* Third row - 2 chips */}
                                     {categories.length > 3 && (
-                                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 4 }}>
+                                        <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
                                             {categories.slice(3, 5).map((category) => (
                                                 <Chip
                                                     key={category.id}
@@ -536,7 +536,7 @@ const SalonSector = () => {
                                         if (position === 0) {
                                             const nextCategory = categories[6 + idx + 1];
                                             return (
-                                                <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingHorizontal: 4 }}>
+                                                <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
                                                     <Chip
                                                         label={category.name}
                                                         onPress={() => onCategoryPress(category.name)}
