@@ -16,6 +16,8 @@ export interface Saloon {
   shortIntro: string;
   rating: number;
   address: string;
+  latitude?: number;
+  longitude?: number;
   images?: SaloonImage[];
   createdAt: string;
   updatedAt: string;
@@ -53,6 +55,8 @@ export interface SaloonData {
   isAvailable: boolean;
   rating: number;
   address: string;
+  latitude?: number;
+  longitude?: number;
   imageUrl?: string;
   images?: string[];
 }
@@ -64,7 +68,7 @@ const getSaloonsByService = async (serviceId: string, workType?: string): Promis
     if (workType) {
       url += `?workType=${encodeURIComponent(workType)}`;
     }
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -72,15 +76,15 @@ const getSaloonsByService = async (serviceId: string, workType?: string): Promis
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    
+
     const data: ServiceWithSaloons = await response.json();
     console.log('Raw API response for service:', JSON.stringify(data, null, 2));
     console.log('First saloon service data:', JSON.stringify(data.saloonServices[0], null, 2));
-    
+
     // Extract saloon data from the response - images are already included
     const saloonsData: SaloonData[] = data.saloonServices
       .filter(saloonService => saloonService.isAvailable) // Only include available services
@@ -95,8 +99,10 @@ const getSaloonsByService = async (serviceId: string, workType?: string): Promis
           isAvailable: saloonService.isAvailable,
           rating: saloonService.saloon.rating,
           address: saloonService.saloon.address,
-          imageUrl: saloonService.saloon.images && saloonService.saloon.images.length > 0 
-            ? saloonService.saloon.images[0].url 
+          latitude: saloonService.saloon.latitude,
+          longitude: saloonService.saloon.longitude,
+          imageUrl: saloonService.saloon.images && saloonService.saloon.images.length > 0
+            ? saloonService.saloon.images[0].url
             : undefined,
           images: saloonService.saloon.images ? saloonService.saloon.images.map((img: any) => img.url) : undefined,
         };

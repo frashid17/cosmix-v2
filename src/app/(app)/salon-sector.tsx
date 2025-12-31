@@ -31,6 +31,70 @@ const SalonSector = () => {
     const [error, setError] = useState<string | null>(null);
     const [isMenuVisible, setMenuVisible] = useState(false);
 
+    // Hero box carousel state: 0 = title, 1+ = images
+    const [heroContentIndex, setHeroContentIndex] = useState(0);
+
+    // Get salon images array - use useMemo to prevent recalculation issues
+    const salonImages = React.useMemo(() => {
+        return salon?.images?.map(img => img.url).filter((url): url is string => Boolean(url)) || [];
+    }, [salon?.images]);
+
+    // Total pages: number of images
+    const totalPages = salonImages.length;
+
+    // Animated opacity values for smooth fade transitions
+    const fadeAnims = useRef<Animated.Value[]>([]).current;
+
+    // Initialize animated values when totalPages changes
+    useEffect(() => {
+        // Ensure we have enough animated values
+        while (fadeAnims.length < totalPages) {
+            fadeAnims.push(new Animated.Value(fadeAnims.length === 0 ? 1 : 0));
+        }
+    }, [totalPages, fadeAnims]);
+
+    // Reset carousel to start from Title when images load
+    useEffect(() => {
+        if (salonImages.length > 0) {
+            setHeroContentIndex(0);
+            // Reset animations: Title (index 0) = 1, others = 0
+            fadeAnims.forEach((anim, i) => {
+                anim.setValue(i === 0 ? 1 : 0);
+            });
+        }
+    }, [salonImages.length, fadeAnims]);
+
+    // Auto-transition effect for hero box with smooth fade
+    useEffect(() => {
+        if (salonImages.length === 0) return; // No images to cycle through
+
+        const interval = setInterval(() => {
+            setHeroContentIndex(prevIndex => {
+                const nextIndex = (prevIndex + 1) % totalPages;
+
+                // Animate fade in next (smoother 1000ms transition)
+                // We keep the previous image opaque until the new one fully covers it
+                // This prevents the "dip" where background shows through
+                if (fadeAnims[nextIndex]) {
+                    Animated.timing(fadeAnims[nextIndex], {
+                        toValue: 1,
+                        duration: 1000,
+                        useNativeDriver: true,
+                    }).start(() => {
+                        // After transition is complete, hide the previous one
+                        if (fadeAnims[prevIndex]) {
+                            fadeAnims[prevIndex].setValue(0);
+                        }
+                    });
+                }
+
+                return nextIndex;
+            });
+        }, 3000); // 3 seconds per slide
+
+        return () => clearInterval(interval);
+    }, [salonImages.length, totalPages, fadeAnims]);
+
     // Fetch salon details and services
     useEffect(() => {
         const fetchSalonData = async () => {
@@ -124,6 +188,8 @@ const SalonSector = () => {
         });
     };
 
+
+
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
             {/* Header - Fixed at Top */}
@@ -170,7 +236,7 @@ const SalonSector = () => {
                         resizeMode="contain"
                     />
 
-                    {/* White Box - Centered */}
+                    {/* White Box - Centered with auto-transitioning content */}
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <View
                             style={{
@@ -185,64 +251,79 @@ const SalonSector = () => {
                                 shadowOpacity: 0.1,
                                 shadowRadius: 4,
                                 elevation: 3,
-                                position: "relative"
+                                position: "relative",
+                                overflow: "hidden"
                             }}
                         >
-                            {/* Title - Salon Name */}
-                            <Text
-                                style={{
-                                    fontFamily: "Philosopher-Bold",
-                                    fontSize: 40,
-                                    color: darkBrown,
-                                    textAlign: "center",
-                                    paddingHorizontal: 16
-                                }}
-                            >
-                                {salonName || salon?.name || "Salon"} Salonki
-                            </Text>
+                            {/* Images - each rendered with absolute positioning, animates opacity */}
+                            {salonImages.length > 0 ? (
+                                salonImages.map((imageUrl, index) => (
+                                    <Animated.Image
+                                        key={index}
+                                        source={{ uri: imageUrl }}
+                                        style={{
+                                            width: "100%",
+                                            height: "100%",
+                                            borderRadius: 24,
+                                            position: "absolute",
+                                            opacity: fadeAnims[index] || 0,
+                                            zIndex: heroContentIndex === index ? 10 : 0
+                                        }}
+                                        resizeMode="cover"
+                                    />
+                                ))
+                            ) : (
+                                /* Fallback if no images - Show Title */
+                                <View
+                                    style={{
+                                        flex: 1,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: "white"
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            fontFamily: "Philosopher-Bold",
+                                            fontSize: 40,
+                                            color: darkBrown,
+                                            textAlign: "center",
+                                            paddingHorizontal: 16
+                                        }}
+                                    >
+                                        {salonName || salon?.name || "Salon"} Salonki
+                                    </Text>
+                                </View>
+                            )}
 
-                            {/* Ellipses at bottom */}
-                            <View style={{
-                                position: "absolute",
-                                bottom: 16,
-                                flexDirection: "row"
-                            }}>
-                                <View
-                                    style={{
-                                        width: 11,
-                                        height: 11,
-                                        backgroundColor: darkBrown,
-                                        borderRadius: 5.5
-                                    }}
-                                />
-                                <View
-                                    style={{
-                                        width: 11,
-                                        height: 11,
-                                        marginLeft: 5,
-                                        backgroundColor: darkBrown,
-                                        borderRadius: 5.5
-                                    }}
-                                />
-                                <View
-                                    style={{
-                                        width: 11,
-                                        height: 11,
-                                        marginLeft: 5,
-                                        backgroundColor: darkBrown,
-                                        borderRadius: 5.5
-                                    }}
-                                />
-                                <View
-                                    style={{
-                                        width: 11,
-                                        height: 11,
-                                        marginLeft: 5,
-                                        backgroundColor: darkBrown,
-                                        borderRadius: 5.5
-                                    }}
-                                />
-                            </View>
+                            {/* Ellipses at bottom - indicate current page */}
+                            {salonImages.length > 1 && (
+                                <View style={{
+                                    position: "absolute",
+                                    bottom: 16,
+                                    flexDirection: "row",
+                                    zIndex: 20
+                                }}>
+                                    {/* Generate ellipses based on total pages (images only), max 4 */}
+                                    {Array.from({ length: Math.min(totalPages, 4) }).map((_, index) => {
+                                        // If we have more pages than dots, keep the last dot active for subsequent pages
+                                        const isActive = heroContentIndex === index || (index === 3 && heroContentIndex > 3);
+
+                                        return (
+                                            <View
+                                                key={index}
+                                                style={{
+                                                    width: 11,
+                                                    height: 11,
+                                                    marginLeft: index > 0 ? 5 : 0,
+                                                    backgroundColor: isActive ? darkBrown : beige,
+                                                    borderRadius: 5.5
+                                                }}
+                                            />
+                                        );
+                                    })}
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
@@ -302,58 +383,13 @@ const SalonSector = () => {
                             style={{ alignItems: "center", marginTop: 24, position: "relative" }}
                             activeOpacity={1}
                         >
-                            {/* First Box - Top Box (310x200) - Salon Picture */}
-                            <View
-                                style={{
-                                    width: 335,
-                                    height: 200,
-                                    backgroundColor: lightBeige,
-                                    borderRadius: 24,
-                                    position: "absolute",
-                                    zIndex: 10,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    overflow: "hidden"
-                                }}
-                            >
-                                {salon.images && salon.images.length > 0 && salon.images[0].url ? (
-                                    <Image
-                                        source={{ uri: salon.images[0].url }}
-                                        style={{
-                                            width: "100%",
-                                            height: "100%",
-                                            borderRadius: 24
-                                        }}
-                                        resizeMode="cover"
-                                    />
-                                ) : (
-                                    <View style={{
-                                        width: "100%",
-                                        height: "100%",
-                                        backgroundColor: lightBeige,
-                                        borderRadius: 24,
-                                        alignItems: "center",
-                                        justifyContent: "center"
-                                    }}>
-                                        <Ionicons name="business-outline" size={48} color={darkBrown} />
-                                        <Text style={{
-                                            color: darkBrown,
-                                            fontFamily: "Philosopher-Regular",
-                                            marginTop: 8,
-                                            fontSize: 14
-                                        }}>
-                                            {salon.name}
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
 
                             {/* Second Box - Bottom Box (310x190) - Salon Info */}
                             <View
                                 style={{
                                     width: 335,
                                     height: 190,
-                                    marginTop: 140,
+                                    marginTop: 20,
                                     borderWidth: 2,
                                     borderColor: chipBeige,
                                     backgroundColor: "white",
@@ -362,16 +398,26 @@ const SalonSector = () => {
                                     paddingVertical: 16
                                 }}
                             >
-                                <View style={{ marginTop: 40 }}>
+                                <View>
 
 
                                     <View style={{ paddingHorizontal: 16 }}>
                                         <Text
                                             style={{
                                                 fontFamily: "Philosopher-Bold",
-                                                fontSize: 15,
+                                                fontSize: 18,
                                                 color: "#423120",
-                                                marginTop: 4
+                                                marginBottom: 4
+                                            }}
+                                        >
+                                            {salonName || salon?.name || "Salon"} Salonki
+                                        </Text>
+                                        <Text
+                                            style={{
+                                                fontFamily: "Philosopher-Regular",
+                                                fontSize: 14,
+                                                color: "#423120",
+                                                opacity: 0.8
                                             }}
                                         >
                                             {salon.shortIntro || 'No description'}

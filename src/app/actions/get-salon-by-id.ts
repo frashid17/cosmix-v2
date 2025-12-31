@@ -16,6 +16,8 @@ export interface Saloon {
   shortIntro: string;
   rating: number;
   address: string;
+  latitude?: number;
+  longitude?: number;
   images?: SaloonImage[];
   createdAt: string;
   updatedAt: string;
@@ -53,6 +55,8 @@ export interface SaloonData {
   isAvailable: boolean;
   rating: number;
   address: string;
+  latitude?: number;
+  longitude?: number;
   imageUrl?: string;
   images?: string[];
 }
@@ -60,7 +64,7 @@ export interface SaloonData {
 const getSalonById = async (salonId: string, serviceId: string): Promise<SaloonData[]> => {
   try {
     console.log('Fetching specific salon:', salonId, 'for service:', serviceId);
-    
+
     // First get the salon details
     const salonResponse = await fetch(`${API_BASE_URL}/public/saloons/${salonId}`, {
       method: 'GET',
@@ -69,24 +73,24 @@ const getSalonById = async (salonId: string, serviceId: string): Promise<SaloonD
         'Content-Type': 'application/json',
       },
     });
-    
+
     if (!salonResponse.ok) {
       throw new Error(`HTTP error! status: ${salonResponse.status}`);
     }
-    
+
     const salonData = await salonResponse.json();
     console.log('Raw API response for salon:', JSON.stringify(salonData, null, 2));
-    
+
     // Filter saloon services to only include the specific service
-    const filteredServices = salonData.saloonServices.filter((saloonService: any) => 
+    const filteredServices = salonData.saloonServices.filter((saloonService: any) =>
       saloonService.service.id === serviceId && saloonService.isAvailable
     );
-    
+
     if (filteredServices.length === 0) {
       console.log('No services found for this salon and service combination');
       return [];
     }
-    
+
     // Extract saloon data from the filtered services
     const saloonsData: SaloonData[] = filteredServices.map((saloonService: any) => {
       return {
@@ -98,8 +102,10 @@ const getSalonById = async (salonId: string, serviceId: string): Promise<SaloonD
         isAvailable: saloonService.isAvailable,
         rating: salonData.averageRating || salonData.rating || 0,
         address: salonData.address || '',
-        imageUrl: salonData.images && salonData.images.length > 0 
-          ? salonData.images[0].url 
+        latitude: salonData.latitude,
+        longitude: salonData.longitude,
+        imageUrl: salonData.images && salonData.images.length > 0
+          ? salonData.images[0].url
           : undefined,
         images: salonData.images ? salonData.images.map((img: any) => img.url) : undefined,
       };

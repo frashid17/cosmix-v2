@@ -1,8 +1,9 @@
 // src/app/(app)/saloons.tsx
-import React, { useState, useEffect, useRef } from "react";
-import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Animated } from "react-native";
+import React, { useState, useEffect, useRef, useMemo } from "react";
+import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Animated, PanResponder, GestureResponderEvent, PanResponderGestureState } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { WebView } from "react-native-webview";
 import getSaloonsByService, { SaloonData } from "../actions/get-saloons-by-service";
 import getSalonById from "../actions/get-salon-by-id";
 import Header from "../components/Header";
@@ -11,6 +12,9 @@ import SideMenu from "../components/SideMenu";
 const darkBrown = "#3C2C1E";
 const beige = "#D9C7AF";
 const lightBeige = "#E4D2BA";
+
+// Mapbox token (same as used in SalonMapView)
+const MAPBOX_TOKEN = 'pk.eyJ1IjoibHVuYXJsb2JzdGVyIiwiYSI6ImNtZ2p0c3dpYzBrOXUya3F3NXhibXNtdnYifQ.ec_SJSvAUvrYoVVMRB3Ilw';
 
 // Auto-swipe image carousel component
 const SaloonImageCarousel = ({ images, saloonName }: { images: string[], saloonName: string }) => {
@@ -123,8 +127,93 @@ const Saloons = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isMenuVisible, setMenuVisible] = useState(false);
+    const [heroPageIndex, setHeroPageIndex] = useState(0); // 0 = title, 1 = map
 
-    // Fonts are loaded globally in root _layout.tsx
+    // PanResponder for swipe gestures on the white hero box
+    const panResponder = useMemo(() => PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: (_: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+            return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+        },
+        onPanResponderRelease: (_: GestureResponderEvent, gestureState: PanResponderGestureState) => {
+            const swipeThreshold = 50;
+            if (gestureState.dx < -swipeThreshold) {
+                // Swipe left - go to map
+                setHeroPageIndex(prev => Math.min(prev + 1, 1));
+            } else if (gestureState.dx > swipeThreshold) {
+                // Swipe right - go to title
+                setHeroPageIndex(prev => Math.max(prev - 1, 0));
+            }
+        }
+    }), []);
+
+    // Generate HTML for the mini map in the hero box
+    const generateMiniMapHTML = (saloonsList: SaloonData[]) => {
+        // Default location (Helsinki, Finland)
+        let centerLat = 60.1699;
+        let centerLng = 24.9384;
+
+        // Filter saloons with valid location and limit to 10
+        const validSaloons = saloonsList.filter(s => s.latitude && s.longitude).slice(0, 10);
+
+        if (validSaloons.length > 0) {
+            centerLat = validSaloons[0].latitude!;
+            centerLng = validSaloons[0].longitude!;
+        }
+
+        const markersJS = validSaloons.map(s => `
+            (function() {
+                const el = document.createElement('div');
+                el.style.width = '32px';
+                el.style.height = '32px';
+                el.style.borderRadius = '50%';
+                el.style.backgroundColor = '#3C2C1E';
+                el.style.border = '3px solid white';
+                el.style.display = 'flex';
+                el.style.alignItems = 'center';
+                el.style.justifyContent = 'center';
+                el.style.fontSize = '16px';
+                el.innerHTML = '✂️';
+                el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+
+                new mapboxgl.Marker(el)
+                    .setLngLat([${s.longitude}, ${s.latitude}])
+                    .addTo(map);
+            })();
+        `).join('\n');
+
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { width: 100%; height: 100vh; }
+        .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id='map'></div>
+    <script>
+        mapboxgl.accessToken = '${MAPBOX_TOKEN}';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [${centerLng}, ${centerLat}],
+            zoom: 12,
+            interactive: false
+        });
+
+        ${markersJS}
+    </script>
+</body>
+</html>
+        `;
+    };
 
     // Fetch saloons when component mounts
     useEffect(() => {
@@ -162,9 +251,6 @@ const Saloons = () => {
             fetchSaloons();
         }
     }, [serviceId, salonId, workType]);
-
-    // Render nothing until fonts are loaded to prevent style flashing
-    // (Fonts are loaded globally, so no check needed here)
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
@@ -211,9 +297,10 @@ const Saloons = () => {
                         resizeMode="contain"
                     />
 
-                    {/* White Box - Centered */}
+                    {/* White Box - Centered - Swipeable */}
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <View
+                            {...panResponder.panHandlers}
                             style={{
                                 width: 340,
                                 height: 195,
@@ -226,54 +313,83 @@ const Saloons = () => {
                                 shadowOpacity: 0.1,
                                 shadowRadius: 4,
                                 elevation: 3,
-                                position: "relative"
+                                position: "relative",
+                                overflow: "hidden"
                             }}
                         >
-                            {/* Title */}
-                            <Text
-                                numberOfLines={2}
-                                adjustsFontSizeToFit
-                                minimumFontScale={0.5}
-                                style={{
-                                    width: "100%",
-                                    paddingHorizontal: 10,
-                                    fontFamily: "Philosopher-Bold",
-                                    fontSize: 20,
-                                    color: darkBrown,
-                                    textAlign: "center",
-                                    transform: [{ scale: 1.4 }]
-                                }}
-                            >
-                                {(() => {
-                                    const text = salonId ? (serviceName || "Service") : (serviceName || "Services");
-                                    const trimmed = text.trim();
-                                    const words = trimmed.split(/\s+/).filter(word => word.length > 0);
+                            {/* Page 0: Title */}
+                            {heroPageIndex === 0 && (
+                                <Text
+                                    numberOfLines={2}
+                                    adjustsFontSizeToFit
+                                    minimumFontScale={0.5}
+                                    style={{
+                                        width: "100%",
+                                        paddingHorizontal: 10,
+                                        fontFamily: "Philosopher-Bold",
+                                        fontSize: 20,
+                                        color: darkBrown,
+                                        textAlign: "center",
+                                        transform: [{ scale: 1.4 }]
+                                    }}
+                                >
+                                    {(() => {
+                                        const text = salonId ? (serviceName || "Service") : (serviceName || "Services");
+                                        const trimmed = text.trim();
+                                        const words = trimmed.split(/\s+/).filter(word => word.length > 0);
 
-                                    // If 2 words
-                                    if (words.length === 2) {
-                                        // If total length <= 10 chars, keep on one line
-                                        if (trimmed.length <= 10) {
-                                            return text;
+                                        // If 2 words
+                                        if (words.length === 2) {
+                                            // If total length <= 10 chars, keep on one line
+                                            if (trimmed.length <= 10) {
+                                                return text;
+                                            }
+                                            // Otherwise split into two lines
+                                            return words.join("\n");
                                         }
-                                        // Otherwise split into two lines
-                                        return words.join("\n");
-                                    }
 
-                                    // If 3 words, first two on top, one on bottom
-                                    if (words.length === 3) {
-                                        return words.slice(0, 2).join(" ") + "\n" + words[2];
-                                    }
+                                        // If 3 words, first two on top, one on bottom
+                                        if (words.length === 3) {
+                                            return words.slice(0, 2).join(" ") + "\n" + words[2];
+                                        }
 
-                                    // For 4+ words, keep original behavior (first word on top, rest on bottom)
-                                    if (words.length > 3) {
-                                        return words[0] + "\n" + words.slice(1).join(" ");
-                                    }
+                                        // For 4+ words, keep original behavior (first word on top, rest on bottom)
+                                        if (words.length > 3) {
+                                            return words[0] + "\n" + words.slice(1).join(" ");
+                                        }
 
-                                    return text;
-                                })()}
-                            </Text>
+                                        return text;
+                                    })()}
+                                </Text>
+                            )}
 
-                            {/* Ellipses at bottom */}
+                            {/* Page 1: Mapbox Map - Tap to open full map */}
+                            {heroPageIndex === 1 && (
+                                <TouchableOpacity
+                                    activeOpacity={0.9}
+                                    onPress={() => router.push("/(app)/map")}
+                                    style={{
+                                        width: 340,
+                                        height: 195,
+                                        borderRadius: 24,
+                                        overflow: "hidden"
+                                    }}
+                                >
+                                    <WebView
+                                        source={{ html: generateMiniMapHTML(saloons) }}
+                                        style={{
+                                            width: 340,
+                                            height: 195,
+                                        }}
+                                        scrollEnabled={false}
+                                        javaScriptEnabled={true}
+                                        domStorageEnabled={true}
+                                        pointerEvents="none"
+                                    />
+                                </TouchableOpacity>
+                            )}
+
+                            {/* Ellipses at bottom - indicate current page */}
                             <View style={{
                                 position: "absolute",
                                 bottom: 16,
@@ -283,7 +399,7 @@ const Saloons = () => {
                                     style={{
                                         width: 11,
                                         height: 11,
-                                        backgroundColor: darkBrown,
+                                        backgroundColor: heroPageIndex === 0 ? darkBrown : beige,
                                         borderRadius: 5.5
                                     }}
                                 />
@@ -292,7 +408,7 @@ const Saloons = () => {
                                         width: 11,
                                         height: 11,
                                         marginLeft: 5,
-                                        backgroundColor: darkBrown,
+                                        backgroundColor: heroPageIndex === 1 ? darkBrown : beige,
                                         borderRadius: 5.5
                                     }}
                                 />
@@ -300,11 +416,11 @@ const Saloons = () => {
                         </View>
                     </View>
                 </View>
+
                 {/* Loading State */}
                 {loading && (
                     <View style={{ alignItems: "center", marginTop: 80 }}>
                         <ActivityIndicator size="large" color={darkBrown} />
-
                     </View>
                 )}
 

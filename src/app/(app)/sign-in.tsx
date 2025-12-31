@@ -231,7 +231,7 @@ export default function SignIn() {
                 </View>
                 <Text style={{
                   color: darkBrown,
-                  fontSize: 16,
+                  fontSize: 18,
                   fontFamily: 'Philosopher-Bold',
                 }}>
                   Jatka Googlella
@@ -272,7 +272,7 @@ export default function SignIn() {
                 </View>
                 <Text style={{
                   color: '#FFFFFF',
-                  fontSize: 16,
+                  fontSize: 18,
                   fontFamily: 'Philosopher-Bold',
                 }}>
                   Jatka Applella
