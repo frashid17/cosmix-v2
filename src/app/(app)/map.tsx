@@ -831,9 +831,9 @@ export default function MapScreen() {
 
       {/* Map */}
       <View style={styles.mapContainer}>
-        
+
         <WebView
-        
+
           ref={setWebViewRef}
           source={{ html: generateMapHTML() }}
           style={styles.map}
@@ -857,7 +857,7 @@ export default function MapScreen() {
             }
             return true; // Allow other navigation (map interactions)
           }}
-          
+
           allowsBackForwardNavigationGestures={false}
           showsHorizontalScrollIndicator={false}
           showsVerticalScrollIndicator={false}
@@ -1299,9 +1299,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#423120',
     width: 320,
-    height: 80,
+    height: 46,
     paddingHorizontal: 16,
-    paddingVertical: 12,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -1316,7 +1315,7 @@ const styles = StyleSheet.create({
   },
   topSearchText: {
     flex: 1,
-    fontSize: 23,
+    fontSize: 16,
   },
   searchContainer: {
     position: 'absolute',

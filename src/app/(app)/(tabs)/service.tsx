@@ -237,6 +237,7 @@ export default function ServicesPage() {
 
       <ScrollView contentContainerStyle={{ paddingBottom: 120 + insets.bottom }} showsVerticalScrollIndicator={false}>
         <View className="px-5 pt-6">
+
           {/* Search bar - same style as in Map */}
           <View style={{ alignItems: "center" }}>
             <View
@@ -248,9 +249,8 @@ export default function ServicesPage() {
                 borderWidth: 1,
                 borderColor: darkBrown,
                 width: 320,
-                height: 80,
+                height: 46,
                 paddingHorizontal: 16,
-                paddingVertical: 12,
                 shadowColor: "#000",
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.1,
@@ -260,7 +260,7 @@ export default function ServicesPage() {
             >
               <Ionicons name="search" size={20} color={darkBrown} style={{ marginRight: 12 }} />
               <TextInput
-                style={{ flex: 1, fontSize: 23, fontFamily: 'Philosopher-Bold', color: darkBrown }}
+                style={{ flex: 1, fontSize: 16, fontFamily: 'Philosopher-Bold', color: darkBrown }}
                 value={query}
                 onChangeText={setQuery}
                 placeholder="Etsi hoitoja..."

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Linking } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, Linking, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Header from '../components/Header';
+import SideMenu from '../components/SideMenu';
 
 const darkBrown = "#423120";
 const lightBrown = "#D7C3A7";
@@ -15,6 +16,7 @@ export default function InfoPage() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const [activeTab, setActiveTab] = useState<TabType>('faq');
+    const [isMenuVisible, setMenuVisible] = useState(false);
 
     useEffect(() => {
         if (params.tab) {
@@ -138,8 +140,20 @@ export default function InfoPage() {
                 showBack={true}
                 onBackPress={() => router.back()}
                 showMenu={true}
+                onMenuPress={() => setMenuVisible(true)}
                 disableSafeAreaPadding={true}
             />
+
+            {/* Side menu modal */}
+            <Modal
+                visible={isMenuVisible}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={() => setMenuVisible(false)}
+                statusBarTranslucent={true}
+            >
+                <SideMenu onClose={() => setMenuVisible(false)} />
+            </Modal>
 
             <View style={{ height: 70, backgroundColor: white, paddingVertical: 10 }}>
                 <ScrollView
