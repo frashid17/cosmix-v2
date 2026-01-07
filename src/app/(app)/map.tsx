@@ -599,18 +599,18 @@ export default function MapScreen() {
           .salon-label {
             pointer-events: none;
             user-select: none;
-            background-color: rgba(255, 255, 255, 0.98);
+            
             padding: 6px 10px;
             border-radius: 15px;
-            font-size: 11px;
+            font-size: 20px;
             font-weight: bold;
             color: #423120;
             white-space: nowrap;
             max-width: 100px;
             text-align: center;
-            box-shadow: 0 3px 6px rgba(0,0,0,0.25);
-            border: 2px solid #D7C3A7;
-            margin-bottom: 8px;
+           
+            
+            margin-bottom: 2px;
           }
         </style>
       </head>
@@ -672,7 +672,7 @@ export default function MapScreen() {
             // Create single marker with both icon and label (no popup button)
             const marker = new mapboxgl.Marker({
               element: container,
-              anchor: 'center'
+              anchor: 'bottom'
             })
             .setLngLat([salon.lng, salon.lat])
             .addTo(map);
@@ -685,14 +685,16 @@ export default function MapScreen() {
               map.flyTo({
                 center: [data.longitude, data.latitude],
                 zoom: 15,
-                duration: 2000
+                duration: 2000,
+                padding: { bottom: 450 }
               });
             } else if (data.type === 'zoomToService') {
               // Zoom to salons offering a specific service
               map.flyTo({
                 center: [data.center.longitude, data.center.latitude],
                 zoom: 14,
-                duration: 2000
+                duration: 2000,
+                padding: { bottom: 450 }
               });
               
               // Show a popup with service info
@@ -720,14 +722,16 @@ export default function MapScreen() {
               map.flyTo({
                 center: [data.longitude, data.latitude],
                 zoom: 15,
-                duration: 2000
+                duration: 2000,
+                padding: { bottom: 450 }
               });
             } else if (data.type === 'zoomToService') {
               // Zoom to salons offering a specific service
               map.flyTo({
                 center: [data.center.longitude, data.center.latitude],
                 zoom: 14,
-                duration: 2000
+                duration: 2000,
+                padding: { bottom: 450 }
               });
               
               // Show a popup with service info
@@ -814,21 +818,6 @@ export default function MapScreen() {
         disableSafeAreaPadding={true}
       />
 
-      {/* Search Bar - Top of screen, same style as service.tsx */}
-      <View style={styles.topSearchContainer}>
-        <View style={styles.topSearchBar}>
-          <Ionicons name="search" size={20} color={darkBrown} style={styles.topSearchIcon} />
-          <TextInput
-            style={[styles.topSearchText, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}
-            value={searchQuery}
-            onChangeText={handleSearchQuery}
-            placeholder="Etsi Salonki.."
-            placeholderTextColor="#999"
-            returnKeyType="search"
-          />
-        </View>
-      </View>
-
       {/* Map */}
       <View style={styles.mapContainer}>
 
@@ -871,9 +860,36 @@ export default function MapScreen() {
           )}
         />
 
+        {/* Search Bar - Now floating at the bottom */}
+        <KeyboardAvoidingView
+          behavior="padding"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            zIndex: 10,
+          }}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 20}
+        >
+          <View style={[styles.topSearchContainer, { paddingBottom: Platform.OS === 'ios' ? 55 + insets.bottom : 85 + insets.bottom }]}>
+            <View style={styles.topSearchBar}>
+              <Ionicons name="search" size={20} color={darkBrown} style={styles.topSearchIcon} />
+              <TextInput
+                style={[styles.topSearchText, { color: darkBrown, fontFamily: 'Philosopher-Bold' }]}
+                value={searchQuery}
+                onChangeText={handleSearchQuery}
+                placeholder="Etsi Salonki.."
+                placeholderTextColor="#999"
+                returnKeyType="search"
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+
         {/* Bottom Swipeable Cards */}
         {displayedSalons.length > 0 && (
-          <View style={[styles.cardsContainer, { bottom: 50 + insets.bottom }]}>
+          <View style={[styles.cardsContainer, { top: 10 }]}>
             <FlatList
               ref={cardsFlatListRef}
               data={displayedSalons}
@@ -1285,10 +1301,9 @@ const styles = StyleSheet.create({
   // Top Search Bar Styles (same as service.tsx)
   topSearchContainer: {
     alignItems: 'center',
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingVertical: 12,
     paddingHorizontal: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     zIndex: 10,
   },
   topSearchBar: {
@@ -1467,7 +1482,7 @@ const styles = StyleSheet.create({
   // Bottom Swipeable Cards Styles
   cardsContainer: {
     position: 'absolute',
-    bottom: 50, // Position above bottom tab bar (typical tab bar height is ~60-80px)
+    top: 10, // Position at the top of the map
     left: 0,
     right: 0,
     height: 120,

@@ -21,7 +21,7 @@ import {
     getConsoleLogCaptureScript,
 } from '@/lib/webview-bridge';
 
-const ADMIN_DASHBOARD_URL = process.env.EXPO_PUBLIC_ADMIN_DASHBOARD_URL || 'https://cosmix-admin.vercel.app';
+const ADMIN_DASHBOARD_URL = process.env.EXPO_PUBLIC_ADMIN_DASHBOARD_URL || 'http://localhost:3000';
 const SALON_DASHBOARD_PATH = process.env.EXPO_PUBLIC_SALON_DASHBOARD_PATH || '/';
 const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || 'dev-admin-key-change-me';
 
@@ -40,7 +40,7 @@ export default function AdminWebViewScreen() {
 
     // Construct and validate dashboard URL - ensure it has a protocol
     const ensureProtocol = (url: string) => {
-        if (!url) return 'https://cosmix-admin.vercel.app';
+        if (!url) return 'http://localhost:3000';
         if (url.startsWith('http://') || url.startsWith('https://')) {
             return url;
         }
@@ -653,7 +653,7 @@ export default function AdminWebViewScreen() {
                 {isCheckingAdmin ? (
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator size="large" color={darkBrown} />
-                        
+
                     </View>
                 ) : webViewSource ? (
                     <>
@@ -702,6 +702,38 @@ export default function AdminWebViewScreen() {
                               try { document.cookie = 'admin_token=${ADMIN_API_KEY}; path=/; SameSite=None; Secure'; } catch(e) {}
                               // Set Clerk user token cookie for server-side auth
                               ${authToken ? `try { document.cookie = 'x-user-token-session=${authToken}; path=/; SameSite=Lax; max-age=${60 * 60 * 24}'; } catch(e) {}` : ''}
+                              
+                              // iOS AUTOFILL FIX: Disable autocomplete on all inputs to prevent auto-filled saloon creation
+                              try {
+                                const disableAutofill = () => {
+                                  document.querySelectorAll('input, textarea, select').forEach(el => {
+                                    el.setAttribute('autocomplete', 'off');
+                                    el.setAttribute('autocapitalize', 'off');
+                                    el.setAttribute('autocorrect', 'off');
+                                  });
+                                };
+                                // Run on DOM ready and observe for new inputs
+                                if (document.readyState === 'loading') {
+                                  document.addEventListener('DOMContentLoaded', disableAutofill);
+                                } else {
+                                  disableAutofill();
+                                }
+                                // MutationObserver to catch dynamically added inputs
+                                const observer = new MutationObserver((mutations) => {
+                                  mutations.forEach((m) => {
+                                    m.addedNodes.forEach((node) => {
+                                      if (node.nodeType === 1) {
+                                        if (node.matches && node.matches('input, textarea, select')) {
+                                          node.setAttribute('autocomplete', 'off');
+                                        }
+                                        const inputs = node.querySelectorAll && node.querySelectorAll('input, textarea, select');
+                                        if (inputs) inputs.forEach(el => el.setAttribute('autocomplete', 'off'));
+                                      }
+                                    });
+                                  });
+                                });
+                                observer.observe(document.documentElement, { childList: true, subtree: true });
+                              } catch(e) {}
                               true;
                             `}
 

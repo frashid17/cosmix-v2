@@ -164,14 +164,14 @@ export default function SignIn() {
   }, [isLoading, startAppleOAuth, redirectTo]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: beigeBackground }}>
+    <View style={{ flex: 1, backgroundColor: beigeBackground }}>
       <Header
         title="COSMIX"
         showBack={true}
         showMenu={true}
         onBackPress={() => router.back()}
         onMenuPress={() => setMenuVisible(true)}
-        disableSafeAreaPadding={true}
+        disableSafeAreaPadding={false}
       />
 
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -296,6 +296,6 @@ export default function SignIn() {
       >
         <SideMenu onClose={() => setMenuVisible(false)} />
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }

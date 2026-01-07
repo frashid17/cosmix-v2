@@ -103,12 +103,21 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
     }
   }, [selectedDate, saloonId, serviceId]);
 
-  // Generate next 14 days
+  // Generate dates: until the end of the month, but at least 14 days
   const generateDates = () => {
     const dates = [];
     const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
 
-    for (let i = 0; i < 14; i++) {
+    // Calculate last day of current month
+    const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+    const daysRemainingInMonth = lastDayOfMonth - today.getDate();
+
+    // Show at least 14 days, or until the end of the month if it's further away
+    const daysToShow = Math.max(14, daysRemainingInMonth + 1);
+
+    for (let i = 0; i < daysToShow; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       dates.push(date);

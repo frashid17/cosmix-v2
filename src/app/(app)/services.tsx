@@ -1,6 +1,6 @@
 // src/app/(app)/services.tsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Modal,Animated, Image } from "react-native";
+import { SafeAreaView, ScrollView, View, Text, TouchableOpacity, ActivityIndicator, Modal, Animated, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFonts } from 'expo-font';
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -34,7 +34,7 @@ export default function ServicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [dynamicCategoryName, setDynamicCategoryName] = useState<string>('');
   const [isMenuVisible, setMenuVisible] = useState(false);
-  
+
   // Salon state for hero carousel
   const [salon, setSalon] = useState<Salon | null>(null);
   // Hero box carousel state: 0 = title, 1+ = images
@@ -358,7 +358,7 @@ export default function ServicesPage() {
         // Fetch all salons and find the specific one
         const allSalons = await getSaloonsMap();
         const foundSalon = allSalons.find(s => s.id === salonId);
-        
+
         if (foundSalon) {
           setSalon(foundSalon);
           console.log('Fetched salon for carousel:', foundSalon.name, 'Images:', foundSalon.images?.length);
@@ -550,15 +550,66 @@ export default function ServicesPage() {
             >
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
                 <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      color: darkBrown,
-                      fontFamily: "Philosopher-Bold",
-                    }}
-                  >
-                    {subService.name}
-                  </Text>
+                  {(() => {
+                    const name = subService.name || '';
+                    const trimmed = name.trim();
+                    // If name has parentheses, split: non-paren on top, paren on bottom
+                    if (trimmed.includes('(') && trimmed.includes(')')) {
+                      const parenStart = trimmed.indexOf('(');
+                      const beforeParen = trimmed.substring(0, parenStart).trim();
+                      const parenPart = trimmed.substring(parenStart).trim();
+                      if (beforeParen && parenPart) {
+                        // If parenthetical part is short (15 chars or less), keep on one line
+                        if (parenPart.length <= 15) {
+                          return (
+                            <Text
+                              style={{
+                                fontSize: 20,
+                                color: darkBrown,
+                                fontFamily: "Philosopher-Bold",
+                              }}
+                            >
+                              {name}
+                            </Text>
+                          );
+                        }
+                        // Otherwise split into two lines
+                        return (
+                          <View>
+                            <Text
+                              style={{
+                                fontSize: 20,
+                                color: darkBrown,
+                                fontFamily: "Philosopher-Bold",
+                              }}
+                            >
+                              {beforeParen}
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 20,
+                                color: darkBrown,
+                                fontFamily: "Philosopher-Bold",
+                              }}
+                            >
+                              {parenPart}
+                            </Text>
+                          </View>
+                        );
+                      }
+                    }
+                    return (
+                      <Text
+                        style={{
+                          fontSize: 20,
+                          color: darkBrown,
+                          fontFamily: "Philosopher-Bold",
+                        }}
+                      >
+                        {name}
+                      </Text>
+                    );
+                  })()}
 
                   {subService.description && (
                     <Text
@@ -1001,98 +1052,98 @@ export default function ServicesPage() {
 
             {/* White Box - Centered */}
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <View
+                style={{
+                  width: 300,
+                  height: 195,
+                  backgroundColor: "white",
+                  borderRadius: 24,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  shadowColor: "#000",
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 3,
+                  position: "relative",
+                  overflow: "hidden"
+                }}
+              >
+                {/* Images - each rendered with absolute positioning, animates opacity */}
+                {salonImages.length > 0 && fadeAnims.length >= salonImages.length ? (
+                  salonImages.map((imageUrl, index) => {
+                    const animValue = fadeAnims[index];
+                    if (!animValue) return null;
+                    return (
+                      <Animated.Image
+                        key={`salon-image-${index}`}
+                        source={{ uri: imageUrl }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          borderRadius: 24,
+                          position: "absolute",
+                          opacity: animValue,
+                          zIndex: heroContentIndex === index ? 10 : 0
+                        }}
+                        resizeMode="cover"
+                      />
+                    );
+                  })
+                ) : (
+                  /* Fallback if no images - Show Title */
+                  <View
+                    style={{
+                      flex: 1,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "white"
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: "Philosopher-Bold",
+                        fontSize: 40,
+                        color: darkBrown,
+                        textAlign: "center",
+                        paddingHorizontal: 16
+                      }}
+                    >
+                      {salonName || salon?.name || "Salon"} Salonki
+                    </Text>
+                  </View>
+                )}
+
+                {/* Ellipses at bottom - indicate current page */}
+                {salonImages.length > 1 && (
+                  <View style={{
+                    position: "absolute",
+                    bottom: 16,
+                    flexDirection: "row",
+                    zIndex: 20
+                  }}>
+                    {/* Generate ellipses based on total pages (images only), max 4 */}
+                    {Array.from({ length: Math.min(totalPages, 4) }).map((_, index) => {
+                      // If we have more pages than dots, keep the last dot active for subsequent pages
+                      const isActive = heroContentIndex === index || (index === 3 && heroContentIndex > 3);
+
+                      return (
                         <View
-                            style={{
-                                width: 300,
-                                height: 195,
-                                backgroundColor: "white",
-                                borderRadius: 24,
-                                alignItems: "center",
-                                justifyContent: "center",
-                                shadowColor: "#000",
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: 0.1,
-                                shadowRadius: 4,
-                                elevation: 3,
-                                position: "relative",
-                                overflow: "hidden"
-                            }}
-                        >
-                            {/* Images - each rendered with absolute positioning, animates opacity */}
-                            {salonImages.length > 0 && fadeAnims.length >= salonImages.length ? (
-                                salonImages.map((imageUrl, index) => {
-                                    const animValue = fadeAnims[index];
-                                    if (!animValue) return null;
-                                    return (
-                                        <Animated.Image
-                                            key={`salon-image-${index}`}
-                                            source={{ uri: imageUrl }}
-                                            style={{
-                                                width: "100%",
-                                                height: "100%",
-                                                borderRadius: 24,
-                                                position: "absolute",
-                                                opacity: animValue,
-                                                zIndex: heroContentIndex === index ? 10 : 0
-                                            }}
-                                            resizeMode="cover"
-                                        />
-                                    );
-                                })
-                            ) : (
-                                /* Fallback if no images - Show Title */
-                                <View
-                                    style={{
-                                        flex: 1,
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        backgroundColor: "white"
-                                    }}
-                                >
-                                    <Text
-                                        style={{
-                                            fontFamily: "Philosopher-Bold",
-                                            fontSize: 40,
-                                            color: darkBrown,
-                                            textAlign: "center",
-                                            paddingHorizontal: 16
-                                        }}
-                                    >
-                                        {salonName || salon?.name || "Salon"} Salonki
-                                    </Text>
-                                </View>
-                            )}
-
-                            {/* Ellipses at bottom - indicate current page */}
-                            {salonImages.length > 1 && (
-                                <View style={{
-                                    position: "absolute",
-                                    bottom: 16,
-                                    flexDirection: "row",
-                                    zIndex: 20
-                                }}>
-                                    {/* Generate ellipses based on total pages (images only), max 4 */}
-                                    {Array.from({ length: Math.min(totalPages, 4) }).map((_, index) => {
-                                        // If we have more pages than dots, keep the last dot active for subsequent pages
-                                        const isActive = heroContentIndex === index || (index === 3 && heroContentIndex > 3);
-
-                                        return (
-                                            <View
-                                                key={index}
-                                                style={{
-                                                    width: 11,
-                                                    height: 11,
-                                                    marginLeft: index > 0 ? 5 : 0,
-                                                    backgroundColor: isActive ? darkBrown : beige,
-                                                    borderRadius: 5.5
-                                                }}
-                                            />
-                                        );
-                                    })}
-                                </View>
-                            )}
-                        </View>
-                    </View>
+                          key={index}
+                          style={{
+                            width: 11,
+                            height: 11,
+                            marginLeft: index > 0 ? 5 : 0,
+                            backgroundColor: isActive ? darkBrown : beige,
+                            borderRadius: 5.5
+                          }}
+                        />
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+            </View>
           </View>
         ) : (
           // Normal hero section
@@ -1262,15 +1313,66 @@ export default function ServicesPage() {
                                 >
                                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 }}>
                                     <View style={{ flex: 1 }}>
-                                      <Text
-                                        style={{
-                                          fontSize: 20,
-                                          color: darkBrown,
-                                          fontFamily: "Philosopher-Bold",
-                                        }}
-                                      >
-                                        {subService.name}
-                                      </Text>
+                                      {(() => {
+                                        const name = subService.name || '';
+                                        const trimmed = name.trim();
+                                        // If name has parentheses, split: non-paren on top, paren on bottom
+                                        if (trimmed.includes('(') && trimmed.includes(')')) {
+                                          const parenStart = trimmed.indexOf('(');
+                                          const beforeParen = trimmed.substring(0, parenStart).trim();
+                                          const parenPart = trimmed.substring(parenStart).trim();
+                                          if (beforeParen && parenPart) {
+                                            // If parenthetical part is short (15 chars or less), keep on one line
+                                            if (parenPart.length <= 15) {
+                                              return (
+                                                <Text
+                                                  style={{
+                                                    fontSize: 20,
+                                                    color: darkBrown,
+                                                    fontFamily: "Philosopher-Bold",
+                                                  }}
+                                                >
+                                                  {name}
+                                                </Text>
+                                              );
+                                            }
+                                            // Otherwise split into two lines
+                                            return (
+                                              <View>
+                                                <Text
+                                                  style={{
+                                                    fontSize: 20,
+                                                    color: darkBrown,
+                                                    fontFamily: "Philosopher-Bold",
+                                                  }}
+                                                >
+                                                  {beforeParen}
+                                                </Text>
+                                                <Text
+                                                  style={{
+                                                    fontSize: 20,
+                                                    color: darkBrown,
+                                                    fontFamily: "Philosopher-Bold",
+                                                  }}
+                                                >
+                                                  {parenPart}
+                                                </Text>
+                                              </View>
+                                            );
+                                          }
+                                        }
+                                        return (
+                                          <Text
+                                            style={{
+                                              fontSize: 20,
+                                              color: darkBrown,
+                                              fontFamily: "Philosopher-Bold",
+                                            }}
+                                          >
+                                            {name}
+                                          </Text>
+                                        );
+                                      })()}
 
                                       {/* Add description here */}
                                       {subService.description && (

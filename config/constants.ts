@@ -3,7 +3,10 @@ import { Platform } from 'react-native';
 
 // Single source of truth for backend base URL
 // Prefer environment override, otherwise default to deployed domain
-const RAW_DOMAIN = process.env.EXPO_PUBLIC_PRODUCTION_DOMAIN || 'https://cosmix-admin.vercel.app';
+const RAW_DOMAIN = process.env.EXPO_PUBLIC_PRODUCTION_DOMAIN || 'cosmix-admin.vercel.app';
+
+// Check if the domain uses http (local dev) or https (production)
+const isHttpDomain = RAW_DOMAIN.startsWith('http://');
 
 // Clean up the domain - remove protocol if present, we'll add it ourselves
 const PRODUCTION_DOMAIN = RAW_DOMAIN
@@ -14,10 +17,9 @@ const PRODUCTION_DOMAIN = RAW_DOMAIN
 const isLocalDev = __DEV__ && !process.env.EXPO_PUBLIC_PRODUCTION_DOMAIN;
 
 // Base URL used across the app
-// Use localhost for local development, otherwise use production domain with https
-export const API_BASE_URL = isLocalDev 
-  ? 'http://localhost:3000/api'
-  : `https://${PRODUCTION_DOMAIN}/api`;
+// Use http for localhost, https for production domains
+const protocol = isLocalDev || isHttpDomain ? 'http' : 'https';
+export const API_BASE_URL = `${protocol}://${PRODUCTION_DOMAIN}/api`;
 
 // API Endpoints
 export const API_ENDPOINTS = {

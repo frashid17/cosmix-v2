@@ -1,6 +1,6 @@
 // src/app/(app)/saloons.tsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Animated, PanResponder, GestureResponderEvent, PanResponderGestureState } from "react-native";
+import { SafeAreaView, View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Image, Modal, Animated, FlatList, Dimensions, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -130,24 +130,17 @@ const Saloons = () => {
     const [error, setError] = useState<string | null>(null);
     const [isMenuVisible, setMenuVisible] = useState(false);
     const [heroPageIndex, setHeroPageIndex] = useState(0); // 0 = title, 1 = map
+    const flatListRef = useRef<FlatList>(null);
 
-    // PanResponder for swipe gestures on the white hero box
-    const panResponder = useMemo(() => PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: (_: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-            return Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
-        },
-        onPanResponderRelease: (_: GestureResponderEvent, gestureState: PanResponderGestureState) => {
-            const swipeThreshold = 50;
-            if (gestureState.dx < -swipeThreshold) {
-                // Swipe left - go to map
-                setHeroPageIndex(prev => Math.min(prev + 1, 1));
-            } else if (gestureState.dx > swipeThreshold) {
-                // Swipe right - go to title
-                setHeroPageIndex(prev => Math.max(prev - 1, 0));
-            }
+    const CAROUSEL_WIDTH = 340;
+
+    const handleScroll = (event: any) => {
+        const contentOffset = event.nativeEvent.contentOffset.x;
+        const index = Math.round(contentOffset / CAROUSEL_WIDTH);
+        if (index !== heroPageIndex) {
+            setHeroPageIndex(index);
         }
-    }), []);
+    };
 
     // Generate HTML for the mini map in the hero box
     const generateMiniMapHTML = (saloonsList: SaloonData[]) => {
@@ -302,14 +295,11 @@ const Saloons = () => {
                     {/* White Box - Centered - Swipeable */}
                     <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                         <View
-                            {...panResponder.panHandlers}
                             style={{
-                                width: 340,
+                                width: CAROUSEL_WIDTH,
                                 height: 195,
                                 backgroundColor: "white",
                                 borderRadius: 24,
-                                alignItems: "center",
-                                justifyContent: "center",
                                 shadowColor: "#000",
                                 shadowOffset: { width: 0, height: 2 },
                                 shadowOpacity: 0.1,
@@ -319,88 +309,126 @@ const Saloons = () => {
                                 overflow: "hidden"
                             }}
                         >
-                            {/* Page 0: Title */}
-                            {heroPageIndex === 0 && (
-                                <Text
-                                    numberOfLines={2}
-                                    adjustsFontSizeToFit
-                                    minimumFontScale={0.5}
-                                    style={{
-                                        width: "100%",
-                                        paddingHorizontal: 10,
-                                        fontFamily: "Philosopher-Bold",
-                                        fontSize: 20,
-                                        color: darkBrown,
-                                        textAlign: "center",
-                                        transform: [{ scale: 1.4 }]
-                                    }}
-                                >
-                                    {(() => {
-                                        const text = salonId ? (serviceName || "Service") : (serviceName || "Services");
-                                        const trimmed = text.trim();
-                                        const words = trimmed.split(/\s+/).filter(word => word.length > 0);
+                            <FlatList
+                                ref={flatListRef}
+                                data={[0, 1]} // Page 0: Title, Page 1: Map
+                                horizontal
+                                pagingEnabled
+                                showsHorizontalScrollIndicator={false}
+                                onScroll={handleScroll}
+                                scrollEventThrottle={16}
+                                keyExtractor={(item) => item.toString()}
+                                renderItem={({ item }) => (
+                                    <View style={{ width: CAROUSEL_WIDTH, height: 195, alignItems: "center", justifyContent: "center" }}>
+                                        {item === 0 ? (
+                                            /* Page 0: Title */
+                                            <Text
+                                                numberOfLines={3}
+                                                adjustsFontSizeToFit
+                                                minimumFontScale={0.5}
+                                                style={{
+                                                    width: "100%",
+                                                    paddingHorizontal: 10,
+                                                    fontFamily: "Philosopher-Bold",
+                                                    fontSize: 20,
+                                                    color: darkBrown,
+                                                    textAlign: "center",
+                                                    transform: [{ scale: 1.4 }]
+                                                }}
+                                            >
+                                                {(() => {
+                                                    const text = salonId ? (serviceName || "Service") : (serviceName || "Services");
+                                                    const trimmed = text.trim();
+                                                    let displayContent: React.ReactNode = "";
 
-                                        // If 2 words
-                                        if (words.length === 2) {
-                                            // If total length <= 10 chars, keep on one line
-                                            if (trimmed.length <= 10) {
-                                                return text;
-                                            }
-                                            // Otherwise split into two lines
-                                            return words.join("\n");
-                                        }
+                                                    // Special handling for text with parentheses
+                                                    if (trimmed.includes('(') && trimmed.includes(')')) {
+                                                        const parenStart = trimmed.indexOf('(');
+                                                        const beforeParen = trimmed.substring(0, parenStart).trim();
+                                                        const parenPart = trimmed.substring(parenStart).trim();
+                                                        if (beforeParen && parenPart) {
+                                                            if (parenPart.length > 20) {
+                                                                displayContent = (
+                                                                    <>
+                                                                        {beforeParen}
+                                                                        {"\n"}
+                                                                        <Text style={{ fontSize: 14 }}>{parenPart}</Text>
+                                                                    </>
+                                                                );
+                                                            } else {
+                                                                displayContent = beforeParen + "\n" + parenPart;
+                                                            }
+                                                        } else {
+                                                            displayContent = text;
+                                                        }
+                                                    } else {
+                                                        const words = trimmed.split(/\s+/).filter(word => word.length > 0);
+                                                        if (words.length === 2 && trimmed.length > 26) {
+                                                            displayContent = words.join("\n");
+                                                        } else if (words.length === 3 && trimmed.length > 26) {
+                                                            displayContent = words.slice(0, 2).join(" ") + "\n" + words[2];
+                                                        } else if (words.length === 4 && trimmed.length > 25) {
+                                                            displayContent = words[0] + "\n" + words.slice(1).join(" ");
+                                                        } else if (words.length >= 5 && trimmed.length > 23) {
+                                                            displayContent = words.slice(0, 3).join(" ") + "\n" + words.slice(3).join(" ");
+                                                        } else {
+                                                            displayContent = text;
+                                                        }
+                                                    }
 
-                                        // If 3 words, first two on top, one on bottom
-                                        if (words.length === 3) {
-                                            return words.slice(0, 2).join(" ") + "\n" + words[2];
-                                        }
+                                                    // If workType exists (e.g., PITKAT), show it below in parentheses
+                                                    if (workType) {
+                                                        const formatted = workType.replace(/_/g, ' ').toLowerCase();
+                                                        const sentenceCase = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                                                        return (
+                                                            <>
+                                                                {displayContent}
+                                                                {"\n"}
+                                                                <Text style={{ fontSize: 15 }}>({sentenceCase})</Text>
+                                                            </>
+                                                        );
+                                                    }
 
-                                        // If 4 words, first word on top, rest on bottom
-                                        if (words.length === 4) {
-                                            return words[0] + "\n" + words.slice(1).join(" ");
-                                        }
-
-                                        // For 5+ words, 3 words on top, 2 words on bottom
-                                        if (words.length >= 5) {
-                                            return words.slice(0, 3).join(" ") + "\n" + words.slice(3).join(" ");
-                                        }
-
-                                        return text;
-                                    })()}
-                                </Text>
-                            )}
-
-                            {/* Page 1: Mapbox Map - Tap to open full map */}
-                            {heroPageIndex === 1 && (
-                                <TouchableOpacity
-                                    activeOpacity={0.9}
-                                    onPress={() => router.push("/(app)/map")}
-                                    style={{
-                                        width: 340,
-                                        height: 195,
-                                        borderRadius: 24,
-                                        overflow: "hidden"
-                                    }}
-                                >
-                                    <WebView
-                                        source={{ html: generateMiniMapHTML(saloons) }}
-                                        style={{
-                                            width: 340,
-                                            height: 195,
-                                        }}
-                                        scrollEnabled={false}
-                                        javaScriptEnabled={true}
-                                        domStorageEnabled={true}
-                                        pointerEvents="none"
-                                    />
-                                </TouchableOpacity>
-                            )}
+                                                    return displayContent;
+                                                })()}
+                                            </Text>
+                                        ) : (
+                                            /* Page 1: Mapbox Map - Tap to open full map */
+                                            <TouchableOpacity
+                                                activeOpacity={0.9}
+                                                onPress={() => router.push("/(app)/map")}
+                                                style={{
+                                                    width: CAROUSEL_WIDTH,
+                                                    height: 195,
+                                                    borderRadius: 24,
+                                                    overflow: "hidden"
+                                                }}
+                                            >
+                                                <WebView
+                                                    source={{ html: generateMiniMapHTML(saloons) }}
+                                                    style={{
+                                                        width: CAROUSEL_WIDTH,
+                                                        height: 195,
+                                                    }}
+                                                    scrollEnabled={false}
+                                                    javaScriptEnabled={true}
+                                                    domStorageEnabled={true}
+                                                    pointerEvents="none"
+                                                />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+                                )}
+                            />
 
                             {/* Ellipses at bottom - indicate current page */}
                             <View style={{
                                 position: "absolute",
                                 bottom: 16,
-                                flexDirection: "row"
+                                left: 0,
+                                right: 0,
+                                flexDirection: "row",
+                                justifyContent: "center"
                             }}>
                                 <View
                                     style={{
@@ -490,7 +518,8 @@ const Saloons = () => {
                                                 serviceName: serviceName,
                                                 categoryName: categoryName,
                                                 price: saloon.price.toString(),
-                                                durationMinutes: saloon.durationMinutes.toString()
+                                                durationMinutes: saloon.durationMinutes.toString(),
+                                                workType: workType
                                             }
                                         });
                                     }}

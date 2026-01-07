@@ -27,6 +27,7 @@ export default function CheckoutScreen() {
     categoryName?: string;
     price?: string;
     durationMinutes?: string;
+    workType?: string;
     date?: string;
     time?: string;
   }>();
@@ -246,6 +247,20 @@ export default function CheckoutScreen() {
                       }}>
                         {service.service?.name}
                       </Text>
+                      {params.workType && (
+                        <Text style={{
+                          fontSize: 16,
+                          color: '#423120',
+                          fontFamily: 'Philosopher-Bold',
+                          marginBottom: 4
+                        }}>
+                          {(() => {
+                            const formatted = params.workType.replace(/_/g, ' ').toLowerCase();
+                            const sentenceCase = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                            return `(${sentenceCase})`;
+                          })()}
+                        </Text>
+                      )}
                       <Text style={{ fontSize: 14, color: '#423120', opacity: 0.7, fontFamily: 'Philosopher-Regular', marginBottom: 2 }}>
                         {service.saloon?.name}
                       </Text>

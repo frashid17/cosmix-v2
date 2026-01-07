@@ -12,6 +12,64 @@ import { Salon } from "../../../../types/salon";
 import getSaloonsMap from "../../actions/get-saloons-map";
 import { API_ENDPOINTS } from "@/config/constants";
 
+const normalizeString = (str: string) => {
+  return str
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "") // remove punctuation for robustness
+    .trim();
+};
+
+const levenshtein = (a: string, b: string): number => {
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
+  const matrix: number[][] = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+};
+
+const fuzzyMatch = (queryPart: string, target: string): boolean => {
+  const q = normalizeString(queryPart);
+  const t = normalizeString(target);
+  if (!q || !t) return false;
+
+  // 1. Direct substring match
+  if (t.includes(q)) return true;
+
+  // 2. Starts with (helpful for short parts like "IP" matching "IPL")
+  if (q.length >= 2 && t.startsWith(q)) return true;
+
+  // 3. Typo tolerance (Levenshtein)
+  const threshold = q.length <= 4 ? 1 : 2;
+
+  // Check against full string
+  if (levenshtein(q, t) <= threshold) return true;
+
+  // Check against individual words in target
+  const targetWords = t.split(/\s+/);
+  for (const word of targetWords) {
+    if (levenshtein(q, word) <= threshold) return true;
+    if (q.length >= 3 && word.startsWith(q)) return true;
+  }
+
+  return false;
+};
+
 export default function ServicesPage() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -147,28 +205,47 @@ export default function ServicesPage() {
 
   // Determine search type based on query content
   useEffect(() => {
-    const q = query.trim().toLowerCase();
+    const q = normalizeString(query);
     if (q.length === 0) {
       setSearchType('category');
       return;
     }
 
     // Check salon matches
-    const salonMatches = salons.filter(s =>
-      s.name.toLowerCase().includes(q) ||
-      s.address?.toLowerCase().includes(q) ||
-      s.shortIntro?.toLowerCase().includes(q)
-    ).length;
+    const salonMatches = salons.filter(s => {
+      const normalizedSName = normalizeString(s.name);
+      const normalizedSAddress = normalizeString(s.address || "");
+      const normalizedSIntro = normalizeString(s.shortIntro || "");
+      return normalizedSName.includes(q) || normalizedSAddress.includes(q) || normalizedSIntro.includes(q);
+    }).length;
 
     // Check category matches
     const categoryMatches = categories.filter(c =>
-      c.name.toLowerCase().includes(q)
+      normalizeString(c.name).includes(q)
     ).length;
 
-    // Check service/sub-service matches
-    const serviceMatches = allServices.filter(s =>
-      s.name.toLowerCase().includes(q)
-    ).length;
+    // Check service/sub-service matches (using same logic as filteredServices)
+    const serviceMatches = allServices.filter(s => {
+      const normalizedName = normalizeString(s.name);
+
+      // Robust parent name resolution: Check parentService object OR find in allServices by ID
+      let parentName = s.parentService?.name || "";
+      if (!parentName && s.parentServiceId) {
+        const parent = allServices.find(as => as.id === s.parentServiceId);
+        if (parent) parentName = parent.name;
+      }
+      const normalizedParentName = normalizeString(parentName);
+
+      const matchesName = normalizedName.includes(q);
+      const matchesParent = normalizedParentName && normalizedParentName.includes(q);
+
+      const queryParts = q.split(/\s+/).filter(Boolean);
+      const matchesCombined = queryParts.length > 1 && queryParts.every(part =>
+        normalizedName.includes(part) || (normalizedParentName && normalizedParentName.includes(part))
+      );
+
+      return (matchesName || matchesParent || matchesCombined) && s.parentServiceId;
+    }).length;
 
     // Priority: salon > service > category
     if (salonMatches > 0 && salonMatches >= categoryMatches && salonMatches >= serviceMatches) {
@@ -185,28 +262,35 @@ export default function ServicesPage() {
     : categories
       .map((c) => c.name)
       .filter(Boolean)
-      .filter((name) => name.toLowerCase().includes(query.trim().toLowerCase()));
+      .filter((name) => {
+        const parts = query.split(/\s+/).filter(Boolean);
+        return parts.every(part => fuzzyMatch(part, name));
+      });
 
   const filteredSalons = query.trim().length === 0
     ? []
     : salons.filter((salon) => {
-      const q = query.trim().toLowerCase();
-      return (
-        salon.name.toLowerCase().includes(q) ||
-        salon.address?.toLowerCase().includes(q) ||
-        salon.shortIntro?.toLowerCase().includes(q)
-      );
+      const parts = query.split(/\s+/).filter(Boolean);
+      const combined = `${salon.name} ${salon.address || ""} ${salon.shortIntro || ""}`;
+      return parts.every(part => fuzzyMatch(part, combined));
     });
 
   // Filter services (including sub-services) - only sub-services (those with parentServiceId)
   const filteredServices = query.trim().length === 0
     ? []
     : allServices.filter((service) => {
-      const q = query.trim().toLowerCase();
-      return (
-        service.name.toLowerCase().includes(q) &&
-        service.parentServiceId // Only show sub-services (services that have a parent)
-      );
+      // Robust parent name resolution
+      let parentName = service.parentService?.name || "";
+      if (!parentName && service.parentServiceId) {
+        const parent = allServices.find(as => as.id === service.parentServiceId);
+        if (parent) parentName = parent.name;
+      }
+
+      const queryParts = query.split(/\s+/).filter(Boolean);
+      const combined = `${service.name} ${parentName}`;
+      const matchesAllParts = queryParts.every(part => fuzzyMatch(part, combined));
+
+      return matchesAllParts && service.parentServiceId;
     });
 
   const onServicePress = (service: Service) => {
