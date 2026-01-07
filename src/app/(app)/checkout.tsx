@@ -245,7 +245,27 @@ export default function CheckoutScreen() {
                         color: '#423120',
                         marginBottom: 4
                       }}>
-                        {service.service?.name}
+                        {(() => {
+                          const name = service.service?.name || '';
+                          const splitIndex = name.indexOf('(');
+
+                          if (splitIndex !== -1) {
+                            const mainPart = name.substring(0, splitIndex).trim();
+                            const subPart = name.substring(splitIndex).trim();
+
+                            return (
+                              <>
+                                {mainPart}
+                                {'\n'}
+                                <Text style={{ fontSize: 16 }}>
+                                  {subPart}
+                                </Text>
+                              </>
+                            );
+                          }
+
+                          return name;
+                        })()}
                       </Text>
                       {params.workType && (
                         <Text style={{
