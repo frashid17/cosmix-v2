@@ -1,9 +1,27 @@
 // src/app/(app)/_layout.tsx
-import { Stack } from "expo-router"
+import { Stack, useSegments } from "expo-router"
 import { View } from "react-native";
-import TabBar from "../components/TabBar";
+import GlobalTabBar from "../components/GlobalTabBar";
 
 function Layout() {
+    const segments = useSegments();
+
+    // Check if we are in the (tabs) group
+    // segments is usually ["(app)", "(tabs)", "index"] etc.
+    // If "(tabs)" is present in segments, we hide the GlobalTabBar because Tabs layout handles it.
+    // Also hide on admin-webview if needed (full screen)
+    const hideGlobalTabs =
+        segments.includes("(tabs)") ||
+        segments.includes("admin-webview") ||
+        segments.includes("sign-in"); // User mentioned sign-in missing tab bar, so I should SHOW it there? 
+    // User said: "/home/lunar/update/cosmix-v2/src/app/(app)/sign-in.tsx ... are missing the Tab bar"
+    // So I should NOT hide it on sign-in.
+
+    // Re-evaluating hide logic:
+    // We ONLY want to hide it if we are inside (tabs) layout, because that layout has its own bar.
+    // And maybe specific full-screen modals like admin-webview.
+    const shouldShowGlobalTabs = !segments.includes("(tabs)") && !segments.includes("admin-webview");
+
     return (
         <View style={{ flex: 1 }}>
             <Stack>
@@ -24,7 +42,7 @@ function Layout() {
                 <Stack.Screen name="language" options={{ headerShown: false }} />
             </Stack>
 
-
+            {shouldShowGlobalTabs && <GlobalTabBar />}
         </View>
     )
 }
