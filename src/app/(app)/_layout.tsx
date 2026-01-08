@@ -24,8 +24,7 @@ function Layout() {
                 <Stack.Screen name="language" options={{ headerShown: false }} />
             </Stack>
 
-            {/* Show TabBar for everyone */}
-            <TabBar />
+
         </View>
     )
 }

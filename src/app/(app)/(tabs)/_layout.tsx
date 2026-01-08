@@ -1,71 +1,66 @@
 // src/app/(app)/(tabs)/_layout.tsx
 import { Tabs } from "expo-router";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { Image } from "react-native";
+
+import TabBar from "../../components/TabBar";
 
 function Layout() {
-  const tabBackground = "#D7C3A7";
-  const darkBrown = "#423120";
-  
   return (
     <Tabs
+      initialRouteName="index"
+      tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: darkBrown,
-        tabBarInactiveTintColor: tabBackground,
-        tabBarStyle: {
-          backgroundColor: tabBackground,
-          borderTopWidth: 0,
-          paddingVertical: 12,
-          height: 60,
-        },
-        tabBarShowLabel: false, // Hide labels for cleaner look
+        headerShown: false,
       }}
     >
-
-<Tabs.Screen 
-        name="index" 
-        options={{ 
-          headerShown: false,
-          title: "Home",
-          tabBarIcon: ({ focused }) => (
-            <Ionicons 
-              name="home-outline" 
-              size={30} 
-              color={darkBrown} 
-            />
-          ),
-        }} 
-      />
-
-      
-      <Tabs.Screen 
-        name="service" 
-        options={{ 
-          headerShown: false,
-          title: "Search",
-          tabBarIcon: ({ focused }) => (
-            <Ionicons 
-              name="search-outline" 
-              size={30} 
-              color={darkBrown} 
-            />
-          ),
-        }} 
-      />
-      
-      <Tabs.Screen 
-        name="profile" 
-        options={{ 
-          headerShown: false,
+      <Tabs.Screen
+        name="profile"
+        options={{
           title: "Profile",
-          tabBarIcon: ({ focused }) => (
-              <Ionicons 
-                name="person" 
-                size={30} 
-                color={darkBrown} 
-              />
+          tabBarIcon: ({ color }) => (
+            <Ionicons
+              name="person"
+              size={30}
+              color={color}
+            />
           ),
-        }} 
+        }}
+      />
+
+      <Tabs.Screen
+        name="service"
+        options={{
+          title: "Search",
+          tabBarIcon: ({ color }) => (
+            <Ionicons
+              name="search-outline"
+              size={30}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: "Home",
+          tabBarIcon: ({ color }) => (
+            <Ionicons
+              name="home-outline"
+              size={30}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="map"
+        options={{
+          href: null, // Hide from tab bar buttons, but keep tab bar visible
+          title: "Map"
+        }}
       />
     </Tabs>
   );

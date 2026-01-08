@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SafeAreaView, View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Image, Dimensions, Linking } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFonts } from 'expo-font';
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Location from 'expo-location';
-import { WebView } from 'react-native-webview';
-import getSaloonsMap from '../actions/get-saloons-map';
-import getServices from '../actions/get-services';
-import { Saloon, Service } from '../types';
-import Header from '../components/Header';
-import SideMenu from '../components/SideMenu';
+import { WebView } from "react-native-webview";
+import Header from "../../components/Header";
+import SideMenu from "../../components/SideMenu";
+import getSaloonsMap from "../../actions/get-saloons-map";
+import getServices from "../../actions/get-services";
+import { Saloon, Service } from "../../types";
 
 // Extended interface for map salon data
 interface MapSalon extends Saloon {
@@ -549,7 +550,7 @@ export default function MapScreen() {
       <html>
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <title>Map</title>
         <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
         <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
@@ -608,9 +609,16 @@ export default function MapScreen() {
             white-space: nowrap;
             max-width: 100px;
             text-align: center;
-           
+            
             
             margin-bottom: 2px;
+          }
+          .salon-marker-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Ensure no weird positioning interferes */
+            transform: translate(-50%, -100%); /* Adjust visual centering if needed, but Mapbox handles anchor */
           }
         </style>
       </head>
@@ -623,7 +631,8 @@ export default function MapScreen() {
             container: 'map',
             style: 'mapbox://styles/mapbox/streets-v12',
             center: [${centerLng}, ${centerLat}],
-            zoom: 13
+            zoom: 13,
+            projection: { name: 'mercator' }
           });
 
           // Prevent any default link behavior
@@ -647,34 +656,35 @@ export default function MapScreen() {
           const markers = ${JSON.stringify(markers)};
           
           markers.forEach(salon => {
-            // Create a container that holds both the marker and label
+            // Ensure numeric coordinates
+            const lat = parseFloat(salon.lat);
+            const lng = parseFloat(salon.lng);
+            
+            if (isNaN(lat) || isNaN(lng)) return;
+
+            // Simple container
             const container = document.createElement('div');
-            container.style.position = 'relative';
-            container.style.display = 'flex';
-            container.style.flexDirection = 'column';
-            container.style.alignItems = 'center';
+            container.className = 'salon-marker-container';
             
-            // Create the spa marker
-            const el = document.createElement('div');
-            el.className = 'salon-marker';
-            el.style.cursor = 'pointer';
-            el.innerHTML = '✂️';
-            
-            // Create the label
+            // Label
             const labelEl = document.createElement('div');
             labelEl.className = 'salon-label';
-            labelEl.innerHTML = salon.name;
+            labelEl.innerHTML = salon.name; // + ' (' + lat.toFixed(2) + ')'; // Debug info removed for cleanliness
             
-            // Add both to container
+            // Icon
+            const el = document.createElement('div');
+            el.className = 'salon-marker';
+            el.innerHTML = '✂️';
+            
             container.appendChild(labelEl);
             container.appendChild(el);
             
-            // Create single marker with both icon and label (no popup button)
-            const marker = new mapboxgl.Marker({
+            // Create marker
+            new mapboxgl.Marker({
               element: container,
               anchor: 'bottom'
             })
-            .setLngLat([salon.lng, salon.lat])
+            .setLngLat([lng, lat])
             .addTo(map);
           });
 

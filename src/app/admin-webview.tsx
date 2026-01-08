@@ -31,7 +31,7 @@ export default function AdminWebViewScreen() {
     const webViewRef = useRef<WebView | null>(null);
     const finalUrlRef = useRef<string | null>(null);
     const { signOut } = useClerk();
-    const { getToken, isSignedIn } = useAuth();
+    const { getToken, isSignedIn, userId } = useAuth();
     const [authToken, setAuthToken] = useState<string | null>(null);
     const [dashboardPath, setDashboardPath] = useState<string>('/');
     const [finalUrl, setFinalUrl] = useState<string | null>(null);
@@ -73,6 +73,7 @@ export default function AdminWebViewScreen() {
                     console.log('[ADMIN_WEBVIEW] Set final URL to (no token):', fullUrl);
                     hasLoadedRef.current = false;
                     hasSuccessfullyLoadedRef.current = false;
+                    setHasSuccessfullyLoaded(false);
                     currentUrlRef.current = null;
                     visitedUrlsRef.current = [];
                     redirectCountRef.current = 0;
@@ -107,6 +108,7 @@ export default function AdminWebViewScreen() {
                     // Reset loaded flags and redirect tracking when URL changes
                     hasLoadedRef.current = false;
                     hasSuccessfullyLoadedRef.current = false;
+                    setHasSuccessfullyLoaded(false);
                     currentUrlRef.current = null;
                     visitedUrlsRef.current = [];
                     redirectCountRef.current = 0;
@@ -122,6 +124,7 @@ export default function AdminWebViewScreen() {
                     console.log('[ADMIN_WEBVIEW] Set final URL to (check failed):', fullUrl);
                     hasLoadedRef.current = false;
                     hasSuccessfullyLoadedRef.current = false;
+                    setHasSuccessfullyLoaded(false);
                     currentUrlRef.current = null;
                     visitedUrlsRef.current = [];
                     redirectCountRef.current = 0;
@@ -137,6 +140,7 @@ export default function AdminWebViewScreen() {
                 console.log('[ADMIN_WEBVIEW] Set final URL to (error):', fullUrl);
                 hasLoadedRef.current = false;
                 hasSuccessfullyLoadedRef.current = false;
+                setHasSuccessfullyLoaded(false);
                 currentUrlRef.current = null;
                 visitedUrlsRef.current = [];
                 redirectCountRef.current = 0;
@@ -151,25 +155,28 @@ export default function AdminWebViewScreen() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isSignedIn, authToken]); // **CRITICAL**: Also depend on authToken so check re-runs when user changes!
 
-    // **CRITICAL FIX**: Reset hasCheckedAdmin when authToken changes (new user)
-    const prevAuthTokenRef = useRef<string | null>(null);
+    // **CRITICAL FIX**: Reset hasCheckedAdmin when userId changes (new user)
+    // We used to track authToken, but Clerk rotates tokens frequently causing unnecessary resets
+    const prevUserIdRef = useRef<string | null>(null);
     React.useEffect(() => {
-        if (prevAuthTokenRef.current !== null && prevAuthTokenRef.current !== authToken) {
-            // Token changed - new user! Reset everything
-            console.log('[ADMIN_WEBVIEW] Auth token changed, resetting for new user');
+        // Only reset if we had a user before and now it's different
+        if (prevUserIdRef.current !== null && prevUserIdRef.current !== userId) {
+            // User changed! Reset everything
+            console.log('[ADMIN_WEBVIEW] User changed, resetting session');
             setHasCheckedAdmin(false);
             setIsCheckingAdmin(true);
             finalUrlRef.current = null;
             setFinalUrl(null);
             hasLoadedRef.current = false;
             hasSuccessfullyLoadedRef.current = false;
+            setHasSuccessfullyLoaded(false);
             currentUrlRef.current = null;
             visitedUrlsRef.current = [];
             redirectCountRef.current = 0;
             isInRedirectLoopRef.current = false;
         }
-        prevAuthTokenRef.current = authToken;
-    }, [authToken]);
+        prevUserIdRef.current = userId;
+    }, [userId]);
 
     // Log the URL for debugging (only when it changes)
     React.useEffect(() => {
@@ -196,6 +203,7 @@ export default function AdminWebViewScreen() {
             setFinalUrl(null);
             hasLoadedRef.current = false;
             hasSuccessfullyLoadedRef.current = false;
+            setHasSuccessfullyLoaded(false);
             currentUrlRef.current = null;
             visitedUrlsRef.current = [];
             redirectCountRef.current = 0;
@@ -227,6 +235,7 @@ export default function AdminWebViewScreen() {
     }, [getToken]);
 
     const [loading, setLoading] = useState(true);
+    const [hasSuccessfullyLoaded, setHasSuccessfullyLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [canGoBack, setCanGoBack] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
@@ -350,6 +359,7 @@ export default function AdminWebViewScreen() {
             console.log('[ADMIN_WEBVIEW] Page successfully loaded:', navState.url);
             hasLoadedRef.current = true;
             hasSuccessfullyLoadedRef.current = true;
+            setHasSuccessfullyLoaded(true);
             setLoading(false);
 
             // Reset redirect tracking if we've been on this page for a while (not actively redirecting)
@@ -494,6 +504,7 @@ export default function AdminWebViewScreen() {
         if (currentUrlRef.current && currentUrlRef.current !== 'about:blank') {
             console.log('[ADMIN_WEBVIEW] Marking as successfully loaded');
             hasSuccessfullyLoadedRef.current = true;
+            setHasSuccessfullyLoaded(true);
         }
     };
 
@@ -783,8 +794,8 @@ export default function AdminWebViewScreen() {
                             contentInsetAdjustmentBehavior="never"
                         />
 
-                        {/* Loading Indicator */}
-                        {loading && (
+                        {/* Loading Indicator - only show before first successful load */}
+                        {loading && !hasSuccessfullyLoaded && (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color={darkBrown} />
                             </View>

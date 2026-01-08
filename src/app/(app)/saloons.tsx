@@ -378,13 +378,28 @@ const Saloons = () => {
 
                                                     // If workType exists (e.g., PITKAT), show it below in parentheses
                                                     if (workType) {
-                                                        const formatted = workType.replace(/_/g, ' ').toLowerCase();
-                                                        const sentenceCase = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                                                        const workTypeMapping: Record<string, string> = {
+                                                            'UUDET': 'Uudet',
+                                                            'POISTO': 'Poisto',
+                                                            'HUOLTO': 'Huolto',
+                                                            'EI_LISAKKEITA': 'Ei lisäkkeitä',
+                                                            'LYHYET': 'Lyhyet',
+                                                            'KESKIPITKAT': 'Keskipitkät',
+                                                            'PITKAT': 'Pitkät'
+                                                        };
+
+                                                        let displayWorkType = workTypeMapping[workType];
+
+                                                        if (!displayWorkType) {
+                                                            const formatted = workType.replace(/_/g, ' ').toLowerCase();
+                                                            displayWorkType = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+                                                        }
+
                                                         return (
                                                             <>
                                                                 {displayContent}
                                                                 {"\n"}
-                                                                <Text style={{ fontSize: 15 }}>({sentenceCase})</Text>
+                                                                <Text style={{ fontSize: 15 }}>({displayWorkType})</Text>
                                                             </>
                                                         );
                                                     }
@@ -396,7 +411,7 @@ const Saloons = () => {
                                             /* Page 1: Mapbox Map - Tap to open full map */
                                             <TouchableOpacity
                                                 activeOpacity={0.9}
-                                                onPress={() => router.push("/(app)/map")}
+                                                onPress={() => router.push("/(app)/(tabs)/map")}
                                                 style={{
                                                     width: CAROUSEL_WIDTH,
                                                     height: 195,

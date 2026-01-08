@@ -379,16 +379,29 @@ export default function ServicesPage() {
                 </View>
               ) : searchType === 'service' && filteredServices.length > 0 ? (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 8 }}>
-                  {filteredServices.map((service) => (
-                    <Chip
-                      key={service.id}
-                      label={service.name}
-                      onPress={() => onServicePress(service)}
-                      color={chipBeige}
-                      textColor={darkBrown}
-                      fullWidth={true}
-                    />
-                  ))}
+                  {filteredServices.map((service) => {
+                    // Resolve parent name for clearer display
+                    let parentName = service.parentService?.name || "";
+                    if (!parentName && service.parentServiceId) {
+                      const parent = allServices.find(as => as.id === service.parentServiceId);
+                      if (parent) parentName = parent.name;
+                    }
+
+                    const displayName = parentName && !service.name.toLowerCase().includes(parentName.toLowerCase())
+                      ? `${parentName} ${service.name}`
+                      : service.name;
+
+                    return (
+                      <Chip
+                        key={service.id}
+                        label={displayName}
+                        onPress={() => onServicePress(service)}
+                        color={chipBeige}
+                        textColor={darkBrown}
+                        fullWidth={true}
+                      />
+                    );
+                  })}
                 </View>
               ) : searchType === 'category' && filteredCategoryNames.length > 0 ? (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 8 }}>
@@ -421,7 +434,7 @@ export default function ServicesPage() {
                   <>
                     {/* First row - 2 categories */}
                     {popularCategories.length > 0 && (
-                      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'stretch', marginBottom: 20, gap: 12 }}>
                         {popularCategories.slice(0, 2).map((category) => (
                           <Chip
                             key={category.id}
@@ -451,7 +464,7 @@ export default function ServicesPage() {
 
                     {/* Third row - 2 categories */}
                     {popularCategories.length > 3 && (
-                      <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'stretch', marginBottom: 20, gap: 12 }}>
                         {popularCategories.slice(3, 5).map((category) => (
                           <Chip
                             key={category.id}
@@ -485,7 +498,7 @@ export default function ServicesPage() {
                       if (position === 0) {
                         const nextCategory = popularCategories[6 + idx + 1];
                         return (
-                          <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 20, gap: 12 }}>
+                          <View key={category.id} style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'stretch', marginBottom: 20, gap: 12 }}>
                             <Chip
                               label={category.name}
                               onPress={() => onChipPress(category.name)}
@@ -699,6 +712,9 @@ function SalonCard({
 }
 
 function Chip({ label, onPress, color, textColor, fixedWidth, fullWidth }: { label: string; onPress: () => void; color: string; textColor: string; fixedWidth?: boolean; fullWidth?: boolean }) {
+  // Force parentheses to new line if present
+  const displayLabel = label.replace(/\s*\(/g, '\n(');
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -709,15 +725,15 @@ function Chip({ label, onPress, color, textColor, fixedWidth, fullWidth }: { lab
         borderRadius: 25,
         alignItems: 'center',
         justifyContent: 'center',
+        minHeight: fullWidth ? 75 : 50, // "Bigger box" for search results (fullWidth)
         ...(fixedWidth ? { width: 160 } : {}),
         ...(fullWidth ? { width: '100%' } : {}),
       }}
     >
       <Text
-        numberOfLines={1}
         style={{ color: textColor, fontFamily: 'Philosopher-Bold', fontSize: 15, textAlign: 'center' }}
       >
-        {label}
+        {displayLabel}
       </Text>
     </TouchableOpacity>
   );
