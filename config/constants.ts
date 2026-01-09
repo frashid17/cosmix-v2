@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 // Single source of truth for backend base URL
 // Prefer environment override, otherwise default to deployed domain
-const RAW_DOMAIN = process.env.EXPO_PUBLIC_PRODUCTION_DOMAIN || 'cosmix-admin.vercel.app';
+const RAW_DOMAIN = process.env.EXPO_PUBLIC_PRODUCTION_DOMAIN || 'http://192.168.1.229:3000';
 
 // Check if the domain uses http (local dev) or https (production)
 const isHttpDomain = RAW_DOMAIN.startsWith('http://');

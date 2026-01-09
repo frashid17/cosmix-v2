@@ -221,18 +221,63 @@ export default function AdminWebViewScreen() {
         };
     }, []);
 
-    // Get auth token on mount (still kept if needed for other uses)
+    // Get auth token on mount AND refresh periodically
+    // Clerk tokens expire quickly (60 seconds), so we refresh every 30 seconds
+    // When token refreshes, we ONLY inject it into the WebView's cookie (no state update to prevent re-render)
+    const tokenRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const latestTokenRef = useRef<string | null>(null);
+
     React.useEffect(() => {
-        const fetchToken = async () => {
+        const fetchAndSetToken = async () => {
             try {
                 const token = await getToken();
-                setAuthToken(token);
+                if (!token) return;
+
+                // Track the latest token in a ref (doesn't trigger re-render)
+                const isNewToken = token !== latestTokenRef.current;
+                latestTokenRef.current = token;
+
+                if (isNewToken) {
+                    // Only update STATE on first fetch (when authToken is null)
+                    // Subsequent refreshes only inject cookie without state update
+                    if (!authToken) {
+                        console.log('[ADMIN_WEBVIEW] Initial token fetch, setting state');
+                        setAuthToken(token);
+                    } else {
+                        // Token refreshed - only inject cookie, don't update state
+                        console.log('[ADMIN_WEBVIEW] Token refreshed, injecting into WebView cookie only');
+                        if (webViewRef.current) {
+                            const injectScript = `
+                                try {
+                                    document.cookie = 'x-user-token-session=${token}; path=/; SameSite=Lax; max-age=${60 * 60 * 24}';
+                                    console.log('[WebView] Token refreshed and cookie updated silently');
+                                } catch(e) {
+                                    console.log('[WebView] Failed to update token cookie:', e);
+                                }
+                                true;
+                            `;
+                            webViewRef.current.injectJavaScript(injectScript);
+                        }
+                    }
+                }
             } catch (e) {
-                console.log('Failed to get auth token:', e);
+                console.log('[ADMIN_WEBVIEW] Failed to get/refresh auth token:', e);
             }
         };
-        fetchToken();
-    }, [getToken]);
+
+        // Fetch token immediately on mount
+        fetchAndSetToken();
+
+        // Set up interval to refresh token every 30 seconds
+        tokenRefreshIntervalRef.current = setInterval(fetchAndSetToken, 30 * 1000);
+
+        return () => {
+            if (tokenRefreshIntervalRef.current) {
+                clearInterval(tokenRefreshIntervalRef.current);
+                tokenRefreshIntervalRef.current = null;
+            }
+        };
+    }, [getToken, authToken]);
 
     const [loading, setLoading] = useState(true);
     const [hasSuccessfullyLoaded, setHasSuccessfullyLoaded] = useState(false);
@@ -317,6 +362,9 @@ export default function AdminWebViewScreen() {
     const isInRedirectLoopRef = useRef(false);
 
     // Memoize WebView source to prevent unnecessary reloads
+    // IMPORTANT: We use latestTokenRef.current for the header, not authToken state
+    // This prevents WebView source recreation when token refreshes
+    // Cookie-based auth (x-user-token-session) handles subsequent requests
     const webViewSource = useMemo(() => {
         if (!finalUrl) return null;
         console.log('[ADMIN_WEBVIEW] Creating WebView source for URL:', finalUrl);
@@ -325,9 +373,11 @@ export default function AdminWebViewScreen() {
             Authorization: `Bearer ${ADMIN_API_KEY}`,
         };
 
-        // Add X-User-Token header if we have a Clerk token
-        if (authToken) {
-            headers['X-User-Token'] = authToken;
+        // Add X-User-Token header using ref (doesn't trigger re-render on token refresh)
+        // Fallback to authToken state for initial render
+        const currentToken = latestTokenRef.current || authToken;
+        if (currentToken) {
+            headers['X-User-Token'] = currentToken;
             console.log('[ADMIN_WEBVIEW] Adding X-User-Token header to WebView request');
         }
 
@@ -335,12 +385,17 @@ export default function AdminWebViewScreen() {
             uri: finalUrl,
             headers,
         };
-    }, [finalUrl, authToken]); // Re-create when finalUrl OR authToken changes
+    }, [finalUrl]); // ONLY re-create when finalUrl changes, NOT when token refreshes
 
     // Handle WebView navigation state changes
     const handleNavigationStateChange = (navState: WebViewNavigation) => {
         setCanGoBack(navState.canGoBack);
-        setLoading(navState.loading);
+
+        // CRITICAL: Only update loading state if we haven't successfully loaded yet
+        // After first successful load, we don't want subsequent navigations to show spinner
+        if (!hasSuccessfullyLoadedRef.current) {
+            setLoading(navState.loading);
+        }
 
         console.log('[ADMIN_WEBVIEW] Navigation state:', {
             url: navState.url,
@@ -381,6 +436,16 @@ export default function AdminWebViewScreen() {
     const handleShouldStartLoadWithRequest = (request: any) => {
         const requestUrl = request.url;
 
+        // SKIP: External URLs (like Cloudinary widget, file pickers, etc.)
+        // These shouldn't be tracked in redirect detection
+        if (requestUrl.includes('cloudinary.com') ||
+            requestUrl.includes('widget.cloudinary.com') ||
+            requestUrl.includes('blob:') ||
+            requestUrl.includes('data:')) {
+            console.log('[ADMIN_WEBVIEW] Allowing external URL (not tracking):', requestUrl);
+            return true;
+        }
+
         // On first load, always allow
         if (!hasLoadedRef.current) {
             visitedUrlsRef.current = [requestUrl];
@@ -391,6 +456,39 @@ export default function AdminWebViewScreen() {
         // Prevent reloading the same URL
         if (currentUrlRef.current && requestUrl === currentUrlRef.current) {
             console.log('[ADMIN_WEBVIEW] Preventing reload of same URL:', requestUrl);
+            return false;
+        }
+
+        // CRITICAL: Prevent navigation to home page when on dashboard
+        // This happens when Cloudinary widget closes and triggers unwanted redirect
+        const isOnDashboard = currentUrlRef.current?.includes('/dashboard');
+        const isNavigatingToHome = requestUrl.endsWith('/') || requestUrl.match(/^https?:\/\/[^\/]+\/?$/);
+        if (isOnDashboard && isNavigatingToHome) {
+            console.log('[ADMIN_WEBVIEW] Blocking navigation from dashboard to home page');
+            return false;
+        }
+
+        // CRITICAL: Block navigation to auth pages when on dashboard
+        // Auth is handled by the mobile app, not the web app
+        const isNavigatingToAuth = requestUrl.includes('/sign-in') ||
+            requestUrl.includes('/sign-up') ||
+            requestUrl.includes('/post-sign-in');
+        if (isOnDashboard && isNavigatingToAuth) {
+            console.log('[ADMIN_WEBVIEW] Blocking navigation from dashboard to auth page, refreshing token instead');
+            // Instead of navigating to sign-in, try to refresh the token
+            getToken().then((newToken) => {
+                if (newToken && webViewRef.current) {
+                    const injectScript = `
+                        try {
+                            document.cookie = 'x-user-token-session=${newToken}; path=/; SameSite=Lax; max-age=${60 * 60 * 24}';
+                            console.log('[WebView] Token refreshed after auth redirect attempt');
+                            window.location.reload();
+                        } catch(e) {}
+                        true;
+                    `;
+                    webViewRef.current.injectJavaScript(injectScript);
+                }
+            }).catch(e => console.log('[ADMIN_WEBVIEW] Failed to refresh token:', e));
             return false;
         }
 
@@ -409,21 +507,11 @@ export default function AdminWebViewScreen() {
         console.log('[ADMIN_WEBVIEW] Redirect count:', redirectCountRef.current);
 
         // Detect redirect loop: check for repeating patterns
-        if (visitedUrlsRef.current.length >= 3) {
-            const last3 = visitedUrlsRef.current.slice(-3);
-            // Check if we have a pattern like: A -> B -> A (immediate loop)
-            if (last3[0] === last3[2]) {
-                console.log('[ADMIN_WEBVIEW] Redirect loop detected! Pattern:', last3);
-                isInRedirectLoopRef.current = true;
-                setLoading(false);
-                setError('Redirect loop detected. Please check your account setup.');
-                return false;
-            }
-        }
-
+        // IMPORTANT: Only flag as loop if EXACT same pattern repeats (A → B → A → B)
+        // A simple A → B → A is normal navigation (user going back), not a loop
         if (visitedUrlsRef.current.length >= 4) {
             const last4 = visitedUrlsRef.current.slice(-4);
-            // Check if we have a pattern like: A -> B -> A -> B
+            // Check for alternating pattern: A → B → A → B (actual loop)
             if (last4[0] === last4[2] && last4[1] === last4[3]) {
                 console.log('[ADMIN_WEBVIEW] Redirect loop detected! Pattern:', last4);
                 isInRedirectLoopRef.current = true;
@@ -452,8 +540,8 @@ export default function AdminWebViewScreen() {
         // Increment redirect count
         redirectCountRef.current++;
 
-        // If we've had too many redirects, stop (lowered threshold)
-        if (redirectCountRef.current > 5) {
+        // If we've had too many redirects, stop (increased threshold for widgets)
+        if (redirectCountRef.current > 15) {
             console.log('[ADMIN_WEBVIEW] Too many redirects, stopping navigation');
             isInRedirectLoopRef.current = true;
             setLoading(false);
@@ -632,8 +720,8 @@ export default function AdminWebViewScreen() {
                 3. Set showBack to true so you can exit the screen (optional, set to false if preferred)
             */}
             <Header
-                showBack={true}
-                showMenu={false}
+                showBack={false}
+                showMenu={true}
                 onBackPress={handleGoBack}
                 disableSafeAreaPadding={true}
             />
@@ -669,8 +757,8 @@ export default function AdminWebViewScreen() {
                 ) : webViewSource ? (
                     <>
                         <WebView
-                            // Force remount when user changes by using authToken as key
-                            key={authToken || 'no-auth'}
+                            // Force remount when USER changes (not token - tokens refresh frequently)
+                            key={userId || 'no-user'}
                             ref={webViewRef}
                             source={webViewSource}
                             userAgent={customUserAgent}
@@ -795,7 +883,8 @@ export default function AdminWebViewScreen() {
                         />
 
                         {/* Loading Indicator - only show before first successful load */}
-                        {loading && !hasSuccessfullyLoaded && (
+                        {/* Check BOTH state AND ref to ensure spinner hides after first load */}
+                        {loading && !hasSuccessfullyLoaded && !hasSuccessfullyLoadedRef.current && (
                             <View style={styles.loadingContainer}>
                                 <ActivityIndicator size="large" color={darkBrown} />
                             </View>
