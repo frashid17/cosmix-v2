@@ -18,6 +18,17 @@ const lightBrown = "#D7C3A7";
 const beige = "#D9C7AF";
 const veryLightBeige = "#ffffffff";
 
+const HIUKSET_SUBCATS = [
+  'Hiusten leikkauspalvelut',
+  'Hiusten värjäyspalvelut',
+  'Leikkaus ja värjäys',
+  'Kampaukset',
+  'Hoidot',
+  'Hiustenpidennykset',
+  'Permanentti',
+  'Letit',
+];
+
 export default function ServicesPage() {
   const router = useRouter();
   const { categoryName, salonId, salonName, uiVariant, subCategory } = useLocalSearchParams<{
@@ -146,6 +157,67 @@ export default function ServicesPage() {
   // Fetch services when component mounts
   useEffect(() => {
     const fetchServices = async () => {
+      // Helper to process workTypes (add defaults or reorder)
+      const processServiceWorkTypes = (service: any) => {
+        const isKynnet = service.category?.name === 'Kynnet' || service.categoryId === '1dca56ac-d3b1-4e3c-986e-ad9b11aa6794';
+        const isHiukset = service.category?.name === 'Hiukset' ||
+          service.parentService?.category?.name === 'Hiukset' ||
+          (service.category?.name && HIUKSET_SUBCATS.includes(service.category.name)) ||
+          (service.parentService?.category?.name && HIUKSET_SUBCATS.includes(service.parentService.category.name)) ||
+          (service.name && (service.name.includes('Letit') || service.name.includes('Letti')));
+        const needsWorkTypes = !service.workTypes || (Array.isArray(service.workTypes) && service.workTypes.length === 0);
+
+        let updatedService = { ...service };
+
+        if (isKynnet && needsWorkTypes) {
+          updatedService.workTypes = ['UUDET', 'POISTO', 'HUOLTO'];
+          // console.log(`✅ Added default workTypes to ${service.name} (Kynnet category)`);
+        } else if (isHiukset) {
+          const standardHiuksetOrder = ['Ei lisäkkeitä', 'Lyhyet', 'Keskipitkät', 'Pitkät'];
+          const standardEnumOrder = ['EI_LISAKKEITA', 'LYHYET', 'KESKIPITKAT', 'PITKAT'];
+
+          if (needsWorkTypes) {
+            updatedService.workTypes = standardHiuksetOrder;
+            // console.log(`✅ Added default workTypes to ${service.name} (Hiukset category)`);
+          } else {
+            // Determine if we should reorder existing worktypes
+            const currentTypes = [...(service.workTypes || [])];
+
+            const getSortIndex = (type: string) => {
+              const norm = type.toUpperCase();
+              let idx = standardEnumOrder.indexOf(norm);
+              if (idx === -1) {
+                // Try matching against standard display names
+                idx = standardHiuksetOrder.findIndex(t => t.toUpperCase() === norm);
+              }
+              return idx;
+            };
+
+            const hasHiuksetTypes = currentTypes.some(t => getSortIndex(t) !== -1);
+
+            if (hasHiuksetTypes) {
+              currentTypes.sort((a, b) => {
+                const idxA = getSortIndex(a);
+                const idxB = getSortIndex(b);
+
+                // If both are recognized, sort by index
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+
+                // Put recognized items first
+                if (idxA !== -1) return -1;
+                if (idxB !== -1) return 1;
+
+                return 0;
+              });
+
+              updatedService.workTypes = currentTypes;
+              // console.log(`✅ Reordered workTypes for ${service.name} (Hiukset category)`);
+            }
+          }
+        }
+        return updatedService;
+      };
+
       // If coming from salon-sector (has salonId), fetch services for that specific salon
       if (salonId) {
         try {
@@ -168,44 +240,14 @@ export default function ServicesPage() {
               };
             }
 
-            return {
+            let normalizedService = {
               ...service,
               workTypes: workTypes && Array.isArray(workTypes) ? workTypes : undefined,
               parentService: normalizedParentService,
             };
-          });
 
-          console.log('Normalized salon services with workTypes:', normalizedData.map(s => ({
-            name: s.name,
-            workTypes: s.workTypes,
-            parentService: s.parentService ? {
-              name: s.parentService.name,
-              workTypes: s.parentService.workTypes
-            } : null,
-            category: s.category?.name,
-            categoryId: s.categoryId
-          })));
-
-          // For services in "Kynnet" category, if they don't have workTypes, add them
-          // This is a fallback since salon API might not return workTypes
-          normalizedData.forEach((service: any, index: number) => {
-            const isKynnet = service.category?.name === 'Kynnet' || service.categoryId === '1dca56ac-d3b1-4e3c-986e-ad9b11aa6794';
-            const isHiukset = service.category?.name === 'Hiukset' || service.parentService?.category?.name === 'Hiukset';
-            const needsWorkTypes = !service.workTypes || (Array.isArray(service.workTypes) && service.workTypes.length === 0);
-
-            if (isKynnet && needsWorkTypes) {
-              normalizedData[index] = {
-                ...service,
-                workTypes: ['UUDET', 'POISTO', 'HUOLTO']
-              };
-              console.log(`✅ Added default workTypes to ${service.name} (Kynnet category)`);
-            } else if (isHiukset && needsWorkTypes) {
-              normalizedData[index] = {
-                ...service,
-                workTypes: ['Ei lisäkkeitä', 'Lyhyet', 'Keskipitkät', 'Pitkät']
-              };
-              console.log(`✅ Added default workTypes to ${service.name} (Hiukset category)`);
-            }
+            // Apply processServiceWorkTypes helper
+            return processServiceWorkTypes(normalizedService);
           });
 
           // Extract pricing info from saloonServices and store in map
@@ -295,23 +337,31 @@ export default function ServicesPage() {
         setError(null);
         const data = await getServicesByCategory(categoryName);
 
+
+
         // Normalize workTypes field (handle both camelCase and snake_case from API)
         const normalizedData = data.map((service: any) => {
           // Normalize workTypes - check both camelCase and snake_case
           const workTypes = service.workTypes || service.work_types || service.WorkTypes;
-          return {
+          let normalizedService = {
             ...service,
             workTypes: workTypes && Array.isArray(workTypes) ? workTypes : undefined,
             // Also normalize sub-services if they exist
             subServices: service.subServices ? service.subServices.map((sub: any) => {
               const subWorkTypes = sub.workTypes || sub.work_types || sub.WorkTypes;
-              return {
+              let normalizedSub = {
                 ...sub,
                 workTypes: subWorkTypes && Array.isArray(subWorkTypes) ? subWorkTypes : undefined
               };
+              // Apply recursive processing to sub-service
+              return processServiceWorkTypes(normalizedSub);
             }) : undefined
           };
+
+          // Apply processing to main service
+          return processServiceWorkTypes(normalizedService);
         });
+
 
         setServices(normalizedData);
         console.log('Fetched services for category:', categoryName, normalizedData);
@@ -727,6 +777,7 @@ export default function ServicesPage() {
             saloonName: salonName || 'Salon',
             serviceId: service.id,
             serviceName: service.name,
+            parentServiceName: service.parentService?.name,
             categoryName: categoryName || dynamicCategoryName || 'Service',
             price: pricingInfo.price.toString(),
             durationMinutes: pricingInfo.durationMinutes.toString()
@@ -741,6 +792,7 @@ export default function ServicesPage() {
           params: {
             serviceId: service.id,
             serviceName: service.name,
+            parentServiceName: service.parentService?.name,
             categoryName: categoryName || dynamicCategoryName || 'Service',
             salonId: salonId
           }
@@ -756,6 +808,7 @@ export default function ServicesPage() {
       params: {
         serviceId: service.id,
         serviceName: service.name,
+        parentServiceName: service.parentService?.name,
         categoryName: categoryName
       }
     });
@@ -777,6 +830,7 @@ export default function ServicesPage() {
             saloonName: salonName || 'Salon',
             serviceId: service.id,
             serviceName: service.name,
+            parentServiceName: service.parentService?.name,
             categoryName: categoryName || dynamicCategoryName || 'Service',
             price: pricingInfo.price.toString(),
             durationMinutes: pricingInfo.durationMinutes.toString(),
@@ -793,6 +847,7 @@ export default function ServicesPage() {
       params: {
         serviceId: service.id,
         serviceName: service.name,
+        parentServiceName: service.parentService?.name,
         categoryName: categoryName || dynamicCategoryName || 'Service',
         workType: workType
       }
@@ -877,17 +932,7 @@ export default function ServicesPage() {
     );
   };
 
-  // Hiukset custom helpers
-  const HIUKSET_SUBCATS = [
-    'Hiusten leikkauspalvelut',
-    'Hiusten värjäyspalvelut',
-    'Leikkaus ja värjäys',
-    'Kampaukset',
-    'Hoidot',
-    'Hiustenpidennykset',
-    'Permanentti',
-    'Letit',
-  ];
+  // Hiukset custom helpers (moved constants to top of file)
 
   const renderHiuksetSubList = () => (
     <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
@@ -964,6 +1009,7 @@ export default function ServicesPage() {
                             serviceId: s.id,
                             serviceName: s.name,
                             categoryName: categoryName,
+                            parentServiceName: g.name
                           }
                         });
                       } else {

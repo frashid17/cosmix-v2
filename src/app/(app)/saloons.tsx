@@ -117,12 +117,13 @@ const SaloonImageCarousel = ({ images, saloonName }: { images: string[], saloonN
 const Saloons = () => {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const { serviceName, categoryName, serviceId, salonId, workType } = useLocalSearchParams<{
+    const { serviceName, categoryName, serviceId, salonId, workType, parentServiceName } = useLocalSearchParams<{
         serviceName?: string;
         serviceId?: string;
         categoryName: string;
         salonId?: string;
         workType?: string;
+        parentServiceName?: string;
     }>();
 
     const [saloons, setSaloons] = useState<SaloonData[]>([]);
@@ -347,17 +348,13 @@ const Saloons = () => {
                                                         const beforeParen = trimmed.substring(0, parenStart).trim();
                                                         const parenPart = trimmed.substring(parenStart).trim();
                                                         if (beforeParen && parenPart) {
-                                                            if (parenPart.length > 20) {
-                                                                displayContent = (
-                                                                    <>
-                                                                        {beforeParen}
-                                                                        {"\n"}
-                                                                        <Text style={{ fontSize: 14 }}>{parenPart}</Text>
-                                                                    </>
-                                                                );
-                                                            } else {
-                                                                displayContent = beforeParen + "\n" + parenPart;
-                                                            }
+                                                            displayContent = (
+                                                                <>
+                                                                    {beforeParen}
+                                                                    {"\n"}
+                                                                    <Text style={{ fontSize: 10 }}>{parenPart}</Text>
+                                                                </>
+                                                            );
                                                         } else {
                                                             displayContent = text;
                                                         }
@@ -400,6 +397,17 @@ const Saloons = () => {
                                                                 {displayContent}
                                                                 {"\n"}
                                                                 <Text style={{ fontSize: 15 }}>({displayWorkType})</Text>
+                                                            </>
+                                                        );
+                                                    }
+
+                                                    // If parentServiceName exists and category is Karvanpoistot, show it below in parentheses
+                                                    if (parentServiceName && (categoryName === 'Karvanpoistot' || parentServiceName === 'Sokerointi' || parentServiceName === 'IPL karvanpoisto' || parentServiceName === 'Laserkarvanpoistot')) {
+                                                        return (
+                                                            <>
+                                                                {displayContent}
+                                                                {"\n"}
+                                                                <Text style={{ fontSize: 13 }}>({parentServiceName})</Text>
                                                             </>
                                                         );
                                                     }

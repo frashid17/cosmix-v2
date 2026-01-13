@@ -346,7 +346,7 @@ export default function Page() {
               >
                 <Image
                   source={require("../../../../assets/group.png")}
-                  style={{ position: "absolute", top: 30, width: 200, height: 210 }}
+                  style={{ position: "absolute", top: 25, width: 200, height: 210 }}
                   resizeMode="contain"
                 />
 
