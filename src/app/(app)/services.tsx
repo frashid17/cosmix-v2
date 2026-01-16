@@ -160,11 +160,13 @@ export default function ServicesPage() {
       // Helper to process workTypes (add defaults or reorder)
       const processServiceWorkTypes = (service: any) => {
         const isKynnet = service.category?.name === 'Kynnet' || service.categoryId === '1dca56ac-d3b1-4e3c-986e-ad9b11aa6794';
+        // Only Letit services (and their sub-services) should have default workTypes in Hiukset category
+        const isLetit = (service.name && (service.name.includes('Letit') || service.name.includes('Letti'))) ||
+          (service.parentService?.name && (service.parentService.name.includes('Letit') || service.parentService.name.includes('Letti')));
         const isHiukset = service.category?.name === 'Hiukset' ||
           service.parentService?.category?.name === 'Hiukset' ||
           (service.category?.name && HIUKSET_SUBCATS.includes(service.category.name)) ||
-          (service.parentService?.category?.name && HIUKSET_SUBCATS.includes(service.parentService.category.name)) ||
-          (service.name && (service.name.includes('Letit') || service.name.includes('Letti')));
+          (service.parentService?.category?.name && HIUKSET_SUBCATS.includes(service.parentService.category.name));
         const needsWorkTypes = !service.workTypes || (Array.isArray(service.workTypes) && service.workTypes.length === 0);
 
         let updatedService = { ...service };
@@ -172,47 +174,47 @@ export default function ServicesPage() {
         if (isKynnet && needsWorkTypes) {
           updatedService.workTypes = ['UUDET', 'POISTO', 'HUOLTO'];
           // console.log(`✅ Added default workTypes to ${service.name} (Kynnet category)`);
-        } else if (isHiukset) {
+        } else if (isLetit && needsWorkTypes) {
+          // Only add default workTypes for Letit services in Hiukset
+          const standardHiuksetOrder = ['Ei lisäkkeitä', 'Lyhyet', 'Keskipitkät', 'Pitkät'];
+          updatedService.workTypes = standardHiuksetOrder;
+          // console.log(`✅ Added default workTypes to ${service.name} (Letit service)`);
+        } else if (isHiukset && !needsWorkTypes) {
+          // For other Hiukset services, only reorder if they already have workTypes from backend
           const standardHiuksetOrder = ['Ei lisäkkeitä', 'Lyhyet', 'Keskipitkät', 'Pitkät'];
           const standardEnumOrder = ['EI_LISAKKEITA', 'LYHYET', 'KESKIPITKAT', 'PITKAT'];
+          // Determine if we should reorder existing worktypes
+          const currentTypes = [...(service.workTypes || [])];
 
-          if (needsWorkTypes) {
-            updatedService.workTypes = standardHiuksetOrder;
-            // console.log(`✅ Added default workTypes to ${service.name} (Hiukset category)`);
-          } else {
-            // Determine if we should reorder existing worktypes
-            const currentTypes = [...(service.workTypes || [])];
-
-            const getSortIndex = (type: string) => {
-              const norm = type.toUpperCase();
-              let idx = standardEnumOrder.indexOf(norm);
-              if (idx === -1) {
-                // Try matching against standard display names
-                idx = standardHiuksetOrder.findIndex(t => t.toUpperCase() === norm);
-              }
-              return idx;
-            };
-
-            const hasHiuksetTypes = currentTypes.some(t => getSortIndex(t) !== -1);
-
-            if (hasHiuksetTypes) {
-              currentTypes.sort((a, b) => {
-                const idxA = getSortIndex(a);
-                const idxB = getSortIndex(b);
-
-                // If both are recognized, sort by index
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-
-                // Put recognized items first
-                if (idxA !== -1) return -1;
-                if (idxB !== -1) return 1;
-
-                return 0;
-              });
-
-              updatedService.workTypes = currentTypes;
-              // console.log(`✅ Reordered workTypes for ${service.name} (Hiukset category)`);
+          const getSortIndex = (type: string) => {
+            const norm = type.toUpperCase();
+            let idx = standardEnumOrder.indexOf(norm);
+            if (idx === -1) {
+              // Try matching against standard display names
+              idx = standardHiuksetOrder.findIndex(t => t.toUpperCase() === norm);
             }
+            return idx;
+          };
+
+          const hasHiuksetTypes = currentTypes.some(t => getSortIndex(t) !== -1);
+
+          if (hasHiuksetTypes) {
+            currentTypes.sort((a, b) => {
+              const idxA = getSortIndex(a);
+              const idxB = getSortIndex(b);
+
+              // If both are recognized, sort by index
+              if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+
+              // Put recognized items first
+              if (idxA !== -1) return -1;
+              if (idxB !== -1) return 1;
+
+              return 0;
+            });
+
+            updatedService.workTypes = currentTypes;
+            // console.log(`✅ Reordered workTypes for ${service.name} (Hiukset category)`);
           }
         }
         return updatedService;
