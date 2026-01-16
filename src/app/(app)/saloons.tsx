@@ -352,7 +352,7 @@ const Saloons = () => {
                                                                 <>
                                                                     {beforeParen}
                                                                     {"\n"}
-                                                                    <Text style={{ fontSize: 10 }}>{parenPart}</Text>
+                                                                    <Text style={{ fontSize: 15 }}>{parenPart}</Text>
                                                                 </>
                                                             );
                                                         } else {

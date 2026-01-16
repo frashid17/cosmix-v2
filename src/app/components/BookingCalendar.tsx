@@ -41,6 +41,20 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
   const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [showFullCalendar, setShowFullCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  // Outer container padding (20) + calendar box padding (16) + border (2) on each side
+  const OUTER_PADDING = 20;
+  const CALENDAR_PADDING = 16;
+  const BORDER_WIDTH = 2;
+  const DAY_GAP = 4;
+  const calendarGridWidth = width - (OUTER_PADDING * 2) - (CALENDAR_PADDING * 2) - (BORDER_WIDTH * 2);
+  const dayCellWidth = (calendarGridWidth - (DAY_GAP * 6)) / 7;
   const [availabilityData, setAvailabilityData] = useState<{ [date: string]: string[] }>({});
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
@@ -140,10 +154,53 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
     };
   };
 
+  const getMonthLabel = (date: Date) => {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return `${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  const getCalendarGrid = (monthDate: Date) => {
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const startDay = firstDay.getDay(); // 0 = Sunday
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Calculate how many rows we actually need
+    const totalCells = startDay + daysInMonth;
+    const rowsNeeded = Math.ceil(totalCells / 7);
+    const cellsNeeded = rowsNeeded * 7;
+    
+    const days: (Date | null)[] = [];
+    for (let i = 0; i < cellsNeeded; i++) {
+      const dayNum = i - startDay + 1;
+      if (dayNum < 1 || dayNum > daysInMonth) {
+        days.push(null);
+      } else {
+        days.push(new Date(year, month, dayNum));
+      }
+    }
+    return days;
+  };
+
+  const handleClose = () => {
+    // Reset selections when closing
+    setSelectedDate('');
+    setSelectedTime('');
+    setShowFullCalendar(false);
+    onClose();
+  };
+
   const handleConfirm = () => {
     if (selectedDate && selectedTime) {
       onConfirm(selectedDate, selectedTime);
-      // Close the modal after confirming
+      // Reset and close the modal after confirming
+      setSelectedDate('');
+      setSelectedTime('');
+      setShowFullCalendar(false);
       onClose();
     }
   };
@@ -180,7 +237,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
           borderBottomColor: '#E5DCC8',
           backgroundColor: 'white'
         }}>
-          <TouchableOpacity onPress={onClose} style={{ top: Math.max(0, insets.top - 60) }}>
+          <TouchableOpacity onPress={handleClose} style={{ top: Math.max(0, insets.top - 60) }}>
             <Ionicons name="close" size={40} color={darkBrown} />
           </TouchableOpacity>
 
@@ -206,7 +263,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
         </View>
 
         <ScrollView style={{ flex: 1 }}>
-          {/* Date Selection */}
+          {/* Date Selection - hide when time slots are showing */}
+          {(!selectedDate || showFullCalendar) && (
           <View style={{ padding: 20 }}>
             <Text style={{
               fontSize: 20,
@@ -301,16 +359,200 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({
                   </TouchableOpacity>
                 );
               })}
+              {/* Plus box to open full calendar */}
+              <TouchableOpacity
+                onPress={() => setShowFullCalendar((prev) => !prev)}
+                activeOpacity={0.8}
+                style={{
+                  width: 80,
+                  height: 90,
+                  marginRight: 12,
+                  borderRadius: 16,
+                  backgroundColor: 'white',
+                  borderWidth: 2,
+                  borderColor: '#E5DCC8',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 3
+                }}
+              >
+                <Ionicons name="add" size={28} color={darkBrown} />
+              </TouchableOpacity>
             </ScrollView>
-          </View>
 
-          {/* Time Selection */}
-          {selectedDate && (
+            {/* Full calendar view */}
+            {showFullCalendar && (
+              <View
+                style={{
+                  borderWidth: 2,
+                  borderColor: '#E5DCC8',
+                  borderRadius: 16,
+                  backgroundColor: 'white',
+                  padding: CALENDAR_PADDING,
+                  marginBottom: 10
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 12
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => {
+                      const prev = new Date(calendarMonth);
+                      prev.setMonth(prev.getMonth() - 1);
+                      setCalendarMonth(prev);
+                    }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: '#E5DCC8',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Ionicons name="chevron-back" size={18} color={darkBrown} />
+                  </TouchableOpacity>
+
+                  <Text
+                    style={{
+                      fontSize: 16,
+                      fontFamily: 'Philosopher-Bold',
+                      color: darkBrown
+                    }}
+                  >
+                    {getMonthLabel(calendarMonth)}
+                  </Text>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      const next = new Date(calendarMonth);
+                      next.setMonth(next.getMonth() + 1);
+                      setCalendarMonth(next);
+                    }}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: '#E5DCC8',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Ionicons name="chevron-forward" size={18} color={darkBrown} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Weekday headers */}
+                <View style={{ flexDirection: 'row', width: calendarGridWidth, marginBottom: 8 }}>
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
+                    <Text
+                      key={`${d}-${i}`}
+                      style={{
+                        width: dayCellWidth,
+                        marginRight: i === 6 ? 0 : DAY_GAP,
+                        textAlign: 'center',
+                        fontSize: 12,
+                        fontFamily: 'Philosopher-Bold',
+                        color: darkBrown,
+                        opacity: 0.7
+                      }}
+                    >
+                      {d}
+                    </Text>
+                  ))}
+                </View>
+
+                {/* Calendar grid */}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: calendarGridWidth }}>
+                  {(() => {
+                    const grid = getCalendarGrid(calendarMonth);
+                    const totalRows = Math.ceil(grid.length / 7);
+                    
+                    return grid.map((date, idx) => {
+                      const currentRow = Math.floor(idx / 7);
+                      const isLastRow = currentRow === totalRows - 1;
+                      
+                      if (!date) {
+                        return (
+                          <View
+                            key={`empty-${idx}`}
+                            style={{
+                              width: dayCellWidth,
+                              height: 44,
+                              marginBottom: isLastRow ? 0 : 8,
+                              marginRight: (idx % 7) === 6 ? 0 : DAY_GAP
+                            }}
+                          />
+                        );
+                      }
+
+                      const formatted = formatDate(date);
+                      const isSelected = selectedDate === formatted.full;
+                      const isAvailable = isDateAvailable(date);
+
+                      return (
+                        <TouchableOpacity
+                          key={formatted.full}
+                          onPress={() => {
+                            if (isAvailable) {
+                              setSelectedDate(formatted.full);
+                              setShowFullCalendar(false);
+                            }
+                          }}
+                          activeOpacity={0.8}
+                          disabled={!isAvailable}
+                          style={{
+                            width: dayCellWidth,
+                            height: 44,
+                            marginBottom: isLastRow ? 0 : 8,
+                            marginRight: (idx % 7) === 6 ? 0 : DAY_GAP,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderRadius: 10,
+                            borderWidth: 2,
+                            borderColor: isSelected ? accentGold : '#E5DCC8',
+                            backgroundColor: isSelected ? accentGold : 'white',
+                            opacity: isAvailable ? 1 : 0.4
+                          }}
+                        >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontFamily: 'Philosopher-Bold',
+                            color: isSelected ? 'white' : darkBrown
+                          }}
+                        >
+                          {formatted.date}
+                        </Text>
+                      </TouchableOpacity>
+                      );
+                    });
+                  })()}
+                </View>
+              </View>
+            )}
+          </View>
+          )}
+
+          {/* Time Selection - only show when date is selected AND full calendar is closed */}
+          {selectedDate && !showFullCalendar && (
             <View style={{ padding: 20, paddingTop: 0 }}>
               <Text style={{
                 fontSize: 20,
                 fontFamily: 'Philosopher-Bold',
                 color: darkBrown,
+                marginTop: 16,
                 marginBottom: 16
               }}>
                 Valitse Aika
