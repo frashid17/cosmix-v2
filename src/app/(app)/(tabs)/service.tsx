@@ -211,6 +211,16 @@ export default function ServicesPage() {
       return;
     }
 
+    // Check for EXACT category match first (highest priority)
+    const hasExactCategoryMatch = categories.some(c => 
+      normalizeString(c.name) === q
+    );
+
+    if (hasExactCategoryMatch) {
+      setSearchType('category');
+      return;
+    }
+
     // Check salon matches
     const salonMatches = salons.filter(s => {
       const normalizedSName = normalizeString(s.name);
@@ -219,7 +229,7 @@ export default function ServicesPage() {
       return normalizedSName.includes(q) || normalizedSAddress.includes(q) || normalizedSIntro.includes(q);
     }).length;
 
-    // Check category matches
+    // Check category matches (partial/fuzzy)
     const categoryMatches = categories.filter(c =>
       normalizeString(c.name).includes(q)
     ).length;
@@ -247,7 +257,7 @@ export default function ServicesPage() {
       return (matchesName || matchesParent || matchesCombined) && s.parentServiceId;
     }).length;
 
-    // Priority: salon > service > category
+    // Priority: exact category (handled above) > salon > service > category
     if (salonMatches > 0 && salonMatches >= categoryMatches && salonMatches >= serviceMatches) {
       setSearchType('salon');
     } else if (serviceMatches > 0) {
@@ -293,7 +303,14 @@ export default function ServicesPage() {
       return matchesAllParts && service.parentServiceId;
     });
 
-  const onServicePress = (service: Service) => {
+  const onServicePress = (service: Service, parentName?: string) => {
+    // Resolve parent name if not provided
+    let resolvedParentName = parentName || service.parentService?.name || "";
+    if (!resolvedParentName && service.parentServiceId) {
+      const parent = allServices.find(as => as.id === service.parentServiceId);
+      if (parent) resolvedParentName = parent.name;
+    }
+
     // Navigate to saloons page with serviceId to show salons that provide this service
     router.push({
       pathname: "/saloons",
@@ -301,6 +318,7 @@ export default function ServicesPage() {
         serviceId: service.id,
         serviceName: service.name,
         categoryName: service.category?.name || "",
+        parentServiceName: resolvedParentName,
       },
     });
   };
@@ -380,22 +398,26 @@ export default function ServicesPage() {
               ) : searchType === 'service' && filteredServices.length > 0 ? (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingHorizontal: 8 }}>
                   {filteredServices.map((service) => {
-                    // Resolve parent name for clearer display
+                    // Resolve parent name
                     let parentName = service.parentService?.name || "";
                     if (!parentName && service.parentServiceId) {
                       const parent = allServices.find(as => as.id === service.parentServiceId);
                       if (parent) parentName = parent.name;
                     }
 
-                    const displayName = parentName && !service.name.toLowerCase().includes(parentName.toLowerCase())
-                      ? `${parentName} ${service.name}`
+                    // For Karvanpoistot category, show parent name in parentheses to distinguish duplicates
+                    const isKarvanpoistot = service.category?.name === 'Karvanpoistot' || 
+                      ['Sokerointi', 'IPL karvanpoisto', 'Laserkarvanpoistot'].includes(parentName);
+                    
+                    const displayName = isKarvanpoistot && parentName 
+                      ? `${service.name} (${parentName})`
                       : service.name;
 
                     return (
                       <Chip
                         key={service.id}
                         label={displayName}
-                        onPress={() => onServicePress(service)}
+                        onPress={() => onServicePress(service, parentName)}
                         color={chipBeige}
                         textColor={darkBrown}
                         fullWidth={true}

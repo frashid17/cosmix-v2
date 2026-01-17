@@ -161,7 +161,7 @@ export default function ServicesPage() {
       const processServiceWorkTypes = (service: any) => {
         const isKynnet = service.category?.name === 'Kynnet' || service.categoryId === '1dca56ac-d3b1-4e3c-986e-ad9b11aa6794';
         // Only Letit services (and their sub-services) should have default workTypes in Hiukset category
-        const isLetit = (service.name && (service.name.includes('Letit') || service.name.includes('Letti'))) ||
+        const isLetit = (service.name && (service.name.includes('Letit'))) ||
           (service.parentService?.name && (service.parentService.name.includes('Letit') || service.parentService.name.includes('Letti')));
         const isHiukset = service.category?.name === 'Hiukset' ||
           service.parentService?.category?.name === 'Hiukset' ||
