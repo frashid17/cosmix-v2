@@ -1,0 +1,35 @@
+{
+    "cli": {
+        "version": ">= 10.0.0"
+    },
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal"
+        },
+        "preview": {
+            "distribution": "internal",
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_PRODUCTION_DOMAIN": "",
+                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "",
+                "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": ""
+            }
+        },
+        "production": {
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_PRODUCTION_DOMAIN": "",
+                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "",
+                "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": ""
+            }
+        }
+    },
+    "submit": {
+        "production": {}
+    }
+}

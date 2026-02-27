@@ -74,9 +74,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b4d2be30-101f-4676-90b4-1aa0c95ec59f"
+        "projectId": ""
       }
     },
-    "owner": "wkop"
+    "owner": "piuslo"
   }
 }
