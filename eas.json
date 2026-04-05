@@ -13,9 +13,9 @@
                 "buildType": "apk"
             },
             "env": {
-                "EXPO_PUBLIC_PRODUCTION_DOMAIN": "",
-                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "",
-                "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": ""
+                "EXPO_PUBLIC_PRODUCTION_DOMAIN": "cosmix-admin-eight.vercel.app",
+                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YnVyc3RpbmctbWFybW9zZXQtOS5jbGVyay5hY2NvdW50cy5kZXYk",
+                "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51Sc48MPCESSefB5R8XGIkkIkHtxdhxZeVrIPGhIwdNuDNZiDqjuOrhtFpHhFT7vsSHSKXJ2r3KSg9SIDXyIlpiZy00WjVRde2W"
             }
         },
         "production": {
@@ -23,9 +23,9 @@
                 "buildType": "apk"
             },
             "env": {
-                "EXPO_PUBLIC_PRODUCTION_DOMAIN": "",
-                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "",
-                "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": ""
+                "EXPO_PUBLIC_PRODUCTION_DOMAIN": "cosmix-admin-eight.vercel.app",
+                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YnVyc3RpbmctbWFybW9zZXQtOS5jbGVyay5hY2NvdW50cy5kZXYk",
+                "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51Sc48MPCESSefB5R8XGIkkIkHtxdhxZeVrIPGhIwdNuDNZiDqjuOrhtFpHhFT7vsSHSKXJ2r3KSg9SIDXyIlpiZy00WjVRde2W"
             }
         }
     },
