@@ -73,13 +73,6 @@ export default function RoleRouterScreen() {
                 };
 
                 const status = data.providerStatus ?? 'NOT_APPLIED';
-
-                // Pure customers (NOT_APPLIED, never started onboarding) go to customer stack
-                if (status === 'NOT_APPLIED') {
-                    setUserRole('customer');
-                    return;
-                }
-
                 const route = statusRoutes[status];
                 if (route) {
                     router.replace(route as any);
