@@ -46,16 +46,13 @@ const createCheckoutSession = async (
     const headers: Record<string, string> = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      // Always send admin API key to satisfy backend bearer check
-      'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
     };
-    
-    // If we have a user token, pass it separately for backend auditing (but keep admin key as bearer)
+
     if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
       headers['X-User-Token'] = authToken;
     }
     
-    console.log('Request headers:', headers);
     console.log('Request URL:', API_ENDPOINTS.CHECKOUT);
     
     const response = await fetch(API_ENDPOINTS.CHECKOUT, {
@@ -98,10 +95,10 @@ export const confirmBooking = async (
     const headers: Record<string, string> = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
     };
-    
+
     if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
       headers['X-User-Token'] = authToken;
     }
     

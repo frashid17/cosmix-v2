@@ -7,7 +7,7 @@ import { CheckoutButton } from '../components/CheckoutButton';
 import { CustomerInfo } from '../actions/checkout';
 import { SaloonService } from '@/app/types';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import BookingCalendar from '../components/BookingCalendar';
+import TimeSlotPicker from '../components/TimeSlotPicker';
 import Header from '../components/Header';
 import SideMenu from '../components/SideMenu';
 import ReviewsSection from '../components/ReviewsSection';
@@ -51,10 +51,7 @@ export default function CheckoutScreen() {
     }
   }, [user]);
 
-  // Booking calendar state
-  const [showBookingCalendar, setShowBookingCalendar] = useState(false);
-  const [selectedBookingDate, setSelectedBookingDate] = useState<string>('');
-  const [selectedBookingTime, setSelectedBookingTime] = useState<string>('');
+  const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [isProcessingBooking, setIsProcessingBooking] = useState(false);
   const [isMenuVisible, setMenuVisible] = useState(false);
 
@@ -85,27 +82,17 @@ export default function CheckoutScreen() {
     return null;
   }, [params.saloonId, params.serviceId, params.price, params.durationMinutes, params.saloonName, params.serviceName]);
 
-  // Hydrate selected date/time from URL params if present (e.g., after sign-in redirect)
-  // Only set from params if local state is empty (to preserve user selections)
+  // Hydrate booking time from URL params after sign-in redirect
   useEffect(() => {
     const pDate = typeof params.date === 'string' && params.date.length > 0 ? params.date : null;
     const pTime = typeof params.time === 'string' && params.time.length > 0 ? params.time : null;
-
-    // Only update from params if local state is empty (preserve user's current selection)
-    if (pDate && !selectedBookingDate) {
-      setSelectedBookingDate(pDate);
-    }
-    if (pTime && !selectedBookingTime) {
-      setSelectedBookingTime(pTime);
-    }
-
-    // Update customerInfo bookingTime if we have both date and time from params
-    if (pDate && pTime && (!selectedBookingDate || !selectedBookingTime)) {
-      const bookingDateTime = new Date(`${pDate}T${pTime}:00`);
-      setCustomerInfo(prev => ({ ...prev, bookingTime: bookingDateTime.toISOString() }));
+    if (pDate && pTime && !bookingConfirmed) {
+      const datetime = new Date(`${pDate}T${pTime}:00`).toISOString();
+      setCustomerInfo(prev => ({ ...prev, bookingTime: datetime }));
+      setBookingConfirmed(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.date, params.time]); // Only run when params change, not when local state changes
+  }, [params.date, params.time]);
 
   const handleSuccess = (bookingIds: string[]) => {
     console.log('Booking successful:', { bookingIds });
@@ -120,42 +107,10 @@ export default function CheckoutScreen() {
     setIsProcessingBooking(false);
   };
 
-  // Booking calendar handlers
-  const handleBookingConfirm = (date: string, time: string) => {
-    // Always update when user explicitly confirms from calendar
-    setSelectedBookingDate(date);
-    setSelectedBookingTime(time);
-
-    // Update customer info with the selected booking time
-    const bookingDateTime = new Date(`${date}T${time}:00`);
-    setCustomerInfo(prev => ({
-      ...prev,
-      bookingTime: bookingDateTime.toISOString()
-    }));
-
-    setShowBookingCalendar(false);
+  const handleSlotConfirm = (datetime: string) => {
+    setCustomerInfo(prev => ({ ...prev, bookingTime: datetime }));
+    setBookingConfirmed(true);
   };
-
-  // Update customerInfo bookingTime whenever selected date/time changes (from user selection)
-  useEffect(() => {
-    if (selectedBookingDate && selectedBookingTime) {
-      const bookingDateTime = new Date(`${selectedBookingDate}T${selectedBookingTime}:00`);
-      setCustomerInfo(prev => ({
-        ...prev,
-        bookingTime: bookingDateTime.toISOString()
-      }));
-    }
-  }, [selectedBookingDate, selectedBookingTime]);
-
-  const handleBookButtonPress = () => {
-    if (selectedBookingDate && selectedBookingTime) {
-      setShowBookingCalendar(false);
-    } else {
-      setShowBookingCalendar(true);
-    }
-  };
-
-  // No auto-resume; user explicitly taps the button to open the calendar
 
   // Use the selected saloon service - no mock data, require real service
   const servicesToDisplay = saloonService ? [saloonService] : [];
@@ -351,10 +306,53 @@ export default function CheckoutScreen() {
             </View>
           </View>
 
-          {/* Book Button */}
-          <View style={{ marginBottom: 32 }}>
-            {selectedBookingDate && selectedBookingTime ? (
-              isSignedIn ? (
+          {/* Step 2: Time slot picker */}
+          {!bookingConfirmed && params.saloonId && params.serviceId && (
+            <View style={{ marginBottom: 24 }}>
+              <Text style={{
+                fontSize: 16,
+                fontFamily: 'Philosopher-Bold',
+                color: '#423120',
+                marginBottom: 14,
+              }}>
+                Valitse aika
+              </Text>
+              <TimeSlotPicker
+                saloonId={params.saloonId}
+                serviceId={params.serviceId}
+                onConfirm={handleSlotConfirm}
+              />
+            </View>
+          )}
+
+          {/* Step 3: Payment */}
+          {bookingConfirmed && (
+            <View style={{ marginBottom: 32 }}>
+              {/* Selected time summary */}
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#F4EDE5',
+                borderRadius: 10,
+                padding: 12,
+                marginBottom: 16,
+                gap: 8,
+              }}>
+                <Ionicons name="checkmark-circle" size={18} color="#423120" />
+                <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#423120', flex: 1 }}>
+                  {new Date(customerInfo.bookingTime).toLocaleString('fi-FI', {
+                    weekday: 'short', day: 'numeric', month: 'short',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </Text>
+                <TouchableOpacity onPress={() => setBookingConfirmed(false)}>
+                  <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#888' }}>
+                    Muuta
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {isSignedIn ? (
                 <CheckoutButton
                   saloonServices={servicesToDisplay}
                   customerInfo={customerInfo}
@@ -367,7 +365,9 @@ export default function CheckoutScreen() {
               ) : (
                 <TouchableOpacity
                   onPress={() => {
-                    // Build redirect back to checkout with all current params + selected date/time
+                    const dt = new Date(customerInfo.bookingTime);
+                    const date = dt.toISOString().split('T')[0];
+                    const time = `${dt.getHours().toString().padStart(2, '0')}:${dt.getMinutes().toString().padStart(2, '0')}`;
                     const search = new URLSearchParams({
                       ...(params.saloonId ? { saloonId: String(params.saloonId) } : {}),
                       ...(params.saloonName ? { saloonName: String(params.saloonName) } : {}),
@@ -376,59 +376,27 @@ export default function CheckoutScreen() {
                       ...(params.categoryName ? { categoryName: String(params.categoryName) } : {}),
                       ...(params.price ? { price: String(params.price) } : {}),
                       ...(params.durationMinutes ? { durationMinutes: String(params.durationMinutes) } : {}),
-                      date: selectedBookingDate,
-                      time: selectedBookingTime,
+                      date,
+                      time,
                     }).toString();
-                    const redirectPath = `/(app)/checkout?${search}`;
-                    router.push({ pathname: '/sign-in', params: { redirect: encodeURIComponent(redirectPath) } });
+                    router.push({ pathname: '/sign-in', params: { redirect: encodeURIComponent(`/(app)/checkout?${search}`) } });
                   }}
                   style={{
                     backgroundColor: '#423120',
                     paddingVertical: 16,
-                    paddingHorizontal: 32,
                     borderRadius: 12,
                     alignItems: 'center',
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: 0.2,
-                    shadowRadius: 4,
-                    elevation: 3,
                     flexDirection: 'row',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
                   }}
                 >
                   <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
-                    Kirjaudu sisään Aikatauluun
+                    Kirjaudu sisään varaukseen
                   </Text>
                 </TouchableOpacity>
-              )
-            ) : (
-              <TouchableOpacity
-                onPress={() => {
-                  handleBookButtonPress();
-                }}
-                style={{
-                  backgroundColor: '#423120',
-                  paddingVertical: 16,
-                  paddingHorizontal: 32,
-                  borderRadius: 12,
-                  alignItems: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 3,
-                  flexDirection: 'column',
-                  justifyContent: 'center'
-                }}
-              >
-                <Ionicons name="calendar-outline" size={28} color="#F5F1EB" style={{ marginBottom: 6 }} />
-                <Text style={{ fontSize: 18, fontFamily: 'Philosopher-Bold', color: '#F5F1EB' }}>
-                  Ajoittaa
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              )}
+            </View>
+          )}
 
           {/* Reviews Section */}
           {params.saloonId && (
@@ -436,16 +404,6 @@ export default function CheckoutScreen() {
           )}
         </View>
       </ScrollView>
-
-      {/* Booking Calendar Modal */}
-      <BookingCalendar
-        visible={showBookingCalendar}
-        onClose={() => setShowBookingCalendar(false)}
-        onConfirm={handleBookingConfirm}
-        salonName={params.saloonName || 'Salon'}
-        saloonId={params.saloonId}
-        serviceId={params.serviceId}
-      />
 
       {/* Modal for the side menu */}
       <Modal

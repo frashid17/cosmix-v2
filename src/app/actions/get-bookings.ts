@@ -9,15 +9,13 @@ export const getBookings = async (authToken?: string, userId?: string, userEmail
         console.log('User ID provided:', userId ? 'Yes' : 'No');
         console.log('Token preview:', authToken ? `${authToken.substring(0, 20)}...` : 'No token');
 
-        // Use ADMIN_API_KEY for server authentication (backend requires this)
-        const adminApiKey = process.env.EXPO_PUBLIC_ADMIN_API_KEY;
+        
 
         const headers: Record<string, string> = {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         };
 
-        // Add authorization header using ADMIN_API_KEY
         if (adminApiKey) {
             headers['Authorization'] = `Bearer ${adminApiKey}`;
             console.log('Authorization header set with ADMIN_API_KEY');

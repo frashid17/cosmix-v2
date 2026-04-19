@@ -40,11 +40,7 @@ export const ReviewsSection: React.FC<ReviewsSectionProps> = ({ saloonId }) => {
                 setLoading(true);
                 setError(null);
 
-                const response = await fetch(`${API_ENDPOINTS.REVIEWS}?saloonId=${saloonId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
-                    },
-                });
+                const response = await fetch(`${API_ENDPOINTS.REVIEWS}?saloonId=${saloonId}`);
 
                 if (!response.ok) {
                     throw new Error("Failed to fetch reviews");

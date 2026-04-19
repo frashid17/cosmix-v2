@@ -30,7 +30,6 @@ export default async function getSaloonsMap(params?: MapSalonRequest): Promise<S
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
       },
     });
 
@@ -55,7 +54,6 @@ export default async function getSaloonsMap(params?: MapSalonRequest): Promise<S
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
         },
       });
 

@@ -51,7 +51,6 @@ export const RatingPromptModal: React.FC<RatingPromptModalProps> = ({
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${process.env.EXPO_PUBLIC_ADMIN_API_KEY}`,
                 },
                 body: JSON.stringify({
                     bookingId: booking.id,
