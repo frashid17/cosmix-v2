@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   SafeAreaView, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth, useUser } from '@clerk/clerk-expo';
+import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../../config/constants';
@@ -15,54 +16,34 @@ const lightBeige = '#F4EDE5';
 const white = '#FFFFFF';
 const red = '#c00';
 
+const TOTAL_STEPS = 7;
+
 const CITIES = [
   'Helsinki', 'Espoo', 'Tampere', 'Vantaa', 'Oulu',
   'Turku', 'Jyväskylä', 'Lahti', 'Kuopio', 'Pori',
   'Kouvola', 'Joensuu', 'Lappeenranta', 'Hämeenlinna', 'Vaasa',
 ];
 
+const QUESTIONS = [
+  { question: "What's your first name?" },
+  { question: "What's your last name?" },
+  { question: "What's your phone number?" },
+  { question: 'Which city do you work in?' },
+  { question: 'Which neighbourhood?', hint: 'Optional — you can skip this' },
+  { question: "What's your home address?", hint: 'Not shown publicly — for verification only' },
+  { question: 'What services do you offer?', hint: 'Select all that apply' },
+];
+
 type Category = { id: string; name: string };
-
-function SectionLabel({ label }: { label: string }) {
-  return (
-    <Text style={{
-      fontFamily: 'Philosopher-Bold', fontSize: 11, color: '#888',
-      textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10, marginTop: 20,
-    }}>
-      {label}
-    </Text>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 13, color: darkBrown, marginBottom: 6 }}>{label}</Text>
-      {children}
-    </View>
-  );
-}
-
-const inputStyle = {
-  fontFamily: 'Philosopher-Regular' as const,
-  fontSize: 15,
-  color: darkBrown,
-  borderWidth: 1.5,
-  borderColor: beige,
-  borderRadius: 10,
-  paddingHorizontal: 14,
-  paddingVertical: 12,
-  backgroundColor: white,
-};
 
 export default function Phase1Screen() {
   const router = useRouter();
   const { getToken } = useAuth();
-  const { user: clerkUser } = useUser();
   const insets = useSafeAreaInsets();
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
+  const [step, setStep] = useState(0);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -72,8 +53,14 @@ export default function Phase1Screen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [showCityPicker, setShowCityPicker] = useState(false);
+  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const firstNameRef = useRef<TextInput>(null);
+  const lastNameRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const neighRef = useRef<TextInput>(null);
+  const addressRef = useRef<TextInput>(null);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/public/categories`)
@@ -82,26 +69,38 @@ export default function Phase1Screen() {
       .catch(() => {});
   }, []);
 
-  const toggleCategory = (name: string) => {
-    setSelectedCategories(prev =>
-      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
-    );
+  useEffect(() => {
+    const refs = [firstNameRef, lastNameRef, phoneRef, null, neighRef, addressRef, null];
+    const ref = refs[step];
+    if (ref) {
+      const t = setTimeout(() => ref.current?.focus(), 100);
+      return () => clearTimeout(t);
+    }
+  }, [step]);
+
+  const validate = (): boolean => {
+    if (step === 0 && !firstName.trim()) { setError('Please enter your first name'); return false; }
+    if (step === 1 && !lastName.trim()) { setError('Please enter your last name'); return false; }
+    if (step === 2 && !phone.trim()) { setError('Please enter your phone number'); return false; }
+    if (step === 3 && !city) { setError('Please select a city'); return false; }
+    if (step === 5 && !address.trim()) { setError('Please enter your address'); return false; }
+    if (step === 6 && !selectedCategories.length) { setError('Select at least one service'); return false; }
+    setError('');
+    return true;
   };
 
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (!firstName.trim()) e.firstName = 'Required';
-    if (!lastName.trim()) e.lastName = 'Required';
-    if (!phone.trim()) e.phone = 'Required';
-    if (!city) e.city = 'Required';
-    if (!address.trim()) e.address = 'Required';
-    if (!selectedCategories.length) e.categories = 'Select at least one service';
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  const goNext = () => {
+    if (!validate()) return;
+    if (step === TOTAL_STEPS - 1) { handleSubmit(); return; }
+    setStep(s => s + 1);
+  };
+
+  const goBack = () => {
+    setError('');
+    setStep(s => s - 1);
   };
 
   const handleSubmit = async () => {
-    if (!validate()) return;
     setSubmitting(true);
     try {
       const token = await getTokenRef.current();
@@ -131,168 +130,213 @@ export default function Phase1Screen() {
     }
   };
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
-      {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: beige }}>
-        <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#888', marginBottom: 4 }}>Step 1 of 3</Text>
-        <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 22, color: darkBrown }}>Become a service provider</Text>
-        <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#666', marginTop: 2 }}>Tell us about yourself</Text>
-        {/* Progress bar */}
-        <View style={{ flexDirection: 'row', gap: 6, marginTop: 12 }}>
-          {[0, 1, 2].map(i => (
-            <View key={i} style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: i === 0 ? darkBrown : beige }} />
-          ))}
-        </View>
-      </View>
+  const toggleCategory = (name: string) => {
+    setError('');
+    setSelectedCategories(prev =>
+      prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name]
+    );
+  };
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 100 }}>
-        <SectionLabel label="About you" />
+  const q = QUESTIONS[step];
 
-        <Field label="First name *">
+  const renderStep = () => {
+    switch (step) {
+      case 0:
+        return (
           <TextInput
+            ref={firstNameRef}
             value={firstName}
-            onChangeText={setFirstName}
+            onChangeText={v => { setFirstName(v); setError(''); }}
             placeholder="Matti"
-            placeholderTextColor="#bbb"
-            style={[inputStyle, errors.firstName ? { borderColor: red } : {}]}
+            placeholderTextColor="#ccc"
+            autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={goNext}
+            style={bigInput}
           />
-          {errors.firstName ? <Text style={{ color: red, fontSize: 12, marginTop: 4 }}>{errors.firstName}</Text> : null}
-        </Field>
-
-        <Field label="Last name *">
+        );
+      case 1:
+        return (
           <TextInput
+            ref={lastNameRef}
             value={lastName}
-            onChangeText={setLastName}
+            onChangeText={v => { setLastName(v); setError(''); }}
             placeholder="Meikäläinen"
-            placeholderTextColor="#bbb"
-            style={[inputStyle, errors.lastName ? { borderColor: red } : {}]}
+            placeholderTextColor="#ccc"
+            autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={goNext}
+            style={bigInput}
           />
-          {errors.lastName ? <Text style={{ color: red, fontSize: 12, marginTop: 4 }}>{errors.lastName}</Text> : null}
-        </Field>
-
-        <Field label="Email">
-          <View style={[inputStyle, { backgroundColor: lightBeige }]}>
-            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 15, color: '#888' }}>
-              {clerkUser?.emailAddresses[0]?.emailAddress ?? ''}
-            </Text>
-          </View>
-        </Field>
-
-        <Field label="Phone *">
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <View style={[inputStyle, { paddingHorizontal: 12, justifyContent: 'center', backgroundColor: lightBeige }]}>
-              <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 15, color: '#888' }}>+358</Text>
+        );
+      case 2:
+        return (
+          <View style={{ flexDirection: 'row', borderWidth: 2, borderColor: beige, borderRadius: 14, overflow: 'hidden', backgroundColor: white }}>
+            <View style={{ paddingHorizontal: 16, justifyContent: 'center', backgroundColor: lightBeige, borderRightWidth: 1, borderRightColor: beige }}>
+              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 20, color: '#888' }}>+358</Text>
             </View>
             <TextInput
+              ref={phoneRef}
               value={phone}
-              onChangeText={setPhone}
+              onChangeText={v => { setPhone(v); setError(''); }}
               placeholder="40 123 4567"
-              placeholderTextColor="#bbb"
+              placeholderTextColor="#ccc"
               keyboardType="phone-pad"
-              style={[inputStyle, { flex: 1 }, errors.phone ? { borderColor: red } : {}]}
+              returnKeyType="next"
+              onSubmitEditing={goNext}
+              style={{ flex: 1, fontFamily: 'Philosopher-Regular', fontSize: 20, color: darkBrown, paddingHorizontal: 16, paddingVertical: 16 }}
             />
           </View>
-          {errors.phone ? <Text style={{ color: red, fontSize: 12, marginTop: 4 }}>{errors.phone}</Text> : null}
-        </Field>
-
-        <SectionLabel label="Location" />
-
-        <Field label="City *">
+        );
+      case 3:
+        return (
           <TouchableOpacity
+            activeOpacity={0.8}
             onPress={() => setShowCityPicker(true)}
-            style={[inputStyle, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, errors.city ? { borderColor: red } : {}]}
+            style={[bigInput, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
           >
-            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 15, color: city ? darkBrown : '#bbb' }}>
-              {city || 'Select city'}
+            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 20, color: city ? darkBrown : '#ccc', flex: 1 }}>
+              {city || 'Select city…'}
             </Text>
-            <Ionicons name="chevron-down" size={16} color="#aaa" />
+            <Ionicons name="chevron-down" size={20} color="#aaa" />
           </TouchableOpacity>
-          {errors.city ? <Text style={{ color: red, fontSize: 12, marginTop: 4 }}>{errors.city}</Text> : null}
-        </Field>
-
-        <Field label="Neighbourhood / area">
+        );
+      case 4:
+        return (
           <TextInput
+            ref={neighRef}
             value={neighbourhood}
-            onChangeText={setNeighbourhood}
-            placeholder="e.g. Kallio, Töölö (optional)"
-            placeholderTextColor="#bbb"
-            style={inputStyle}
+            onChangeText={v => { setNeighbourhood(v); setError(''); }}
+            placeholder="e.g. Kallio, Töölö"
+            placeholderTextColor="#ccc"
+            autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={goNext}
+            style={bigInput}
           />
-        </Field>
-
-        <Field label="Home address *">
+        );
+      case 5:
+        return (
           <TextInput
+            ref={addressRef}
             value={address}
-            onChangeText={setAddress}
+            onChangeText={v => { setAddress(v); setError(''); }}
             placeholder="Street address"
-            placeholderTextColor="#bbb"
-            style={[inputStyle, errors.address ? { borderColor: red } : {}]}
+            placeholderTextColor="#ccc"
+            autoCapitalize="words"
+            returnKeyType="done"
+            onSubmitEditing={goNext}
+            style={bigInput}
           />
-          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 11, color: '#aaa', marginTop: 4 }}>
-            Not shown publicly — for verification only
-          </Text>
-          {errors.address ? <Text style={{ color: red, fontSize: 12, marginTop: 2 }}>{errors.address}</Text> : null}
-        </Field>
+        );
+      case 6:
+        return (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            {categories.map(cat => {
+              const selected = selectedCategories.includes(cat.name);
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  activeOpacity={0.8}
+                  onPress={() => toggleCategory(cat.name)}
+                  style={{
+                    paddingHorizontal: 18, paddingVertical: 11, borderRadius: 26,
+                    backgroundColor: selected ? darkBrown : white,
+                    borderWidth: 2, borderColor: selected ? darkBrown : beige,
+                  }}
+                >
+                  <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 15, color: selected ? white : darkBrown }}>
+                    {cat.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        );
+    }
+  };
 
-        <SectionLabel label="Services" />
-        <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#666', marginBottom: 12 }}>
-          What services will you offer?
-        </Text>
-        {errors.categories ? <Text style={{ color: red, fontSize: 12, marginBottom: 8 }}>{errors.categories}</Text> : null}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {categories.map(cat => {
-            const selected = selectedCategories.includes(cat.name);
-            return (
-              <TouchableOpacity
-                key={cat.id}
-                onPress={() => toggleCategory(cat.name)}
-                style={{
-                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-                  backgroundColor: selected ? darkBrown : lightBeige,
-                  borderWidth: 1.5,
-                  borderColor: selected ? darkBrown : beige,
-                }}
-              >
-                <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 13, color: selected ? white : darkBrown }}>
-                  {cat.name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+
+        {/* Progress bar */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 28, paddingBottom: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <TouchableOpacity
+              onPress={goBack}
+              style={{ width: 36, height: 36, justifyContent: 'center', alignItems: 'center', opacity: step === 0 ? 0 : 1 }}
+              disabled={step === 0}
+            >
+              <Ionicons name="arrow-back" size={22} color={darkBrown} />
+            </TouchableOpacity>
+            <View style={{ flex: 1, flexDirection: 'row', gap: 4 }}>
+              {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+                <View key={i} style={{ flex: 1, height: 3.5, borderRadius: 2, backgroundColor: i <= step ? darkBrown : beige }} />
+              ))}
+            </View>
+            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 13, color: darkBrown, width: 36, textAlign: 'right' }}>
+              {step + 1}/{TOTAL_STEPS}
+            </Text>
+          </View>
         </View>
-      </ScrollView>
 
-      {/* Submit */}
-      <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: beige, backgroundColor: white }}>
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={submitting}
-          style={{ backgroundColor: darkBrown, borderRadius: 12, paddingVertical: 16, alignItems: 'center' }}
-        >
-          {submitting
-            ? <ActivityIndicator color={white} />
-            : <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: white }}>Submit application</Text>
-          }
-        </TouchableOpacity>
-      </View>
+        {/* Content */}
+        <View style={{ flex: 1, paddingHorizontal: 28, paddingTop: 56 }}>
+          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 30, color: darkBrown, lineHeight: 38, marginBottom: q.hint ? 8 : 28 }}>
+            {q.question}
+          </Text>
+          {q.hint ? (
+            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#999', marginBottom: 24, lineHeight: 20 }}>
+              {q.hint}
+            </Text>
+          ) : null}
+          {renderStep()}
+          {error ? (
+            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: red, marginTop: 12 }}>
+              {error}
+            </Text>
+          ) : null}
+        </View>
 
-      {/* City picker modal */}
+        {/* Continue button */}
+        <View style={{ paddingHorizontal: 28, paddingBottom: insets.bottom + 16, paddingTop: 8 }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={goNext}
+            disabled={submitting}
+            style={{ backgroundColor: darkBrown, borderRadius: 14, paddingVertical: 17, alignItems: 'center' }}
+          >
+            {submitting
+              ? <ActivityIndicator color={white} />
+              : <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: white }}>
+                  {step === TOTAL_STEPS - 1 ? 'Submit application' : 'Continue'}
+                </Text>
+            }
+          </TouchableOpacity>
+        </View>
+
+      </KeyboardAvoidingView>
+
+      {/* City picker */}
       {showCityPicker && (
-        <View style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: white, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingBottom: insets.bottom + 16 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 }}>
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowCityPicker(false)} />
+          <View style={{ backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 8 }}>
+            <View style={{ width: 40, height: 4, backgroundColor: beige, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14 }}>
               <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 18, color: darkBrown }}>Select city</Text>
               <TouchableOpacity onPress={() => setShowCityPicker(false)}>
-                <Ionicons name="close" size={24} color={darkBrown} />
+                <Ionicons name="close" size={22} color={darkBrown} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={{ maxHeight: 320 }}>
+            <ScrollView style={{ maxHeight: 360 }} showsVerticalScrollIndicator={false}>
               {CITIES.map(c => (
                 <TouchableOpacity
                   key={c}
-                  onPress={() => { setCity(c); setShowCityPicker(false); }}
-                  style={{ paddingHorizontal: 20, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: lightBeige, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+                  activeOpacity={0.8}
+                  onPress={() => { setCity(c); setShowCityPicker(false); setError(''); }}
+                  style={{ paddingHorizontal: 24, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: lightBeige, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
                 >
                   <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 16, color: darkBrown }}>{c}</Text>
                   {city === c && <Ionicons name="checkmark" size={18} color={darkBrown} />}
@@ -305,3 +349,15 @@ export default function Phase1Screen() {
     </SafeAreaView>
   );
 }
+
+const bigInput = {
+  fontFamily: 'Philosopher-Regular' as const,
+  fontSize: 20,
+  color: darkBrown,
+  borderWidth: 2,
+  borderColor: beige,
+  borderRadius: 14,
+  paddingHorizontal: 18,
+  paddingVertical: 16,
+  backgroundColor: white,
+};

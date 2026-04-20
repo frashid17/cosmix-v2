@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { API_BASE_URL } from '../../../config/constants';
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
@@ -52,11 +53,15 @@ const DEFAULT_HOURS: DaySlot[] = DAYS.map((_, i) => ({
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ProviderSalonScreen() {
   const { getToken } = useAuth();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
   const [saloonId, setSaloonId] = useState<string | null>(null);
   const [images, setImages] = useState<string[]>([]);
+  const [savedImages, setSavedImages] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState<SalonForm>({ name: '', description: '', shortIntro: '', address: '' });
   const [savedForm, setSavedForm] = useState<SalonForm>({ name: '', description: '', shortIntro: '', address: '' });
   const [hours, setHours] = useState<DaySlot[]>(DEFAULT_HOURS);
@@ -69,18 +74,19 @@ export default function ProviderSalonScreen() {
   // ── Dirty detection ───────────────────────────────────────────────────────
   const hasFormChanges = JSON.stringify(form) !== JSON.stringify(savedForm);
   const hasHourChanges = JSON.stringify(hours) !== JSON.stringify(savedHours);
-  const hasChanges = hasFormChanges || hasHourChanges;
+  const hasImageChanges = JSON.stringify(images) !== JSON.stringify(savedImages);
+  const hasChanges = hasFormChanges || hasHourChanges || hasImageChanges;
 
   // ── Auth headers ─────────────────────────────────────────────────────────
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    const token = await getToken();
+    const token = await getTokenRef.current();
     const h: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token ?? ''}`,
     };
     if (token) h['X-User-Token'] = token;
     return h;
-  }, [getToken]);
+  }, []);
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -88,8 +94,8 @@ export default function ProviderSalonScreen() {
       setError(null);
       const headers = await authHeaders();
 
-      // 1. Get first saloon
-      const saloonsRes = await fetch(`${API_BASE_URL}/saloons`, { headers });
+      // 1. Get first owned saloon
+      const saloonsRes = await fetch(`${API_BASE_URL}/saloons?owned=1`, { headers });
       if (!saloonsRes.ok) throw new Error('Could not load salon');
       const saloons = await saloonsRes.json();
       if (!Array.isArray(saloons) || saloons.length === 0) {
@@ -116,7 +122,9 @@ export default function ProviderSalonScreen() {
         setForm(f);
         setSavedForm(f);
         if (Array.isArray(salon.images)) {
-          setImages(salon.images.map((img: { url: string }) => img.url));
+          const urls = salon.images.map((img: { url: string }) => img.url);
+          setImages(urls);
+          setSavedImages(urls);
         }
       }
 
@@ -170,8 +178,8 @@ export default function ProviderSalonScreen() {
     try {
       const headers = await authHeaders();
 
-      // Save basic info (API uses PATCH)
-      if (hasFormChanges) {
+      // Save basic info + images together (PATCH replaces images array)
+      if (hasFormChanges || hasImageChanges) {
         const res = await fetch(`${API_BASE_URL}/saloons/${saloonId}`, {
           method: 'PATCH',
           headers,
@@ -180,10 +188,12 @@ export default function ProviderSalonScreen() {
             description: form.description.trim() || null,
             shortIntro: form.shortIntro.trim() || null,
             address: form.address.trim() || null,
+            ...(hasImageChanges && { images: images.map(url => ({ url })) }),
           }),
         });
         if (!res.ok) throw new Error('Failed to save salon info');
         setSavedForm({ ...form });
+        if (hasImageChanges) setSavedImages([...images]);
       }
 
       // Save opening hours (POST replaces all)
@@ -204,6 +214,48 @@ export default function ProviderSalonScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  // ── Photo upload ──────────────────────────────────────────────────────────
+  const pickAndUpload = async () => {
+    if (images.length >= 6) {
+      Alert.alert('Limit reached', 'Maximum 6 photos allowed.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+
+    setUploading(true);
+    try {
+      const token = await getTokenRef.current();
+      const photoForm = new FormData();
+      photoForm.append('file', { uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'photo.jpg' } as any);
+      const res = await fetch(`${API_BASE_URL}/upload`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token ?? ''}`, 'X-User-Token': token ?? '' },
+        body: photoForm,
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const { url } = await res.json();
+      setImages(prev => [...prev, url]);
+    } catch {
+      Alert.alert('Upload failed', 'Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    Alert.alert('Remove photo?', 'This will be removed when you save.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => setImages(prev => prev.filter((_, i) => i !== index)) },
+    ]);
   };
 
   // ── Hour field helpers ────────────────────────────────────────────────────
@@ -399,34 +451,50 @@ export default function ProviderSalonScreen() {
           ════════════════════════════════ */}
           <SectionHeader title="Photos" />
 
-          {images.length > 0 ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
-              {images.map((url, i) => (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+            {images.map((url, i) => (
+              <View key={i} style={{ marginRight: 10, position: 'relative' }}>
                 <Image
-                  key={i}
                   source={{ uri: url }}
-                  style={{ width: 100, height: 100, borderRadius: 10, marginRight: 10, backgroundColor: lightBeige }}
+                  style={{ width: 100, height: 100, borderRadius: 10, backgroundColor: lightBeige }}
                 />
-              ))}
-            </ScrollView>
-          ) : (
-            <View
-              style={{
-                height: 80,
-                borderWidth: 1.5,
-                borderColor: beige,
-                borderRadius: 10,
-                borderStyle: 'dashed',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginBottom: 8,
-              }}
-            >
-              <Ionicons name="images-outline" size={24} color={beige} />
-            </View>
-          )}
-          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#aaa', marginBottom: 24 }}>
-            To add or remove photos, use the web dashboard.
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => removeImage(i)}
+                  style={{
+                    position: 'absolute', top: 4, right: 4,
+                    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 12, padding: 3,
+                  }}
+                >
+                  <Ionicons name="close" size={14} color={white} />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {images.length < 6 && (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={pickAndUpload}
+                disabled={uploading}
+                style={{
+                  width: 100, height: 100, borderRadius: 10,
+                  borderWidth: 2, borderColor: beige, borderStyle: 'dashed',
+                  justifyContent: 'center', alignItems: 'center',
+                  backgroundColor: lightBeige,
+                }}
+              >
+                {uploading
+                  ? <ActivityIndicator color={darkBrown} />
+                  : <>
+                      <Ionicons name="add" size={26} color={darkBrown} />
+                      <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 11, color: darkBrown, marginTop: 2 }}>Add photo</Text>
+                    </>
+                }
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 11, color: '#aaa', marginBottom: 24 }}>
+            {images.length}/6 photos · Changes are saved with the Save button
           </Text>
 
           {/* ── Save button ── */}

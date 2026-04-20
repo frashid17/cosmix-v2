@@ -45,6 +45,7 @@ export default function Phase3Screen() {
   const [services, setServices] = useState<SaloonService[]>([]);
   const [categories, setCategories] = useState<GlobalCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saloonError, setSaloonError] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -66,18 +67,36 @@ export default function Phase3Screen() {
   }, []);
 
   const fetchData = useCallback(async () => {
+    setSaloonError(false);
+    const MAX_RETRIES = 5;
+    const RETRY_DELAY = 2000;
+
+    let id: string | null = null;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const headers = await authHeaders();
+        const saloonRes = await fetch(`${API_BASE_URL}/provider/saloon`, { headers });
+        if (!saloonRes.ok) throw new Error();
+        const saloon = await saloonRes.json();
+        if (saloon?.id) {
+          id = saloon.id;
+          break;
+        }
+      } catch {}
+      if (attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY));
+      }
+    }
+
+    if (!id) {
+      setSaloonError(true);
+      setLoading(false);
+      return;
+    }
+
+    setSaloonId(id);
     try {
       const headers = await authHeaders();
-      const saloonRes = await fetch(`${API_BASE_URL}/saloons`, { headers });
-      if (!saloonRes.ok) throw new Error();
-      const saloons = await saloonRes.json();
-      if (!Array.isArray(saloons) || saloons.length === 0) {
-        setLoading(false);
-        return;
-      }
-      const id = saloons[0].id;
-      setSaloonId(id);
-
       const [svcRes, catRes] = await Promise.all([
         fetch(`${API_BASE_URL}/saloons/${id}/services`, { headers }),
         fetch(`${API_BASE_URL}/public/categories`),
@@ -88,7 +107,7 @@ export default function Phase3Screen() {
         setCategories(Array.isArray(cats) ? cats.filter((c: GlobalCategory) => c.services?.length > 0) : []);
       }
     } catch {
-      Alert.alert('Error', 'Failed to load data. Please try again.');
+      Alert.alert('Error', 'Failed to load services. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -221,17 +240,37 @@ export default function Phase3Screen() {
     );
   }
 
-  // Race condition — saloon not yet created by backend
   if (!saloonId) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: white, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
-        <ActivityIndicator size="large" color={darkBrown} style={{ marginBottom: 16 }} />
-        <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 18, color: darkBrown, textAlign: 'center', marginBottom: 8 }}>
-          Setting up your salon
-        </Text>
-        <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#888', textAlign: 'center' }}>
-          This usually takes a moment. Please wait…
-        </Text>
+        {saloonError ? (
+          <>
+            <Ionicons name="alert-circle-outline" size={48} color="#c00" style={{ marginBottom: 16 }} />
+            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 18, color: darkBrown, textAlign: 'center', marginBottom: 8 }}>
+              Salon not ready yet
+            </Text>
+            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 24 }}>
+              We couldn't find your salon. Please go back and try again.
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={fetchData}
+              style={{ backgroundColor: darkBrown, borderRadius: 12, paddingVertical: 14, paddingHorizontal: 32 }}
+            >
+              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 15, color: white }}>Retry</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <ActivityIndicator size="large" color={darkBrown} style={{ marginBottom: 16 }} />
+            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 18, color: darkBrown, textAlign: 'center', marginBottom: 8 }}>
+              Setting up your salon
+            </Text>
+            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#888', textAlign: 'center' }}>
+              This usually takes a moment. Please wait…
+            </Text>
+          </>
+        )}
       </SafeAreaView>
     );
   }
@@ -239,16 +278,14 @@ export default function Phase3Screen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
       {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: beige }}>
-        <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#888', marginBottom: 4 }}>Step 3 of 3</Text>
+      <View style={{ paddingHorizontal: 20, paddingTop: insets.top + 16, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: beige }}>
+        <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 14, color: darkBrown, marginBottom: 8 }}>Step 3 of 3</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View>
             <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 22, color: darkBrown }}>Add your services</Text>
-            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#666', marginTop: 2 }}>
-              Add at least one service to go live
-            </Text>
           </View>
           <TouchableOpacity
+            activeOpacity={0.8}
             onPress={openAdd}
             style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: darkBrown, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, gap: 6 }}
           >
@@ -263,13 +300,6 @@ export default function Phase3Screen() {
         </View>
       </View>
 
-      {/* Note */}
-      <View style={{ marginHorizontal: 20, marginTop: 14, backgroundColor: lightBeige, borderRadius: 10, padding: 12, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-        <Ionicons name="information-circle-outline" size={16} color={darkBrown} style={{ marginTop: 1 }} />
-        <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#555', flex: 1, lineHeight: 18 }}>
-          Your services will be visible to customers after admin approval.
-        </Text>
-      </View>
 
       {/* Service list */}
       {services.length === 0 ? (
@@ -296,12 +326,8 @@ export default function Phase3Screen() {
 
       {/* Submit footer */}
       <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16, paddingTop: 12, borderTopWidth: 1, borderTopColor: beige, backgroundColor: white }}>
-        {services.length === 0 && (
-          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#aaa', textAlign: 'center', marginBottom: 10 }}>
-            Add at least one service to continue
-          </Text>
-        )}
         <TouchableOpacity
+          activeOpacity={0.8}
           onPress={handleSubmit}
           disabled={services.length === 0 || submitting}
           style={{
@@ -322,10 +348,10 @@ export default function Phase3Screen() {
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
             <View style={{
               backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-              paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 16, maxHeight: '90%',
+              paddingTop: 16, maxHeight: '90%', flex: 1,
             }}>
               <View style={{ width: 40, height: 4, backgroundColor: beige, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingHorizontal: 20 }}>
                 <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 20, color: darkBrown }}>
                   {isEditing ? 'Edit Service' : 'Add Service'}
                 </Text>
@@ -334,7 +360,7 @@ export default function Phase3Screen() {
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }}>
                 {!isEditing && (
                   <View style={{ marginBottom: 20 }}>
                     <Text style={labelStyle}>Service *</Text>
@@ -342,10 +368,11 @@ export default function Phase3Screen() {
                       {categories.map(cat => (
                         <TouchableOpacity
                           key={cat.id}
+                          activeOpacity={0.85}
                           onPress={() => { setActiveCategoryId(cat.id); setForm(f => ({ ...f, serviceId: '' })); }}
-                          style={{ paddingHorizontal: 14, paddingVertical: 6, marginRight: 8, borderRadius: 16, backgroundColor: activeCategoryId === cat.id ? darkBrown : lightBeige }}
+                          style={{ paddingHorizontal: 16, paddingVertical: 8, marginRight: 8, borderRadius: 20, backgroundColor: activeCategoryId === cat.id ? darkBrown : lightBeige, borderWidth: 1.5, borderColor: activeCategoryId === cat.id ? darkBrown : beige }}
                         >
-                          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 12, color: activeCategoryId === cat.id ? white : darkBrown }}>
+                          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 15, color: activeCategoryId === cat.id ? white : darkBrown }}>
                             {cat.name}
                           </Text>
                         </TouchableOpacity>
@@ -360,18 +387,19 @@ export default function Phase3Screen() {
                           {activeCategoryServices.map((svc, i) => (
                             <TouchableOpacity
                               key={svc.id}
+                              activeOpacity={0.85}
                               onPress={() => setForm(f => ({ ...f, serviceId: svc.id }))}
                               style={{
-                                flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10,
+                                flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 14, paddingVertical: 14,
                                 backgroundColor: form.serviceId === svc.id ? lightBeige : white,
                                 borderBottomWidth: i < activeCategoryServices.length - 1 ? 1 : 0, borderBottomColor: beige,
                               }}
                             >
-                              <Ionicons name={form.serviceId === svc.id ? 'radio-button-on' : 'radio-button-off'} size={18} color={darkBrown} style={{ marginRight: 10 }} />
+                              <Ionicons name={form.serviceId === svc.id ? 'radio-button-on' : 'radio-button-off'} size={20} color={darkBrown} style={{ marginRight: 12, marginTop: 2 }} />
                               <View style={{ flex: 1 }}>
-                                <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 14, color: darkBrown }}>{svc.name}</Text>
+                                <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 17, color: darkBrown }}>{svc.name}</Text>
                                 {svc.description && (
-                                  <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#888', marginTop: 1 }}>{svc.description}</Text>
+                                  <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#666', marginTop: 4, lineHeight: 20 }}>{svc.description}</Text>
                                 )}
                               </View>
                             </TouchableOpacity>
@@ -415,21 +443,24 @@ export default function Phase3Screen() {
                   </View>
                 </View>
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <Text style={labelStyle}>Active</Text>
                   <Switch value={form.isAvailable} onValueChange={v => setForm(f => ({ ...f, isAvailable: v }))} trackColor={{ false: beige, true: darkBrown }} thumbColor={white} />
                 </View>
+              </ScrollView>
 
+              <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: insets.bottom + 16, borderTopWidth: 1, borderTopColor: beige, backgroundColor: white }}>
                 <TouchableOpacity
+                  activeOpacity={0.8}
                   onPress={handleSave} disabled={saving}
-                  style={{ backgroundColor: darkBrown, borderRadius: 12, paddingVertical: 16, alignItems: 'center', marginBottom: 8 }}
+                  style={{ backgroundColor: darkBrown, borderRadius: 12, paddingVertical: 16, alignItems: 'center' }}
                 >
                   {saving
                     ? <ActivityIndicator color={white} />
                     : <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: white }}>{isEditing ? 'Save Changes' : 'Add Service'}</Text>
                   }
                 </TouchableOpacity>
-              </ScrollView>
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>

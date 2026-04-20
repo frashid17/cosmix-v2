@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +13,13 @@ const white = '#FFFFFF';
 const red = '#c00';
 
 export default function RejectedScreen() {
+  const router = useRouter();
   const { getToken, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.replace('/sign-in' as any);
+  };
   const insets = useSafeAreaInsets();
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
@@ -77,7 +84,7 @@ export default function RejectedScreen() {
 
       <View style={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 16 }}>
         <TouchableOpacity
-          onPress={() => signOut()}
+          onPress={handleSignOut}
           style={{ borderWidth: 1.5, borderColor: beige, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}
         >
           <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 15, color: darkBrown }}>Sign out</Text>
