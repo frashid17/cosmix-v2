@@ -1,18 +1,20 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Linking,
   Alert,
   SafeAreaView,
   ScrollView,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../../config/constants';
+
+const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || '';
 
 const darkBrown = '#423120';
 const beige = '#D7C3A7';
@@ -43,7 +45,7 @@ export default function ProviderPayoutsScreen() {
     const token = await getTokenRef.current();
     const h: Record<string, string> = {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token ?? ''}`,
+      Authorization: `Bearer ${ADMIN_API_KEY}`,
     };
     if (token) h['X-User-Token'] = token;
     return h;
@@ -52,10 +54,19 @@ export default function ProviderPayoutsScreen() {
   const checkStatus = async () => {
     try {
       const headers = await buildHeaders();
-      const res = await fetch(`${API_BASE_URL}/stripe/account-session`, { headers });
+      const res = await fetch(`${API_BASE_URL}/provider/stripe/status`, { headers });
       if (!res.ok) throw new Error(`${res.status}`);
       const data = await res.json();
-      setStatusData(data);
+      const apiStatus: string = data.stripeAccountStatus ?? 'none';
+      const status: AccountStatus =
+        apiStatus === 'active' ? 'active'
+        : apiStatus === 'incomplete' ? 'incomplete'
+        : 'not_connected';
+      setStatusData({
+        status,
+        chargesEnabled: !!data.chargesEnabled,
+        payoutsEnabled: !!data.payoutsEnabled,
+      });
     } catch {
       setStatusData({ status: 'not_connected' });
     }
@@ -70,47 +81,19 @@ export default function ProviderPayoutsScreen() {
     setError(null);
     try {
       const headers = await buildHeaders();
-      console.log('[Payouts] Authorization header set:', !!headers['X-User-Token']);
-      console.log('[Payouts] Calling POST', `${API_BASE_URL}/stripe/account-session`);
-
-      const res = await fetch(`${API_BASE_URL}/stripe/account-session`, {
+      const res = await fetch(`${API_BASE_URL}/stripe/account-link`, {
         method: 'POST',
         headers,
       });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const { url } = await res.json();
+      if (!url) throw new Error('No account link URL');
 
-      console.log('[Payouts] POST response status:', res.status);
-
-      if (!res.ok) {
-        const body = await res.text();
-        console.log('[Payouts] POST error body:', body);
-        throw new Error(`${res.status}`);
-      }
-
-      const data = await res.json();
-      console.log('[Payouts] POST response data:', JSON.stringify(data));
-
-      const clientSecret = data.client_secret;
-      console.log('[Payouts] client_secret:', clientSecret ?? 'NULL/UNDEFINED');
-
-      if (!clientSecret) {
-        throw new Error('No client_secret returned');
-      }
-
-      // Embedded ConnectAccountOnboarding not yet available in stripe-react-native.
-      // Fall back to URL-based onboarding via the existing connect route.
-      const connectRes = await fetch(`${API_BASE_URL}/stripe/connect`, { headers });
-      if (connectRes.ok) {
-        const connectData = await connectRes.json();
-        console.log('[Payouts] connect route response:', JSON.stringify(connectData));
-        if (connectData.url) {
-          await Linking.openURL(connectData.url);
-        }
-      }
-
+      await WebBrowser.openBrowserAsync(url);
       await checkStatus();
     } catch (err) {
       console.log('[Payouts] handleSetup error:', err);
-      setError('Failed to start Stripe setup. Please try again.');
+      setError('Failed to start Stripe verification. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -207,8 +190,8 @@ export default function ProviderPayoutsScreen() {
 
           {status === 'incomplete' && (
             <PrimaryButton
-              icon="arrow-forward-circle-outline"
-              label="Continue setup"
+              icon="shield-checkmark-outline"
+              label="Verify Identity"
               loading={actionLoading}
               onPress={handleSetup}
             />
@@ -304,13 +287,13 @@ function IncompleteCard() {
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <Ionicons name="warning-outline" size={22} color="#b07d00" style={{ marginRight: 8 }} />
+        <Ionicons name="shield-half-outline" size={22} color="#b07d00" style={{ marginRight: 8 }} />
         <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 17, color: '#b07d00' }}>
-          Setup Incomplete
+          Verify Your Identity
         </Text>
       </View>
       <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#555', lineHeight: 20 }}>
-        Your Stripe account needs more information before you can receive payouts.
+        Your account is created and pre-filled. Complete Stripe&apos;s identity verification to start receiving payouts.
       </Text>
     </View>
   );

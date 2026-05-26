@@ -10,6 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../../config/constants';
 
+const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || '';
+
 const darkBrown = '#423120';
 const beige = '#D7C3A7';
 const lightBeige = '#F4EDE5';
@@ -108,7 +110,7 @@ export default function Phase1Screen() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token ?? ''}`,
+          Authorization: `Bearer ${ADMIN_API_KEY}`,
           'X-User-Token': token ?? '',
         },
         body: JSON.stringify({

@@ -6,6 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../../config/constants';
 
+const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || '';
+
 const darkBrown = '#423120';
 const beige = '#D7C3A7';
 const lightBeige = '#F4EDE5';
@@ -33,7 +35,7 @@ export default function RejectedScreen() {
         const token = await getTokenRef.current();
         const res = await fetch(`${API_BASE_URL}/provider/apply/status`, {
           headers: {
-            Authorization: `Bearer ${token ?? ''}`,
+            Authorization: `Bearer ${ADMIN_API_KEY}`,
             'X-User-Token': token ?? '',
           },
         });

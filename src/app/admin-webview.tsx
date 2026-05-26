@@ -6,6 +6,7 @@ import { useAuth } from '@clerk/clerk-expo';
 type UserRole = 'admin' | 'provider' | 'customer' | null;
 
 const ADMIN_DASHBOARD_URL = process.env.EXPO_PUBLIC_ADMIN_DASHBOARD_URL || 'http://localhost:3000';
+const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || '';
 
 export default function RoleRouterScreen() {
     const router = useRouter();
@@ -43,7 +44,7 @@ export default function RoleRouterScreen() {
 
                 const res = await fetch(`${ADMIN_DASHBOARD_URL}/api/admin/check`, {
                     headers: {
-                        Authorization: `Bearer ${token ?? ''}`,
+                        Authorization: `Bearer ${ADMIN_API_KEY}`,
                         'X-User-Token': token,
                     },
                 });

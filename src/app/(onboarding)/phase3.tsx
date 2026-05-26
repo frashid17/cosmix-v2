@@ -10,6 +10,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../../config/constants';
 
+const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || '';
+
 const darkBrown = '#423120';
 const beige = '#D7C3A7';
 const lightBeige = '#F4EDE5';
@@ -52,6 +54,8 @@ export default function Phase3Screen() {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [saloonName, setSaloonName] = useState<string>('');
+  const [locationSkipped, setLocationSkipped] = useState(false);
 
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
@@ -60,7 +64,7 @@ export default function Phase3Screen() {
     const token = await getTokenRef.current();
     const h: Record<string, string> = {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token ?? ''}`,
+      Authorization: `Bearer ${ADMIN_API_KEY}`,
     };
     if (token) h['X-User-Token'] = token;
     return h;
@@ -80,6 +84,7 @@ export default function Phase3Screen() {
         const saloon = await saloonRes.json();
         if (saloon?.id) {
           id = saloon.id;
+          setSaloonName(saloon.name ?? '');
           break;
         }
       } catch {}
@@ -114,6 +119,28 @@ export default function Phase3Screen() {
   }, [authHeaders]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Temporary: lets the provider proceed without a location picker (Expo Go testing).
+  // Remove once the native map step lands.
+  const handleSkipLocation = async () => {
+    console.log('[Phase3] Skipped location - using default');
+    setLocationSkipped(true);
+    if (!saloonId) return;
+    try {
+      const headers = await authHeaders();
+      await fetch(`${API_BASE_URL}/saloons/${saloonId}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({
+          name: saloonName || 'My Salon',
+          latitude: 60.1699,
+          longitude: 24.9384,
+        }),
+      });
+    } catch {
+      // best effort — banner stays dismissed locally either way
+    }
+  };
 
   const openAdd = () => {
     setIsEditing(false);
@@ -300,6 +327,25 @@ export default function Phase3Screen() {
         </View>
       </View>
 
+      {/* TEMP: location-skip banner for Expo Go testing — remove when native map step lands */}
+      {!locationSkipped && (
+        <View style={{ marginHorizontal: 20, marginTop: 16, padding: 16, backgroundColor: '#F5E6D3', borderRadius: 12 }}>
+          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 15, color: darkBrown, marginBottom: 4 }}>
+            📍 Location not set
+          </Text>
+          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#666', marginBottom: 12 }}>
+            You can add your salon location later in settings.
+          </Text>
+          <TouchableOpacity
+            onPress={handleSkipLocation}
+            style={{ backgroundColor: darkBrown, paddingVertical: 12, borderRadius: 10, alignItems: 'center' }}
+          >
+            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 14, color: white }}>
+              Skip & Continue
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Service list */}
       {services.length === 0 ? (

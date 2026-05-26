@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  SafeAreaView, ActivityIndicator, Alert, Image, Linking,
+  SafeAreaView, ActivityIndicator, Alert, Image,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -9,16 +9,37 @@ import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { API_BASE_URL } from '../../../config/constants';
+
+const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || '';
 
 const darkBrown = '#423120';
 const beige = '#D7C3A7';
 const lightBeige = '#F4EDE5';
 const white = '#FFFFFF';
-const green = '#2d7a2d';
 const red = '#c00';
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 11;
+
+const formatIban = (raw: string): string => {
+  const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18);
+  let body = cleaned;
+  if (cleaned.length >= 1 && cleaned[0] !== 'F') {
+    body = 'FI' + cleaned.replace(/[^0-9]/g, '');
+  } else if (cleaned.length >= 2 && cleaned.slice(0, 2) !== 'FI') {
+    body = 'FI' + cleaned.slice(2).replace(/[^0-9]/g, '');
+  } else if (cleaned.length >= 2) {
+    body = 'FI' + cleaned.slice(2).replace(/[^0-9]/g, '');
+  }
+  body = body.slice(0, 18);
+  return body.replace(/(.{4})/g, '$1 ').trim();
+};
+
+const isValidFinnishIban = (formatted: string): boolean => {
+  const clean = formatted.replace(/\s+/g, '');
+  return /^FI\d{16}$/.test(clean);
+};
 
 const NATIONALITIES = ['Finnish', 'Swedish', 'Estonian', 'Russian', 'Other'];
 const BUSINESS_TYPES = ['Sole trader', 'Ltd (Oy)', 'Partnership', 'Other'];
@@ -31,9 +52,22 @@ const QUESTIONS = [
   { question: 'What is your business name?' },
   { question: 'What is your Y-tunnus?', hint: 'Optional — leave blank if you don\'t have one' },
   { question: 'What type of business is it?' },
+  { question: 'Bank account holder name *', hint: 'Full name as shown on bank account' },
+  { question: 'IBAN (Finnish bank account) *', hint: 'e.g. FI21 1234 5600 0007 85' },
   { question: 'Upload your documents', hint: 'ID and any business certificates — at least one required' },
   { question: 'Almost done', hint: 'Accept terms and set up payouts to submit' },
 ];
+
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const formatDobDisplay = (d: Date) => `${pad2(d.getDate())} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+const formatDobStore = (d: Date) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+const parseDobStore = (s: string): Date | null => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
+  if (!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return isNaN(d.getTime()) ? null : d;
+};
 
 const bigInput = {
   fontFamily: 'Philosopher-Regular' as const,
@@ -63,26 +97,28 @@ export default function Phase2Screen() {
   const [businessName, setBusinessName] = useState('');
   const [yTunnus, setYTunnus] = useState('');
   const [businessType, setBusinessType] = useState('');
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [iban, setIban] = useState('');
   const [documentUrls, setDocumentUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [stripeStatus, setStripeStatus] = useState<'loading' | 'not_connected' | 'incomplete' | 'active'>('not_connected');
-  const [stripeSetupLoading, setStripeSetupLoading] = useState(false);
-
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const [showNationalityPicker, setShowNationalityPicker] = useState(false);
   const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
+  const [showDobPicker, setShowDobPicker] = useState(false);
 
   const legalNameRef = useRef<TextInput>(null);
   const dobRef = useRef<TextInput>(null);
   const finnishIdRef = useRef<TextInput>(null);
   const businessNameRef = useRef<TextInput>(null);
   const yTunnusRef = useRef<TextInput>(null);
+  const bankAccountNameRef = useRef<TextInput>(null);
+  const ibanRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    const refs = [legalNameRef, dobRef, finnishIdRef, null, businessNameRef, yTunnusRef, null, null, null];
+    const refs = [legalNameRef, dobRef, finnishIdRef, null, businessNameRef, yTunnusRef, null, bankAccountNameRef, ibanRef, null, null];
     const ref = refs[step];
     if (ref) {
       const t = setTimeout(() => ref.current?.focus(), 100);
@@ -90,49 +126,13 @@ export default function Phase2Screen() {
     }
   }, [step]);
 
-  useEffect(() => {
-    if (step === 8) fetchStripeStatus();
-  }, [step]);
-
   const buildHeaders = async () => {
     const token = await getTokenRef.current();
     return {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token ?? ''}`,
+      Authorization: `Bearer ${ADMIN_API_KEY}`,
       'X-User-Token': token ?? '',
     };
-  };
-
-  const fetchStripeStatus = async () => {
-    setStripeStatus('loading');
-    try {
-      const headers = await buildHeaders();
-      const res = await fetch(`${API_BASE_URL}/stripe/account-session`, { headers });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      setStripeStatus(data.status ?? 'not_connected');
-    } catch {
-      setStripeStatus('not_connected');
-    }
-  };
-
-  const handleStripeSetup = async () => {
-    setStripeSetupLoading(true);
-    try {
-      const headers = await buildHeaders();
-      const res = await fetch(`${API_BASE_URL}/stripe/account-session`, { method: 'POST', headers });
-      if (!res.ok) throw new Error();
-      const connectRes = await fetch(`${API_BASE_URL}/stripe/connect`, { headers });
-      if (connectRes.ok) {
-        const { url } = await connectRes.json();
-        if (url) await Linking.openURL(url);
-      }
-      await fetchStripeStatus();
-    } catch {
-      Alert.alert('Error', 'Failed to start Stripe setup. Please try again.');
-    } finally {
-      setStripeSetupLoading(false);
-    }
   };
 
   const pickAndUpload = async () => {
@@ -154,7 +154,7 @@ export default function Phase2Screen() {
       photoForm.append('file', { uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'doc.jpg' } as any);
       const res = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token ?? ''}`, 'X-User-Token': token ?? '' },
+        headers: { Authorization: `Bearer ${ADMIN_API_KEY}`, 'X-User-Token': token ?? '' },
         body: photoForm,
       });
       if (!res.ok) throw new Error(`${res.status}`);
@@ -175,11 +175,10 @@ export default function Phase2Screen() {
     if (step === 3 && !nationality) { setError('Please select your nationality'); return false; }
     if (step === 4 && !businessName.trim()) { setError('Please enter your business name'); return false; }
     if (step === 6 && !businessType) { setError('Please select a business type'); return false; }
-    if (step === 7 && !documentUrls.length) { setError('Upload at least one document'); return false; }
-    if (step === 8) {
-      if (!termsAccepted) { setError('You must accept the terms to continue'); return false; }
-      if (stripeStatus !== 'active') { setError('Payout setup is required before submitting'); return false; }
-    }
+    if (step === 7 && !bankAccountName.trim()) { setError('Please enter the bank account holder name'); return false; }
+    if (step === 8 && !isValidFinnishIban(iban)) { setError('IBAN must start with FI and have 16 digits'); return false; }
+    if (step === 9 && !documentUrls.length) { setError('Upload at least one document'); return false; }
+    if (step === 10 && !termsAccepted) { setError('You must accept the terms to continue'); return false; }
     setError('');
     return true;
   };
@@ -210,6 +209,8 @@ export default function Phase2Screen() {
           businessName: businessName.trim(),
           yTunnus: yTunnus.trim() || undefined,
           businessType,
+          bankAccountName: bankAccountName.trim(),
+          iban: iban.replace(/\s+/g, ''),
           documentUrls,
           termsAccepted: true,
         }),
@@ -242,20 +243,56 @@ export default function Phase2Screen() {
           />
         );
 
-      case 1:
+      case 1: {
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+        const minDate = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
+        const defaultDate = new Date(today.getFullYear() - 30, today.getMonth(), today.getDate());
+        const selected = parseDobStore(dateOfBirth);
         return (
-          <TextInput
-            ref={dobRef}
-            value={dateOfBirth}
-            onChangeText={v => { setDateOfBirth(v); setError(''); }}
-            placeholder="01/01/1990"
-            placeholderTextColor="#ccc"
-            keyboardType="numbers-and-punctuation"
-            returnKeyType="next"
-            onSubmitEditing={goNext}
-            style={bigInput}
-          />
+          <>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setShowDobPicker(true)}
+              style={{ ...bigInput, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <Text style={{
+                fontFamily: 'Philosopher-Regular',
+                fontSize: 20,
+                color: selected ? darkBrown : '#ccc',
+              }}>
+                {selected ? formatDobDisplay(selected) : 'Select date of birth'}
+              </Text>
+              <Ionicons name="calendar-outline" size={22} color={darkBrown} />
+            </TouchableOpacity>
+            {showDobPicker && (
+              <DateTimePicker
+                value={selected ?? defaultDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={maxDate}
+                minimumDate={minDate}
+                onChange={(event, date) => {
+                  if (Platform.OS !== 'ios') setShowDobPicker(false);
+                  if (event.type === 'dismissed') return;
+                  if (date) {
+                    setDateOfBirth(formatDobStore(date));
+                    setError('');
+                  }
+                }}
+              />
+            )}
+            {Platform.OS === 'ios' && showDobPicker && (
+              <TouchableOpacity
+                onPress={() => setShowDobPicker(false)}
+                style={{ alignSelf: 'flex-end', paddingVertical: 8, paddingHorizontal: 12 }}
+              >
+                <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: darkBrown }}>Done</Text>
+              </TouchableOpacity>
+            )}
+          </>
         );
+      }
 
       case 2:
         return (
@@ -331,6 +368,39 @@ export default function Phase2Screen() {
 
       case 7:
         return (
+          <TextInput
+            ref={bankAccountNameRef}
+            value={bankAccountName}
+            onChangeText={v => { setBankAccountName(v); setError(''); }}
+            placeholder="Full name as shown on bank account"
+            placeholderTextColor="#ccc"
+            autoCapitalize="words"
+            returnKeyType="next"
+            onSubmitEditing={goNext}
+            style={bigInput}
+          />
+        );
+
+      case 8:
+        return (
+          <TextInput
+            ref={ibanRef}
+            value={iban}
+            onChangeText={v => { setIban(formatIban(v)); setError(''); }}
+            placeholder="FI21 1234 5600 0007 85"
+            placeholderTextColor="#ccc"
+            autoCapitalize="characters"
+            autoCorrect={false}
+            keyboardType="default"
+            returnKeyType="next"
+            onSubmitEditing={goNext}
+            style={bigInput}
+            maxLength={22}
+          />
+        );
+
+      case 9:
+        return (
           <View>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
               {documentUrls.map((url, i) => (
@@ -364,7 +434,7 @@ export default function Phase2Screen() {
           </View>
         );
 
-      case 8:
+      case 10:
         return (
           <View>
             <ScrollView
@@ -394,45 +464,6 @@ export default function Phase2Screen() {
                 I agree to the Cosmix terms and conditions
               </Text>
             </TouchableOpacity>
-
-            <View style={{ borderWidth: 2, borderColor: stripeStatus === 'active' ? green : beige, borderRadius: 14, padding: 16 }}>
-              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 15, color: darkBrown, marginBottom: 4 }}>Payout setup</Text>
-              <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#888', marginBottom: 14 }}>
-                Connect your bank account to receive payments.
-              </Text>
-              {stripeStatus === 'loading' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <ActivityIndicator size="small" color={darkBrown} />
-                  <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#888' }}>Checking…</Text>
-                </View>
-              )}
-              {stripeStatus === 'active' && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Ionicons name="checkmark-circle" size={20} color={green} />
-                  <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 14, color: green }}>Payouts connected ✓</Text>
-                </View>
-              )}
-              {(stripeStatus === 'not_connected' || stripeStatus === 'incomplete') && (
-                <>
-                  {stripeStatus === 'incomplete' && (
-                    <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#b07d00', marginBottom: 10 }}>
-                      Setup incomplete — please finish connecting.
-                    </Text>
-                  )}
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={handleStripeSetup}
-                    disabled={stripeSetupLoading}
-                    style={{ backgroundColor: darkBrown, borderRadius: 10, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}
-                  >
-                    {stripeSetupLoading
-                      ? <ActivityIndicator color={white} size="small" />
-                      : <><Ionicons name="card-outline" size={16} color={white} /><Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 14, color: white }}>Set up payouts</Text></>
-                    }
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
           </View>
         );
     }
