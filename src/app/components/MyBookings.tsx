@@ -6,6 +6,7 @@ import { Booking } from '@/app/types';
 import getBookings from '../actions/get-bookings';
 import { getSalon, SalonDetails } from '../actions/get-salon';
 import useAuthStore from '@/store/auth.store';
+import { useAuth } from '@clerk/clerk-expo';
 
 interface MyBookingsProps {
   onBookingPress?: (booking: Booking) => void;
@@ -17,6 +18,7 @@ const MyBookings: React.FC<MyBookingsProps> = ({ onBookingPress }) => {
   const [error, setError] = useState<string | null>(null);
   const [salonDetails, setSalonDetails] = useState<Record<string, SalonDetails>>({});
   const { user } = useAuthStore();
+  const { getToken } = useAuth();
 
   // Fallback salon names for known salon IDs
   const knownSalons: Record<string, string> = {
@@ -43,7 +45,8 @@ const MyBookings: React.FC<MyBookingsProps> = ({ onBookingPress }) => {
       console.log('Current user ID:', userId);
       console.log('User email for matching:', userEmail);
       
-      const data = await getBookings(undefined, userId, userEmail);
+      const token = await getToken();
+      const data = await getBookings(token ?? undefined, userId, userEmail);
       console.log('Raw bookings data received:', JSON.stringify(data, null, 2));
       console.log('Number of bookings:', data.length);
       
@@ -297,7 +300,8 @@ const MyBookings: React.FC<MyBookingsProps> = ({ onBookingPress }) => {
           <TouchableOpacity onPress={async () => {
             console.log('DEBUG: Fetching ALL bookings (no user filter)');
             try {
-              const allData = await getBookings(undefined); // No user ID
+              const debugToken = await getToken();
+              const allData = await getBookings(debugToken ?? undefined); // No user ID
               console.log('DEBUG: All bookings (no filter):', JSON.stringify(allData, null, 2));
               Alert.alert('Debug Info', `Found ${allData.length} total bookings in system`);
             } catch (err) {

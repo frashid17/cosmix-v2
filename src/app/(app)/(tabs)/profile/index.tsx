@@ -87,8 +87,17 @@ export default function ProfilePage() {
       "Kirjaudu sisään",
     ];
 
-  // Get user's first name for display
-  const displayName = user?.firstName || user?.fullName?.split(' ')[0] || 'Käyttäjä';
+  // Get user's first name for display.
+  // Falls back to email username (e.g. "alex" from "alex@gmail.com") so OAuth users
+  // without a populated firstName don't end up as the generic "Käyttäjä".
+  const emailUsername = user?.primaryEmailAddress?.emailAddress?.split('@')[0]
+    ?? user?.emailAddresses?.[0]?.emailAddress?.split('@')[0];
+  const displayName =
+    user?.firstName
+    || user?.fullName?.split(' ')[0]
+    || user?.username
+    || emailUsername
+    || 'Käyttäjä';
 
   return (
     <SafeAreaView style={styles.container}>

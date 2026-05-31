@@ -2,6 +2,8 @@
 import { Booking } from "@/app/types";
 import { API_ENDPOINTS } from "@/config/constants";
 
+const adminApiKey = process.env.EXPO_PUBLIC_ADMIN_API_KEY || '';
+
 export const getBookings = async (authToken?: string, userId?: string, userEmail?: string): Promise<Booking[]> => {
     try {
         console.log('Fetching bookings...');
@@ -9,21 +11,20 @@ export const getBookings = async (authToken?: string, userId?: string, userEmail
         console.log('User ID provided:', userId ? 'Yes' : 'No');
         console.log('Token preview:', authToken ? `${authToken.substring(0, 20)}...` : 'No token');
 
-        
-
         const headers: Record<string, string> = {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
         };
 
+        // Bearer satisfies middleware; X-User-Token carries the actual user identity.
         if (adminApiKey) {
             headers['Authorization'] = `Bearer ${adminApiKey}`;
-            console.log('Authorization header set with ADMIN_API_KEY');
-        } else if (authToken) {
-            headers['Authorization'] = `Bearer ${authToken}`;
-            console.log('Authorization header set with provided token');
-        } else {
-            console.log('No auth token available');
+        }
+        if (authToken) {
+            headers['X-User-Token'] = authToken;
+        }
+        if (!adminApiKey && !authToken) {
+            console.log('No auth credentials available');
         }
 
         // Build URL with user ID and/or email query parameters if provided

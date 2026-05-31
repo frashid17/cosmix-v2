@@ -19,7 +19,7 @@ const DISMISSED_RATINGS_KEY = '@cosmix_dismissed_rating_bookings';
 export default function Page() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const [isMenuVisible, setMenuVisible] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -84,8 +84,11 @@ export default function Page() {
         const userId = user.id;
         const userEmail = user.primaryEmailAddress?.emailAddress;
 
+        // Get Clerk token BEFORE calling getBookings so the API can identify the user
+        const token = await getToken();
+
         // Fetch user's bookings
-        const bookings = await getBookings(undefined, userId, userEmail);
+        const bookings = await getBookings(token ?? undefined, userId, userEmail);
 
         // Filter for completed bookings without reviews
         const unratedBookings = bookings.filter(

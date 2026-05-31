@@ -50,6 +50,9 @@ type Application = {
   businessName: string | null;
   yTunnus: string | null;
   businessType: string | null;
+  bankAccountName: string | null;
+  iban: string | null;
+  qualificationDocs: string[];
   documentUrls: string[];
   termsAccepted: boolean;
   termsAcceptedAt: string | null;
@@ -57,7 +60,12 @@ type Application = {
   rejectedReason: string | null;
   createdAt: string;
   updatedAt: string;
-  user: { id: string; name: string | null; email: string; providerStatus: ProviderStatus };
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    providerStatus: ProviderStatus;
+  };
 };
 
 type FilterTab = 'all' | '1' | '2' | '3' | 'rejected';
@@ -137,19 +145,33 @@ export default function AdminApplicationsScreen() {
       return;
     }
     setActionLoading(true);
+    const endpoint = `${API_BASE_URL}/admin/applications/${actionModal.id}/${actionModal.type}`;
+    console.log(`[Admin] ${actionModal.type === 'approve' ? 'Approving' : 'Rejecting'} application:`, actionModal.id);
+    console.log('[Admin] Calling:', endpoint);
     try {
       const headers = await buildHeaders();
-      const endpoint = `${API_BASE_URL}/admin/applications/${actionModal.id}/${actionModal.type}`;
       const body = actionModal.type === 'approve'
         ? { notes: inputText.trim() || null }
         : { reason: inputText.trim() };
+      console.log('[Admin] Request body:', body);
       const res = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
-      if (!res.ok) throw new Error(`${res.status}`);
+      console.log('[Admin] Full response:', {
+        status: res.status,
+        statusText: res.statusText,
+        headers: Object.fromEntries((res.headers as any).entries()),
+        url: res.url,
+      });
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { data = raw; }
+      console.log('[Admin] Response data:', data);
+      if (!res.ok) throw new Error(`${res.status}: ${typeof data === 'string' ? data : JSON.stringify(data)}`);
       setActionModal(null);
       setInputText('');
       await fetchApplications();
-    } catch {
-      Alert.alert('Error', `Failed to ${actionModal.type} application.`);
+    } catch (err: any) {
+      console.log(`[Admin] ${actionModal.type} error:`, err?.message ?? err);
+      Alert.alert('Error', `Failed to ${actionModal.type} application.\n\n${err?.message ?? ''}`);
     } finally {
       setActionLoading(false);
     }
@@ -163,8 +185,19 @@ export default function AdminApplicationsScreen() {
 
   const pendingCount = applications.filter((a) => isPending(a.user.providerStatus)).length;
 
+  const counts: Record<FilterTab, number> = {
+    all: applications.length,
+    '1': applications.filter((a) => a.currentPhase === 1 && a.user.providerStatus !== 'REJECTED').length,
+    '2': applications.filter((a) => a.currentPhase === 2 && a.user.providerStatus !== 'REJECTED').length,
+    '3': applications.filter((a) => a.currentPhase === 3 && a.user.providerStatus !== 'REJECTED').length,
+    rejected: applications.filter((a) => a.user.providerStatus === 'REJECTED').length,
+  };
+
+  const formatLongDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+
   const renderDetail = (app: Application) => (
-    <View style={{ paddingHorizontal: 16, paddingBottom: 14, backgroundColor: lightBeige }}>
+    <View style={{ paddingHorizontal: 16, paddingBottom: 16, paddingTop: 4, backgroundColor: white, borderTopWidth: 1, borderTopColor: beige }}>
       {app.currentPhase >= 1 && (
         <View style={{ marginTop: 10 }}>
           <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 12, color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>
@@ -192,6 +225,8 @@ export default function AdminApplicationsScreen() {
           </Text>
           {[
             ['Legal name', app.legalName],
+            ['Bank holder', app.bankAccountName],
+            ['IBAN', app.iban],
             ['Date of birth', app.dateOfBirth],
             ['Finnish ID', app.finnishId],
             ['Nationality', app.nationality],
@@ -205,16 +240,20 @@ export default function AdminApplicationsScreen() {
               <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#555', flex: 1 }}>{value as string}</Text>
             </View>
           ) : null)}
-          {app.documentUrls?.length > 0 && (
-            <View style={{ marginTop: 8 }}>
-              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 12, color: '#888', marginBottom: 6 }}>Documents:</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ gap: 8 }}>
-                {app.documentUrls.map((url, i) => (
-                  <TouchableOpacity key={i} onPress={() => setImageViewer(url)} style={{ marginRight: 8 }}>
-                    <Image source={{ uri: url }} style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1, borderColor: beige }} />
+          {app.qualificationDocs?.length > 0 && (
+            <View style={{ marginTop: 10 }}>
+              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 12, color: '#888', marginBottom: 8 }}>Qualification Documents:</Text>
+              <View style={{ gap: 8 }}>
+                {app.qualificationDocs.map((url, i) => (
+                  <TouchableOpacity key={i} onPress={() => setImageViewer(url)} activeOpacity={0.85}>
+                    <Image
+                      source={{ uri: url }}
+                      style={{ width: '100%', aspectRatio: 2, borderRadius: 10, borderWidth: 1, borderColor: beige }}
+                      resizeMode="cover"
+                    />
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
         </View>
@@ -250,36 +289,50 @@ export default function AdminApplicationsScreen() {
           </TouchableOpacity>
         </View>
       )}
+
     </View>
   );
 
-  const renderItem = ({ item, index }: { item: Application; index: number }) => {
+  const renderItem = ({ item }: { item: Application; index: number }) => {
     const isExpanded = expanded === item.id;
     const name = item.firstName && item.lastName ? `${item.firstName} ${item.lastName}` : item.user.name ?? item.user.email;
-    const date = new Date(item.updatedAt).toLocaleDateString('fi-FI', { day: 'numeric', month: 'short', year: 'numeric' });
+    const date = formatLongDate(item.updatedAt);
 
     return (
-      <View style={{ borderBottomWidth: index < filtered.length - 1 ? 1 : 0, borderBottomColor: beige }}>
+      <View
+        style={{
+          marginHorizontal: 16,
+          marginBottom: 12,
+          backgroundColor: white,
+          borderRadius: 12,
+          overflow: 'hidden',
+          // iOS shadow
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 6,
+          // Android elevation
+          elevation: 2,
+        }}
+      >
         <TouchableOpacity
           onPress={() => setExpanded(isExpanded ? null : item.id)}
-          style={{ paddingHorizontal: 16, paddingVertical: 13 }}
+          style={{ padding: 16 }}
           activeOpacity={0.7}
         >
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 14, color: darkBrown }}>{name}</Text>
-              <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#888', marginTop: 2 }}>{item.user.email}</Text>
-              <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 11, color: '#aaa', marginTop: 2 }}>{date}</Text>
+              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 18, color: darkBrown }}>{name}</Text>
+              <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#777', marginTop: 4 }}>{item.user.email}</Text>
+              <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#999', marginTop: 4 }}>{date}</Text>
             </View>
             <View style={{ alignItems: 'flex-end', gap: 6 }}>
-              <View style={{ backgroundColor: phaseBadgeColor(item.currentPhase), paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+              <View style={{ backgroundColor: phaseBadgeColor(item.currentPhase), paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
                 <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 11, color: white }}>Phase {item.currentPhase}</Text>
               </View>
               <StatusBadge status={item.user.providerStatus} />
+              <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#aaa" style={{ marginTop: 2 }} />
             </View>
-          </View>
-          <View style={{ position: 'absolute', right: 16, bottom: 13 }}>
-            <Ionicons name={isExpanded ? 'chevron-up' : 'chevron-down'} size={16} color="#aaa" />
           </View>
         </TouchableOpacity>
         {isExpanded && renderDetail(item)}
@@ -296,28 +349,51 @@ export default function AdminApplicationsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: lightBeige }}>
       {/* Header */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: beige, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 22, color: darkBrown }}>Applications</Text>
+      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 24, color: darkBrown }}>Applications</Text>
         {pendingCount > 0 && (
-          <View style={{ backgroundColor: yellow, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 12, color: white }}>{pendingCount} pending</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: yellow, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, gap: 6 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: white }} />
+            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 13, color: white }}>{pendingCount} pending</Text>
           </View>
         )}
       </View>
 
-      {/* Filter tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ borderBottomWidth: 1, borderBottomColor: beige }} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8, flexDirection: 'row' }}>
-        {([['all', 'All'], ['1', 'Phase 1'], ['2', 'Phase 2'], ['3', 'Phase 3'], ['rejected', 'Rejected']] as [FilterTab, string][]).map(([key, label]) => (
-          <TouchableOpacity
-            key={key}
-            onPress={() => setFilter(key)}
-            style={{ paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, backgroundColor: filter === key ? darkBrown : lightBeige }}
-          >
-            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 12, color: filter === key ? white : darkBrown }}>{label}</Text>
-          </TouchableOpacity>
-        ))}
+      {/* Filter tabs — compact pills with count badges */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={{ flexGrow: 0 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}
+      >
+        {([['all', 'All'], ['1', 'Phase 1'], ['2', 'Phase 2'], ['3', 'Phase 3'], ['rejected', 'Rejected']] as [FilterTab, string][]).map(([key, label]) => {
+          const active = filter === key;
+          return (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setFilter(key)}
+              activeOpacity={0.7}
+              style={{
+                height: 36,
+                paddingHorizontal: 14,
+                borderRadius: 18,
+                backgroundColor: active ? darkBrown : lightBeige,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 13, color: active ? white : darkBrown }}>
+                {label}
+              </Text>
+              <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: active ? white : '#888' }}>
+                ({counts[key]})
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       <FlatList
@@ -325,12 +401,7 @@ export default function AdminApplicationsScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchApplications(); }} tintColor={darkBrown} />}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
-        ListHeaderComponent={
-          filtered.length > 0 ? (
-            <View style={{ borderWidth: 2, borderColor: beige, borderRadius: 12, marginHorizontal: 20, marginTop: 16, overflow: 'hidden' }} />
-          ) : null
-        }
+        contentContainerStyle={{ paddingTop: 12, paddingBottom: insets.bottom + 80 }}
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingTop: 60 }}>
             <Ionicons name="clipboard-outline" size={48} color={beige} style={{ marginBottom: 12 }} />

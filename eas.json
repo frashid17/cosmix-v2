@@ -14,7 +14,7 @@
             },
             "env": {
                 "EXPO_PUBLIC_PRODUCTION_DOMAIN": "cosmix-admin-one.vercel.app",
-                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YnVyc3RpbmctbWFybW9zZXQtOS5jbGVyay5hY2NvdW50cy5kZXYk",
+                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_aWRlYWwtbGFjZXdpbmctNzEuY2xlcmsuYWNjb3VudHMuZGV2JA",
                 "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51Sc48MPCESSefB5R8XGIkkIkHtxdhxZeVrIPGhIwdNuDNZiDqjuOrhtFpHhFT7vsSHSKXJ2r3KSg9SIDXyIlpiZy00WjVRde2W"
             }
         },
@@ -24,7 +24,7 @@
             },
             "env": {
                 "EXPO_PUBLIC_PRODUCTION_DOMAIN": "cosmix-admin-one.vercel.app",
-                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_YnVyc3RpbmctbWFybW9zZXQtOS5jbGVyay5hY2NvdW50cy5kZXYk",
+                "EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_aWRlYWwtbGFjZXdpbmctNzEuY2xlcmsuYWNjb3VudHMuZGV2JA",
                 "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51Sc48MPCESSefB5R8XGIkkIkHtxdhxZeVrIPGhIwdNuDNZiDqjuOrhtFpHhFT7vsSHSKXJ2r3KSg9SIDXyIlpiZy00WjVRde2W"
             }
         }

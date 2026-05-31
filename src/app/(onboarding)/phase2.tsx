@@ -9,6 +9,7 @@ import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { API_BASE_URL } from '../../../config/constants';
 
@@ -20,7 +21,23 @@ const lightBeige = '#F4EDE5';
 const white = '#FFFFFF';
 const red = '#c00';
 
-const TOTAL_STEPS = 11;
+const TOTAL_STEPS = 6;
+
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const formatDobDisplay = (d: Date) => `${pad2(d.getDate())} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+const formatDobStore = (d: Date) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
+const parseDobStore = (s: string): Date | null => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
+  if (!m) return null;
+  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+  return isNaN(d.getTime()) ? null : d;
+};
+const isAtLeast18 = (dob: Date): boolean => {
+  const today = new Date();
+  const cutoff = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  return dob.getTime() <= cutoff.getTime();
+};
 
 const formatIban = (raw: string): string => {
   const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 18);
@@ -41,33 +58,14 @@ const isValidFinnishIban = (formatted: string): boolean => {
   return /^FI\d{16}$/.test(clean);
 };
 
-const NATIONALITIES = ['Finnish', 'Swedish', 'Estonian', 'Russian', 'Other'];
-const BUSINESS_TYPES = ['Sole trader', 'Ltd (Oy)', 'Partnership', 'Other'];
-
 const QUESTIONS = [
   { question: 'What is your full legal name?', hint: 'As it appears on your ID document' },
-  { question: 'What is your date of birth?', hint: 'DD/MM/YYYY' },
-  { question: 'What is your Finnish ID?', hint: 'Henkilötunnus — e.g. 010190-123A' },
-  { question: 'What is your nationality?' },
-  { question: 'What is your business name?' },
-  { question: 'What is your Y-tunnus?', hint: 'Optional — leave blank if you don\'t have one' },
-  { question: 'What type of business is it?' },
-  { question: 'Bank account holder name *', hint: 'Full name as shown on bank account' },
+  { question: 'What is your date of birth?', hint: 'You must be 18 or older to register' },
   { question: 'IBAN (Finnish bank account) *', hint: 'e.g. FI21 1234 5600 0007 85' },
-  { question: 'Upload your documents', hint: 'ID and any business certificates — at least one required' },
-  { question: 'Almost done', hint: 'Accept terms and set up payouts to submit' },
+  { question: 'Bank account holder name *', hint: 'Full name as shown on bank account' },
+  { question: 'Your qualifications', hint: 'Upload documents proving you are qualified to provide beauty and spa services' },
+  { question: 'Almost done', hint: 'Accept the terms to submit your application' },
 ];
-
-const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const pad2 = (n: number) => String(n).padStart(2, '0');
-const formatDobDisplay = (d: Date) => `${pad2(d.getDate())} ${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
-const formatDobStore = (d: Date) => `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()}`;
-const parseDobStore = (s: string): Date | null => {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
-  if (!m) return null;
-  const d = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
-  return isNaN(d.getTime()) ? null : d;
-};
 
 const bigInput = {
   fontFamily: 'Philosopher-Regular' as const,
@@ -92,33 +90,22 @@ export default function Phase2Screen() {
 
   const [legalName, setLegalName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState('');
-  const [finnishId, setFinnishId] = useState('');
-  const [nationality, setNationality] = useState('');
-  const [businessName, setBusinessName] = useState('');
-  const [yTunnus, setYTunnus] = useState('');
-  const [businessType, setBusinessType] = useState('');
-  const [bankAccountName, setBankAccountName] = useState('');
+  const [showDobPicker, setShowDobPicker] = useState(false);
   const [iban, setIban] = useState('');
-  const [documentUrls, setDocumentUrls] = useState<string[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [bankAccountName, setBankAccountName] = useState('');
+  const [docSlots, setDocSlots] = useState<(string | null)[]>([null, null, null]);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const [showNationalityPicker, setShowNationalityPicker] = useState(false);
-  const [showBusinessTypePicker, setShowBusinessTypePicker] = useState(false);
-  const [showDobPicker, setShowDobPicker] = useState(false);
-
   const legalNameRef = useRef<TextInput>(null);
-  const dobRef = useRef<TextInput>(null);
-  const finnishIdRef = useRef<TextInput>(null);
-  const businessNameRef = useRef<TextInput>(null);
-  const yTunnusRef = useRef<TextInput>(null);
-  const bankAccountNameRef = useRef<TextInput>(null);
   const ibanRef = useRef<TextInput>(null);
+  const bankAccountNameRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    const refs = [legalNameRef, dobRef, finnishIdRef, null, businessNameRef, yTunnusRef, null, bankAccountNameRef, ibanRef, null, null];
+    const refs = [legalNameRef, null, ibanRef, bankAccountNameRef, null, null];
     const ref = refs[step];
     if (ref) {
       const t = setTimeout(() => ref.current?.focus(), 100);
@@ -135,50 +122,64 @@ export default function Phase2Screen() {
     };
   };
 
-  const pickAndUpload = async () => {
-    if (documentUrls.length >= 5) {
-      Alert.alert('Limit reached', 'Maximum 5 documents allowed.');
-      return;
-    }
+  const compressImage = async (uri: string): Promise<string> => {
+    const ctx = ImageManipulator.manipulate(uri);
+    ctx.resize({ width: 1200 });
+    const ref = await ctx.renderAsync();
+    const saved = await ref.saveAsync({ compress: 0.7, format: SaveFormat.JPEG });
+    return saved.uri;
+  };
+
+  const pickAndUploadDoc = async (slotIndex: number) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false,
-      quality: 0.8,
+      quality: 1,
     });
     if (result.canceled) return;
     const asset = result.assets[0];
-    setUploading(true);
+    setUploadingIndex(slotIndex);
     try {
+      const compressedUri = await compressImage(asset.uri);
       const token = await getTokenRef.current();
-      const photoForm = new FormData();
-      photoForm.append('file', { uri: asset.uri, type: asset.mimeType ?? 'image/jpeg', name: asset.fileName ?? 'doc.jpg' } as any);
+      const form = new FormData();
+      form.append('file', { uri: compressedUri, type: 'image/jpeg', name: 'doc.jpg' } as any);
       const res = await fetch(`${API_BASE_URL}/upload`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${ADMIN_API_KEY}`, 'X-User-Token': token ?? '' },
-        body: photoForm,
+        body: form,
       });
-      if (!res.ok) throw new Error(`${res.status}`);
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error('[UPLOAD] Failed:', res.status, errBody);
+        throw new Error(`${res.status}: ${errBody}`);
+      }
       const { url } = await res.json();
-      setDocumentUrls(prev => [...prev, url]);
+      setDocSlots(prev => { const next = [...prev]; next[slotIndex] = url; return next; });
       setError('');
-    } catch {
-      Alert.alert('Upload failed', 'Please try again.');
+    } catch (err: any) {
+      console.error('[UPLOAD] Error:', err?.message ?? err);
+      Alert.alert('Upload failed', err?.message ?? 'Please try again.');
     } finally {
-      setUploading(false);
+      setUploadingIndex(null);
     }
+  };
+
+  const removeDoc = (slotIndex: number) => {
+    setDocSlots(prev => { const next = [...prev]; next[slotIndex] = null; return next; });
   };
 
   const validate = (): boolean => {
     if (step === 0 && !legalName.trim()) { setError('Please enter your full legal name'); return false; }
-    if (step === 1 && !dateOfBirth.trim()) { setError('Please enter your date of birth'); return false; }
-    if (step === 2 && !finnishId.trim()) { setError('Please enter your Finnish ID'); return false; }
-    if (step === 3 && !nationality) { setError('Please select your nationality'); return false; }
-    if (step === 4 && !businessName.trim()) { setError('Please enter your business name'); return false; }
-    if (step === 6 && !businessType) { setError('Please select a business type'); return false; }
-    if (step === 7 && !bankAccountName.trim()) { setError('Please enter the bank account holder name'); return false; }
-    if (step === 8 && !isValidFinnishIban(iban)) { setError('IBAN must start with FI and have 16 digits'); return false; }
-    if (step === 9 && !documentUrls.length) { setError('Upload at least one document'); return false; }
-    if (step === 10 && !termsAccepted) { setError('You must accept the terms to continue'); return false; }
+    if (step === 1) {
+      const dob = parseDobStore(dateOfBirth);
+      if (!dob) { setError('Please select your date of birth'); return false; }
+      if (!isAtLeast18(dob)) { setError('You must be 18 or older to register'); return false; }
+    }
+    if (step === 2 && !isValidFinnishIban(iban)) { setError('IBAN must start with FI and have 16 digits'); return false; }
+    if (step === 3 && !bankAccountName.trim()) { setError('Please enter the bank account holder name'); return false; }
+    if (step === 4 && docSlots.filter(Boolean).length === 0) { setError('Please upload at least one qualification document'); return false; }
+    if (step === 5 && !termsAccepted) { setError('You must accept the terms to continue'); return false; }
     setError('');
     return true;
   };
@@ -203,22 +204,22 @@ export default function Phase2Screen() {
         headers,
         body: JSON.stringify({
           legalName: legalName.trim(),
-          dateOfBirth: dateOfBirth.trim(),
-          finnishId: finnishId.trim(),
-          nationality,
-          businessName: businessName.trim(),
-          yTunnus: yTunnus.trim() || undefined,
-          businessType,
-          bankAccountName: bankAccountName.trim(),
+          dateOfBirth,
           iban: iban.replace(/\s+/g, ''),
-          documentUrls,
+          bankAccountName: bankAccountName.trim(),
+          qualificationDocs: docSlots.filter(Boolean) as string[],
           termsAccepted: true,
         }),
       });
-      if (!res.ok) throw new Error(`${res.status}`);
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error('[SUBMIT] Failed:', res.status, errBody);
+        throw new Error(`${res.status}: ${errBody}`);
+      }
       router.replace('/(onboarding)/pending' as any);
-    } catch {
-      Alert.alert('Error', 'Failed to submit. Please try again.');
+    } catch (err: any) {
+      console.error('[SUBMIT] Error:', err?.message ?? err);
+      Alert.alert('Error', err?.message ?? 'Failed to submit. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -234,7 +235,7 @@ export default function Phase2Screen() {
             ref={legalNameRef}
             value={legalName}
             onChangeText={v => { setLegalName(v); setError(''); }}
-            placeholder="Full name"
+            placeholder="Matti Meikäläinen"
             placeholderTextColor="#ccc"
             autoCapitalize="words"
             returnKeyType="next"
@@ -297,93 +298,6 @@ export default function Phase2Screen() {
       case 2:
         return (
           <TextInput
-            ref={finnishIdRef}
-            value={finnishId}
-            onChangeText={v => { setFinnishId(v); setError(''); }}
-            placeholder="010190-123A"
-            placeholderTextColor="#ccc"
-            autoCapitalize="characters"
-            returnKeyType="next"
-            onSubmitEditing={goNext}
-            style={bigInput}
-          />
-        );
-
-      case 3:
-        return (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setShowNationalityPicker(true)}
-            style={[bigInput, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
-          >
-            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 20, color: nationality ? darkBrown : '#ccc', flex: 1 }}>
-              {nationality || 'Select nationality…'}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#aaa" />
-          </TouchableOpacity>
-        );
-
-      case 4:
-        return (
-          <TextInput
-            ref={businessNameRef}
-            value={businessName}
-            onChangeText={v => { setBusinessName(v); setError(''); }}
-            placeholder="Your business name"
-            placeholderTextColor="#ccc"
-            autoCapitalize="words"
-            returnKeyType="next"
-            onSubmitEditing={goNext}
-            style={bigInput}
-          />
-        );
-
-      case 5:
-        return (
-          <TextInput
-            ref={yTunnusRef}
-            value={yTunnus}
-            onChangeText={v => { setYTunnus(v); setError(''); }}
-            placeholder="0000000-0"
-            placeholderTextColor="#ccc"
-            returnKeyType="next"
-            onSubmitEditing={goNext}
-            style={bigInput}
-          />
-        );
-
-      case 6:
-        return (
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setShowBusinessTypePicker(true)}
-            style={[bigInput, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}
-          >
-            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 20, color: businessType ? darkBrown : '#ccc', flex: 1 }}>
-              {businessType || 'Select type…'}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color="#aaa" />
-          </TouchableOpacity>
-        );
-
-      case 7:
-        return (
-          <TextInput
-            ref={bankAccountNameRef}
-            value={bankAccountName}
-            onChangeText={v => { setBankAccountName(v); setError(''); }}
-            placeholder="Full name as shown on bank account"
-            placeholderTextColor="#ccc"
-            autoCapitalize="words"
-            returnKeyType="next"
-            onSubmitEditing={goNext}
-            style={bigInput}
-          />
-        );
-
-      case 8:
-        return (
-          <TextInput
             ref={ibanRef}
             value={iban}
             onChangeText={v => { setIban(formatIban(v)); setError(''); }}
@@ -399,46 +313,91 @@ export default function Phase2Screen() {
           />
         );
 
-      case 9:
+      case 3:
         return (
           <View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 12 }}>
-              {documentUrls.map((url, i) => (
-                <View key={i} style={{ width: 90, height: 90, borderRadius: 10, overflow: 'hidden' }}>
-                  <Image source={{ uri: url }} style={{ width: 90, height: 90 }} resizeMode="cover" />
-                  <TouchableOpacity
-                    onPress={() => setDocumentUrls(prev => prev.filter((_, j) => j !== i))}
-                    style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 12, padding: 2 }}
-                  >
-                    <Ionicons name="close" size={14} color={white} />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {documentUrls.length < 5 && (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={pickAndUpload}
-                  disabled={uploading}
-                  style={{ width: 90, height: 90, borderRadius: 10, borderWidth: 2, borderColor: beige, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: lightBeige }}
-                >
-                  {uploading
-                    ? <ActivityIndicator color={darkBrown} />
-                    : <Ionicons name="add" size={28} color={darkBrown} />
-                  }
-                </TouchableOpacity>
-              )}
-            </View>
-            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#aaa' }}>
-              JPEG or PNG · up to 5 files
-            </Text>
+            <TextInput
+              autoFocus
+              value={bankAccountName}
+              onChangeText={setBankAccountName}
+              placeholder="Full name as shown on bank account"
+              placeholderTextColor="#999"
+              style={{
+                borderWidth: 1,
+                borderColor: '#C9A96E',
+                borderRadius: 12,
+                padding: 16,
+                fontSize: 18,
+                color: '#2C1810',
+                backgroundColor: 'white',
+              }}
+            />
           </View>
         );
 
-      case 10:
+      case 4: {
+        const DOC_LABELS = [
+          '📜  Diploma or Certificate',
+          '🪪  Professional License',
+          '🆔  Government ID / Other',
+        ];
+        return (
+          <View style={{ gap: 14 }}>
+            {DOC_LABELS.map((label, i) => (
+              <View key={i}>
+                <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 13, color: darkBrown, marginBottom: 6 }}>
+                  {label}
+                </Text>
+                {docSlots[i] ? (
+                  <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1.5, borderColor: beige }}>
+                    <Image source={{ uri: docSlots[i]! }} style={{ width: '100%', aspectRatio: 2 }} resizeMode="cover" />
+                    <TouchableOpacity
+                      onPress={() => removeDoc(i)}
+                      style={{ position: 'absolute', top: 8, right: 8, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14, padding: 5 }}
+                    >
+                      <Ionicons name="close" size={14} color={white} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => pickAndUploadDoc(i)}
+                    disabled={uploadingIndex !== null}
+                    style={{
+                      borderWidth: 1.5,
+                      borderColor: beige,
+                      borderStyle: 'dashed',
+                      borderRadius: 12,
+                      paddingVertical: 22,
+                      alignItems: 'center',
+                      backgroundColor: lightBeige,
+                    }}
+                  >
+                    {uploadingIndex === i
+                      ? <ActivityIndicator color={darkBrown} size="small" />
+                      : (
+                        <>
+                          <Ionicons name="cloud-upload-outline" size={22} color={darkBrown} style={{ marginBottom: 4 }} />
+                          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: darkBrown }}>Tap to upload</Text>
+                        </>
+                      )
+                    }
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))}
+            <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#aaa', marginTop: 2, textAlign: 'center' }}>
+              At least 1 document required · Max 5MB per photo · Auto-compressed
+            </Text>
+          </View>
+        );
+      }
+
+      case 5:
         return (
           <View>
             <ScrollView
-              style={{ height: 160, borderWidth: 1.5, borderColor: beige, borderRadius: 12, padding: 14, marginBottom: 16 }}
+              style={{ height: 200, borderWidth: 1.5, borderColor: beige, borderRadius: 12, padding: 14, marginBottom: 16 }}
               nestedScrollEnabled
             >
               <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#555', lineHeight: 20 }}>
@@ -448,6 +407,7 @@ export default function Phase2Screen() {
                 3. Maintain professional standards of service quality.{'\n\n'}
                 4. Comply with all applicable Finnish laws and regulations.{'\n\n'}
                 5. Allow Cosmix to collect a platform fee of 10% on each completed booking.{'\n\n'}
+                6. Receive payouts via manual SEPA bank transfer to your provided IBAN.{'\n\n'}
                 Cosmix reserves the right to suspend providers who violate these terms.
               </Text>
             </ScrollView>
@@ -455,7 +415,7 @@ export default function Phase2Screen() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => { setTermsAccepted(t => !t); setError(''); }}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}
             >
               <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: termsAccepted ? darkBrown : beige, backgroundColor: termsAccepted ? darkBrown : white, justifyContent: 'center', alignItems: 'center' }}>
                 {termsAccepted && <Ionicons name="checkmark" size={14} color={white} />}
@@ -498,7 +458,7 @@ export default function Phase2Screen() {
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{ paddingHorizontal: 28, paddingTop: 48, paddingBottom: 24 }}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           showsVerticalScrollIndicator={false}
         >
           <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 28, color: darkBrown, lineHeight: 36, marginBottom: q.hint ? 8 : 28 }}>
@@ -535,60 +495,6 @@ export default function Phase2Screen() {
         </View>
 
       </KeyboardAvoidingView>
-
-      {/* Nationality picker */}
-      {showNationalityPicker && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowNationalityPicker(false)} />
-          <View style={{ backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 8 }}>
-            <View style={{ width: 40, height: 4, backgroundColor: beige, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14 }}>
-              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 18, color: darkBrown }}>Nationality</Text>
-              <TouchableOpacity onPress={() => setShowNationalityPicker(false)}>
-                <Ionicons name="close" size={22} color={darkBrown} />
-              </TouchableOpacity>
-            </View>
-            {NATIONALITIES.map(n => (
-              <TouchableOpacity
-                key={n}
-                activeOpacity={0.8}
-                onPress={() => { setNationality(n); setShowNationalityPicker(false); setError(''); }}
-                style={{ paddingHorizontal: 24, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: lightBeige, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 16, color: darkBrown }}>{n}</Text>
-                {nationality === n && <Ionicons name="checkmark" size={18} color={darkBrown} />}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Business type picker */}
-      {showBusinessTypePicker && (
-        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowBusinessTypePicker(false)} />
-          <View style={{ backgroundColor: white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 8 }}>
-            <View style={{ width: 40, height: 4, backgroundColor: beige, borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 4 }} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 14 }}>
-              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 18, color: darkBrown }}>Business type</Text>
-              <TouchableOpacity onPress={() => setShowBusinessTypePicker(false)}>
-                <Ionicons name="close" size={22} color={darkBrown} />
-              </TouchableOpacity>
-            </View>
-            {BUSINESS_TYPES.map(t => (
-              <TouchableOpacity
-                key={t}
-                activeOpacity={0.8}
-                onPress={() => { setBusinessType(t); setShowBusinessTypePicker(false); setError(''); }}
-                style={{ paddingHorizontal: 24, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: lightBeige, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 16, color: darkBrown }}>{t}</Text>
-                {businessType === t && <Ionicons name="checkmark" size={18} color={darkBrown} />}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }

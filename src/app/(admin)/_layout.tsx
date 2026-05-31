@@ -14,12 +14,15 @@ export default function AdminLayout() {
           backgroundColor: beige,
           borderTopWidth: 0,
           elevation: 0,
+          height: 70,
+          paddingTop: 8,
+          paddingBottom: 12,
         },
         tabBarActiveTintColor: darkBrown,
         tabBarInactiveTintColor: inactive,
         tabBarLabelStyle: {
-          fontFamily: 'Philosopher-Regular',
-          fontSize: 11,
+          fontFamily: 'Philosopher-Bold',
+          fontSize: 12,
         },
       }}
     >
@@ -27,8 +30,8 @@ export default function AdminLayout() {
         name="overview"
         options={{
           title: 'Overview',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="stats-chart" color={color} size={size} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="stats-chart" color={color} size={26} />
           ),
         }}
       />
@@ -36,8 +39,8 @@ export default function AdminLayout() {
         name="saloons"
         options={{
           title: 'Saloons',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="business" color={color} size={size} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="business" color={color} size={26} />
           ),
         }}
       />
@@ -45,27 +48,25 @@ export default function AdminLayout() {
         name="catalog"
         options={{
           title: 'Catalog',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="users"
-        options={{
-          title: 'Users',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people" color={color} size={size} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="list" color={color} size={26} />
           ),
         }}
       />
       <Tabs.Screen
         name="applications"
         options={{
-          title: 'Apply',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="clipboard" color={color} size={size} />
+          title: 'Applications',
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="clipboard" color={color} size={26} />
           ),
+        }}
+      />
+      {/* Users tab hidden from nav (route still accessible if needed) */}
+      <Tabs.Screen
+        name="users"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

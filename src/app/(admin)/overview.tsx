@@ -10,6 +10,8 @@ import {
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { TouchableOpacity } from 'react-native';
 import { API_BASE_URL } from '../../../config/constants';
 
 const darkBrown = '#423120';
@@ -83,6 +85,7 @@ function StatCard({
 export default function AdminOverviewScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const [stats, setStats] = useState<Stats | null>(null);
   const [revenue, setRevenue] = useState<RevenueData | null>(null);
@@ -132,6 +135,39 @@ export default function AdminOverviewScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
+      {/* Header: back arrow + title */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: 16,
+          paddingTop: 12,
+          paddingBottom: 12,
+          borderBottomWidth: 1,
+          borderBottomColor: beige,
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => router.replace('/(app)/(tabs)' as any)}
+          style={{ width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color={darkBrown} />
+        </TouchableOpacity>
+        <Text
+          style={{
+            flex: 1,
+            fontFamily: 'Philosopher-Bold',
+            fontSize: 18,
+            color: darkBrown,
+            textAlign: 'center',
+            marginRight: 40, // mirror the back button width so title stays visually centred
+          }}
+        >
+          Overview
+        </Text>
+      </View>
+
       <ScrollView
         contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
         refreshControl={
@@ -143,25 +179,6 @@ export default function AdminOverviewScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Hero ── */}
-        <View style={{ backgroundColor: beige, paddingTop: 16, paddingBottom: 28, alignItems: 'center' }}>
-          <View
-            style={{
-              backgroundColor: lightBeige,
-              width: 200,
-              height: 200,
-              borderTopLeftRadius: 160,
-              borderTopRightRadius: 160,
-              justifyContent: 'center',
-              alignItems: 'center',
-              marginTop: 16,
-            }}
-          >
-            <Ionicons name="stats-chart" size={28} color={darkBrown} style={{ marginBottom: 6 }} />
-            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 22, color: darkBrown }}>Overview</Text>
-          </View>
-        </View>
-
         {error && (
           <View style={{ paddingHorizontal: 20, paddingTop: 16 }}>
             <Text style={{ color: '#c00', fontFamily: 'Philosopher-Regular', fontSize: 13 }}>{error}</Text>

@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   ActivityIndicator,
-  Alert,
   SafeAreaView,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,117 +20,65 @@ const lightBeige = '#F4EDE5';
 const white = '#FFFFFF';
 const green = '#2d7a2d';
 
-type AccountStatus = 'loading' | 'not_connected' | 'incomplete' | 'active';
-
-type StatusData = {
-  status: AccountStatus;
-  chargesEnabled?: boolean;
-  payoutsEnabled?: boolean;
+type PayoutData = {
+  pendingBalance: number;
+  totalRevenue: number;
+  platformFee: number;
+  platformFeeRate: number;
+  bookingsCount: number;
+  iban: string | null;
+  bankAccountName: string | null;
 };
+
+const formatEur = (n: number) =>
+  new Intl.NumberFormat('fi-FI', { style: 'currency', currency: 'EUR' }).format(n);
+
+const formatIbanForDisplay = (iban: string) =>
+  iban.replace(/(.{4})/g, '$1 ').trim();
 
 export default function ProviderPayoutsScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
 
-  const [statusData, setStatusData] = useState<StatusData>({ status: 'loading' });
-  const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<PayoutData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
-  const buildHeaders = async (): Promise<Record<string, string>> => {
-    const token = await getTokenRef.current();
-    const h: Record<string, string> = {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${ADMIN_API_KEY}`,
-    };
-    if (token) h['X-User-Token'] = token;
-    return h;
-  };
-
-  const checkStatus = async () => {
+  const fetchPayout = useCallback(async () => {
     try {
-      const headers = await buildHeaders();
-      const res = await fetch(`${API_BASE_URL}/provider/stripe/status`, { headers });
+      const token = await getTokenRef.current();
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${ADMIN_API_KEY}`,
+      };
+      if (token) headers['X-User-Token'] = token;
+
+      const res = await fetch(`${API_BASE_URL}/provider/revenue`, { headers });
       if (!res.ok) throw new Error(`${res.status}`);
-      const data = await res.json();
-      const apiStatus: string = data.stripeAccountStatus ?? 'none';
-      const status: AccountStatus =
-        apiStatus === 'active' ? 'active'
-        : apiStatus === 'incomplete' ? 'incomplete'
-        : 'not_connected';
-      setStatusData({
-        status,
-        chargesEnabled: !!data.chargesEnabled,
-        payoutsEnabled: !!data.payoutsEnabled,
+      const json = await res.json();
+
+      setData({
+        pendingBalance: json.pendingBalance ?? 0,
+        totalRevenue: json.totalRevenue ?? 0,
+        platformFee: json.platformFee ?? 0,
+        platformFeeRate: json.platformFeeRate ?? 0.10,
+        bookingsCount: json.bookingsCount ?? 0,
+        iban: json.payout?.iban ?? null,
+        bankAccountName: json.payout?.bankAccountName ?? null,
       });
-    } catch {
-      setStatusData({ status: 'not_connected' });
-    }
-  };
-
-  useEffect(() => {
-    checkStatus();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleSetup = async () => {
-    setActionLoading(true);
-    setError(null);
-    try {
-      const headers = await buildHeaders();
-      const res = await fetch(`${API_BASE_URL}/stripe/account-link`, {
-        method: 'POST',
-        headers,
-      });
-      if (!res.ok) throw new Error(`${res.status}`);
-      const { url } = await res.json();
-      if (!url) throw new Error('No account link URL');
-
-      await WebBrowser.openBrowserAsync(url);
-      await checkStatus();
     } catch (err) {
-      console.log('[Payouts] handleSetup error:', err);
-      setError('Failed to start Stripe verification. Please try again.');
+      console.log('[Payouts] fetch error:', err);
     } finally {
-      setActionLoading(false);
+      setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  const handleDisconnect = () => {
-    Alert.alert(
-      'Disconnect Stripe',
-      'Are you sure you want to disconnect your Stripe account? You will stop receiving payouts.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Disconnect',
-          style: 'destructive',
-          onPress: async () => {
-            setActionLoading(true);
-            setError(null);
-            try {
-              const headers = await buildHeaders();
-              const res = await fetch(`${API_BASE_URL}/stripe/connect`, {
-                method: 'DELETE',
-                headers,
-              });
-              if (!res.ok) throw new Error(`${res.status}`);
-              await checkStatus();
-            } catch {
-              setError('Failed to disconnect. Please try again.');
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
+  useEffect(() => { fetchPayout(); }, [fetchPayout]);
 
-  const { status, chargesEnabled, payoutsEnabled } = statusData;
-
-  if (status === 'loading') {
+  if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: white, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color={darkBrown} />
@@ -161,78 +107,74 @@ export default function ProviderPayoutsScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 80, paddingTop: 24 }}>
-        {error && (
-          <Text style={{ color: '#c00', fontFamily: 'Philosopher-Regular', fontSize: 13, marginBottom: 16 }}>
-            {error}
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: insets.bottom + 80, paddingTop: 24 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); fetchPayout(); }}
+            tintColor={darkBrown}
+          />
+        }
+      >
+        {/* Pending balance */}
+        <View style={{ borderWidth: 2, borderColor: green, borderRadius: 16, padding: 20, backgroundColor: '#f0fff0', marginBottom: 16 }}>
+          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 12, color: green, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+            Pending balance
           </Text>
-        )}
+          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 36, color: darkBrown, marginBottom: 6 }}>
+            {formatEur(data?.pendingBalance ?? 0)}
+          </Text>
+          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: '#555' }}>
+            From {data?.bookingsCount ?? 0} bookings · after {Math.round((data?.platformFeeRate ?? 0.10) * 100)}% platform fee
+          </Text>
+        </View>
 
-        {/* Status card */}
-        {status === 'active' ? (
-          <ActiveCard chargesEnabled={!!chargesEnabled} payoutsEnabled={!!payoutsEnabled} />
-        ) : status === 'incomplete' ? (
-          <IncompleteCard />
-        ) : (
-          <NotConnectedCard />
-        )}
+        {/* Schedule */}
+        <View style={{ borderWidth: 2, borderColor: beige, borderRadius: 16, padding: 20, backgroundColor: lightBeige, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <Ionicons name="calendar-outline" size={20} color={darkBrown} style={{ marginRight: 8 }} />
+            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: darkBrown }}>
+              Payout schedule
+            </Text>
+          </View>
+          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#555', lineHeight: 20 }}>
+            Payouts are processed manually every Friday via SEPA bank transfer.
+          </Text>
+        </View>
 
-        {/* Action buttons */}
-        <View style={{ marginTop: 20, gap: 12 }}>
-          {status === 'not_connected' && (
-            <PrimaryButton
-              icon="card-outline"
-              label="Set up payouts"
-              loading={actionLoading}
-              onPress={handleSetup}
-            />
-          )}
+        {/* Bank details */}
+        <View style={{ borderWidth: 2, borderColor: beige, borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14 }}>
+            <Ionicons name="business-outline" size={20} color={darkBrown} style={{ marginRight: 8 }} />
+            <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: darkBrown }}>
+              Bank account
+            </Text>
+          </View>
+          <Row label="Holder" value={data?.bankAccountName ?? '—'} />
+          <Row label="IBAN" value={data?.iban ? formatIbanForDisplay(data.iban) : '—'} mono />
+          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#888', marginTop: 10 }}>
+            To update your bank details, contact support.
+          </Text>
+        </View>
 
-          {status === 'incomplete' && (
-            <PrimaryButton
-              icon="shield-checkmark-outline"
-              label="Verify Identity"
-              loading={actionLoading}
-              onPress={handleSetup}
-            />
-          )}
-
-          {(status === 'active' || status === 'incomplete') && (
-            <TouchableOpacity
-              onPress={handleDisconnect}
-              disabled={actionLoading}
-              style={{
-                backgroundColor: white,
-                borderWidth: 1.5,
-                borderColor: '#c00',
-                borderRadius: 12,
-                paddingVertical: 16,
-                alignItems: 'center',
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              {actionLoading ? (
-                <ActivityIndicator color="#c00" />
-              ) : (
-                <>
-                  <Ionicons name="unlink-outline" size={20} color="#c00" />
-                  <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: '#c00' }}>
-                    Disconnect Stripe
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
+        {/* Breakdown */}
+        <View style={{ borderWidth: 2, borderColor: beige, borderRadius: 16, padding: 20, marginBottom: 16 }}>
+          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: darkBrown, marginBottom: 14 }}>
+            Breakdown
+          </Text>
+          <Row label="Total revenue" value={formatEur(data?.totalRevenue ?? 0)} />
+          <Row label="Platform fee" value={`− ${formatEur(data?.platformFee ?? 0)}`} />
+          <View style={{ height: 1, backgroundColor: beige, marginVertical: 10 }} />
+          <Row label="Your payout" value={formatEur(data?.pendingBalance ?? 0)} bold />
         </View>
 
         {/* Info bullets */}
-        <View style={{ marginTop: 28, gap: 12 }}>
+        <View style={{ marginTop: 4, gap: 12 }}>
           {[
-            { icon: 'shield-checkmark-outline', text: 'Payments are handled securely via Stripe Express.' },
-            { icon: 'time-outline', text: 'Payouts are typically processed within 2 business days.' },
-            { icon: 'globe-outline', text: 'Stripe handles all compliance and identity verification.' },
+            { icon: 'shield-checkmark-outline', text: 'Cosmix processes manual SEPA transfers to your IBAN.' },
+            { icon: 'time-outline', text: 'Funds typically arrive within 1–2 business days after Friday’s transfer.' },
+            { icon: 'help-circle-outline', text: 'Questions about a payout? Contact support@cosmix.fi.' },
           ].map(({ icon, text }) => (
             <View key={icon} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
               <Ionicons name={icon as any} size={16} color={darkBrown} style={{ marginTop: 2 }} />
@@ -247,130 +189,20 @@ export default function ProviderPayoutsScreen() {
   );
 }
 
-function ActiveCard({ chargesEnabled, payoutsEnabled }: { chargesEnabled: boolean; payoutsEnabled: boolean }) {
+function Row({ label, value, mono, bold }: { label: string; value: string; mono?: boolean; bold?: boolean }) {
   return (
-    <View
-      style={{
-        borderWidth: 2,
-        borderColor: green,
-        borderRadius: 16,
-        padding: 20,
-        backgroundColor: '#f0fff0',
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-        <Ionicons name="checkmark-circle" size={22} color={green} style={{ marginRight: 8 }} />
-        <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 17, color: green }}>
-          Stripe Connected
-        </Text>
-      </View>
-      <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#555', lineHeight: 20, marginBottom: 12 }}>
-        You are set up to receive payouts directly to your bank account.
-      </Text>
-      <View style={{ gap: 8 }}>
-        <StatusRow label="Charges enabled" active={chargesEnabled} />
-        <StatusRow label="Payouts enabled" active={payoutsEnabled} />
-      </View>
-    </View>
-  );
-}
-
-function IncompleteCard() {
-  return (
-    <View
-      style={{
-        borderWidth: 2,
-        borderColor: '#e6a817',
-        borderRadius: 16,
-        padding: 20,
-        backgroundColor: '#fffbf0',
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <Ionicons name="shield-half-outline" size={22} color="#b07d00" style={{ marginRight: 8 }} />
-        <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 17, color: '#b07d00' }}>
-          Verify Your Identity
-        </Text>
-      </View>
-      <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#555', lineHeight: 20 }}>
-        Your account is created and pre-filled. Complete Stripe&apos;s identity verification to start receiving payouts.
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+      <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#666' }}>{label}</Text>
+      <Text
+        style={{
+          fontFamily: bold ? 'Philosopher-Bold' : 'Philosopher-Regular',
+          fontSize: bold ? 16 : 14,
+          color: darkBrown,
+          fontVariant: mono ? ['tabular-nums'] : undefined,
+        }}
+      >
+        {value}
       </Text>
     </View>
-  );
-}
-
-function NotConnectedCard() {
-  return (
-    <View
-      style={{
-        borderWidth: 2,
-        borderColor: beige,
-        borderRadius: 16,
-        padding: 20,
-        backgroundColor: lightBeige,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-        <Ionicons name="alert-circle-outline" size={22} color={darkBrown} style={{ marginRight: 8 }} />
-        <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 17, color: darkBrown }}>
-          Not Connected
-        </Text>
-      </View>
-      <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#555', lineHeight: 20 }}>
-        Connect your Stripe account to receive payments from bookings directly to your bank.
-      </Text>
-    </View>
-  );
-}
-
-function StatusRow({ label, active }: { label: string; active: boolean }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <Ionicons
-        name={active ? 'checkmark-circle' : 'close-circle-outline'}
-        size={16}
-        color={active ? green : '#aaa'}
-      />
-      <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 13, color: active ? green : '#888' }}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-function PrimaryButton({
-  icon,
-  label,
-  loading,
-  onPress,
-}: {
-  icon: string;
-  label: string;
-  loading: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={loading}
-      style={{
-        backgroundColor: darkBrown,
-        borderRadius: 12,
-        paddingVertical: 16,
-        alignItems: 'center',
-        flexDirection: 'row',
-        justifyContent: 'center',
-        gap: 8,
-      }}
-    >
-      {loading ? (
-        <ActivityIndicator color={white} />
-      ) : (
-        <>
-          <Ionicons name={icon as any} size={20} color={white} />
-          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: white }}>{label}</Text>
-        </>
-      )}
-    </TouchableOpacity>
   );
 }

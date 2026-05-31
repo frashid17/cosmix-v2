@@ -1,10 +1,13 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../config/constants';
+
+const PROVIDER_STATUS_KEY = 'providerStatus';
 
 const ADMIN_API_KEY = process.env.EXPO_PUBLIC_ADMIN_API_KEY || '';
 
@@ -15,12 +18,12 @@ const white = '#FFFFFF';
 const TITLES: Record<string, string> = {
   PHASE1_PENDING: 'Reviewing your application',
   PHASE2_PENDING: 'Verifying your documents',
-  PHASE3_PENDING: 'Reviewing your services',
 };
 
 const NEXT_ROUTES: Record<string, string> = {
   PHASE1_APPROVED: '/(onboarding)/phase2',
   PHASE2_APPROVED: '/(onboarding)/phase3',
+  PHASE3_PENDING:  '/(provider)/bookings',
   ACTIVE:          '/(provider)/bookings',
   REJECTED:        '/(onboarding)/rejected',
 };
@@ -32,7 +35,8 @@ export default function PendingScreen() {
   const getTokenRef = useRef(getToken);
   getTokenRef.current = getToken;
 
-  const [status, setStatus] = React.useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const checkStatus = useCallback(async () => {
@@ -51,16 +55,29 @@ export default function PendingScreen() {
       const next = NEXT_ROUTES[s];
       if (next) {
         if (intervalRef.current) clearInterval(intervalRef.current);
+        // Cache whenever the provider lands on their dashboard, regardless of the
+        // exact status string (PHASE3_PENDING also routes there once approved).
+        if (next === '/(provider)/bookings') await AsyncStorage.setItem(PROVIDER_STATUS_KEY, 'ACTIVE');
         router.replace(next as any);
       }
     } catch {}
   }, [router]);
 
+  // Check cache first — if ACTIVE, redirect instantly without showing this screen
   useEffect(() => {
-    checkStatus();
-    intervalRef.current = setInterval(checkStatus, 30000);
+    AsyncStorage.getItem(PROVIDER_STATUS_KEY).then(cached => {
+      if (cached === 'ACTIVE') {
+        router.replace('/(provider)/bookings' as any);
+        // Background-refresh the cache
+        checkStatus();
+      } else {
+        setInitializing(false);
+        checkStatus();
+        intervalRef.current = setInterval(checkStatus, 30000);
+      }
+    });
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [checkStatus]);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -68,6 +85,8 @@ export default function PendingScreen() {
   };
 
   const title = (status && TITLES[status]) ?? 'Under review';
+
+  if (initializing) return null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: white }}>

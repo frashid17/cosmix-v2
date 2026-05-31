@@ -19,26 +19,34 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE_URL } from '../../../config/constants';
 
-// ─── Colors ──────────────────────────────────────────────────────────────────
 const darkBrown = '#423120';
 const beige = '#D7C3A7';
 const lightBeige = '#F4EDE5';
 const white = '#FFFFFF';
 const DURATIONS = [15, 30, 45, 60, 90, 120];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type GlobalService = {
-  id: string;
-  name: string;
-  description?: string;
+const labelStyle = {
+  fontFamily: 'Philosopher-Bold' as const,
+  fontSize: 13,
+  color: '#888',
+  textTransform: 'uppercase' as const,
+  letterSpacing: 0.5,
+  marginBottom: 6,
 };
 
-type GlobalCategory = {
-  id: string;
-  name: string;
-  services: GlobalService[];
+const inputStyle = {
+  borderWidth: 1.5,
+  borderColor: beige,
+  borderRadius: 10,
+  paddingHorizontal: 14,
+  paddingVertical: 10,
+  fontFamily: 'Philosopher-Regular' as const,
+  fontSize: 15,
+  color: darkBrown,
 };
 
+type GlobalService = { id: string; name: string; description?: string };
+type GlobalCategory = { id: string; name: string; services: GlobalService[] };
 type SaloonService = {
   serviceId: string;
   saloonId: string;
@@ -47,22 +55,10 @@ type SaloonService = {
   isAvailable: boolean;
   service: { id: string; name: string; description?: string; category?: { name: string } };
 };
+type EditForm = { serviceId: string; price: string; durationMinutes: number; isAvailable: boolean };
 
-type FormState = {
-  serviceId: string;
-  price: string;
-  durationMinutes: number;
-  isAvailable: boolean;
-};
+const EMPTY_EDIT: EditForm = { serviceId: '', price: '', durationMinutes: 30, isAvailable: true };
 
-const EMPTY_FORM: FormState = {
-  serviceId: '',
-  price: '',
-  durationMinutes: 30,
-  isAvailable: true,
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
 export default function ProviderServicesScreen() {
   const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
@@ -74,31 +70,34 @@ export default function ProviderServicesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal state
   const [modalVisible, setModalVisible] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [editForm, setEditForm] = useState<EditForm>(EMPTY_EDIT);
   const [saving, setSaving] = useState(false);
-  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
 
-  // ── Auth headers ─────────────────────────────────────────────────────────
+  // Add-mode state
+  const [activeCategoryId, setActiveCategoryId] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState('');
+  const [addPrice, setAddPrice] = useState('');
+  const [addDuration, setAddDuration] = useState(30);
+
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
+
   const authHeaders = useCallback(async (): Promise<Record<string, string>> => {
-    const token = await getToken();
+    const token = await getTokenRef.current();
     const h: Record<string, string> = {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token ?? ''}`,
     };
     if (token) h['X-User-Token'] = token;
     return h;
-  }, [getToken]);
+  }, []);
 
-  // ── Fetch ─────────────────────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     try {
       setError(null);
       const headers = await authHeaders();
-
-      // 1. Get provider's first saloon
       const saloonRes = await fetch(`${API_BASE_URL}/saloons`, { headers });
       if (!saloonRes.ok) throw new Error('Could not load salon');
       const saloons = await saloonRes.json();
@@ -109,13 +108,10 @@ export default function ProviderServicesScreen() {
       }
       const id = saloons[0].id;
       setSaloonId(id);
-
-      // 2. Get services for this saloon
       const [svcRes, catRes] = await Promise.all([
         fetch(`${API_BASE_URL}/saloons/${id}/services`, { headers }),
         fetch(`${API_BASE_URL}/public/categories`),
       ]);
-
       if (svcRes.ok) {
         const data = await svcRes.json();
         setServices(Array.isArray(data) ? data : []);
@@ -124,7 +120,7 @@ export default function ProviderServicesScreen() {
         const cats = await catRes.json();
         setCategories(Array.isArray(cats) ? cats.filter((c: GlobalCategory) => c.services?.length > 0) : []);
       }
-    } catch (e: any) {
+    } catch {
       setError('Failed to load services.');
     } finally {
       setLoading(false);
@@ -132,22 +128,20 @@ export default function ProviderServicesScreen() {
     }
   }, [authHeaders]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
-  // ── Open add modal ────────────────────────────────────────────────────────
   const openAdd = () => {
     setIsEditing(false);
-    setForm(EMPTY_FORM);
+    setSelectedServiceId('');
+    setAddPrice('');
+    setAddDuration(30);
     setActiveCategoryId(categories[0]?.id ?? null);
     setModalVisible(true);
   };
 
-  // ── Open edit modal ───────────────────────────────────────────────────────
   const openEdit = (svc: SaloonService) => {
     setIsEditing(true);
-    setForm({
+    setEditForm({
       serviceId: svc.serviceId,
       price: String(svc.price),
       durationMinutes: svc.durationMinutes,
@@ -156,46 +150,46 @@ export default function ProviderServicesScreen() {
     setModalVisible(true);
   };
 
-  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!saloonId) return;
-    const price = parseFloat(form.price);
-    if (!form.serviceId) return Alert.alert('Required', 'Please select a service.');
-    if (isNaN(price) || price <= 0) return Alert.alert('Required', 'Enter a valid price.');
-
     setSaving(true);
     try {
       const headers = await authHeaders();
       if (isEditing) {
-        const res = await fetch(`${API_BASE_URL}/saloons/${saloonId}/services/${form.serviceId}`, {
+        const price = parseFloat(editForm.price);
+        if (isNaN(price) || price <= 0) {
+          Alert.alert('Required', 'Enter a valid price.');
+          return;
+        }
+        const res = await fetch(`${API_BASE_URL}/saloons/${saloonId}/services/${editForm.serviceId}`, {
           method: 'PATCH',
           headers,
-          body: JSON.stringify({ price, durationMinutes: form.durationMinutes, isAvailable: form.isAvailable }),
+          body: JSON.stringify({ price, durationMinutes: editForm.durationMinutes, isAvailable: editForm.isAvailable }),
         });
         if (!res.ok) throw new Error();
-        setServices((prev) =>
-          prev.map((s) =>
-            s.serviceId === form.serviceId
-              ? { ...s, price, durationMinutes: form.durationMinutes, isAvailable: form.isAvailable }
+        setServices(prev =>
+          prev.map(s =>
+            s.serviceId === editForm.serviceId
+              ? { ...s, price, durationMinutes: editForm.durationMinutes, isAvailable: editForm.isAvailable }
               : s
           )
         );
       } else {
+        if (!selectedServiceId) {
+          Alert.alert('Required', 'Please select a service.');
+          return;
+        }
+        const price = parseFloat(addPrice);
+        if (isNaN(price) || price <= 0) {
+          Alert.alert('Required', 'Enter a valid price.');
+          return;
+        }
         const res = await fetch(`${API_BASE_URL}/saloons/${saloonId}/services`, {
           method: 'POST',
           headers,
-          body: JSON.stringify({
-            serviceId: form.serviceId,
-            price,
-            durationMinutes: form.durationMinutes,
-            isAvailable: form.isAvailable,
-          }),
+          body: JSON.stringify({ serviceId: selectedServiceId, price, durationMinutes: addDuration, isAvailable: true }),
         });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text);
-        }
-        // Re-fetch to get the full service record with name/category
+        if (!res.ok) throw new Error(await res.text());
         const svcRes = await fetch(`${API_BASE_URL}/saloons/${saloonId}/services`, { headers });
         if (svcRes.ok) setServices(await svcRes.json());
       }
@@ -207,7 +201,6 @@ export default function ProviderServicesScreen() {
     }
   };
 
-  // ── Delete ────────────────────────────────────────────────────────────────
   const handleDelete = (svc: SaloonService) => {
     Alert.alert('Delete Service', `Remove "${svc.service?.name}" from your salon?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -216,18 +209,13 @@ export default function ProviderServicesScreen() {
         style: 'destructive',
         onPress: async () => {
           if (!saloonId) return;
-          // Optimistic remove
-          setServices((prev) => prev.filter((s) => s.serviceId !== svc.serviceId));
+          setServices(prev => prev.filter(s => s.serviceId !== svc.serviceId));
           try {
             const headers = await authHeaders();
-            const res = await fetch(`${API_BASE_URL}/saloons/${saloonId}/services/${svc.serviceId}`, {
-              method: 'DELETE',
-              headers,
-            });
+            const res = await fetch(`${API_BASE_URL}/saloons/${saloonId}/services/${svc.serviceId}`, { method: 'DELETE', headers });
             if (!res.ok) throw new Error();
           } catch {
-            // Restore on error
-            setServices((prev) => [...prev, svc]);
+            setServices(prev => [...prev, svc]);
             Alert.alert('Error', 'Failed to delete service. Please try again.');
           }
         },
@@ -235,23 +223,19 @@ export default function ProviderServicesScreen() {
     ]);
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const addedServiceIds = new Set(services.map((s) => s.serviceId));
+  const addedServiceIds = new Set(services.map(s => s.serviceId));
   const activeCategoryServices =
-    categories.find((c) => c.id === activeCategoryId)?.services.filter((s) => !addedServiceIds.has(s.id)) ?? [];
+    categories.find(c => c.id === activeCategoryId)?.services.filter(s => !addedServiceIds.has(s.id)) ?? [];
 
-  // ── Render service card ───────────────────────────────────────────────────
   const renderService = ({ item, index }: { item: SaloonService; index: number }) => (
-    <View
-      style={{
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderBottomWidth: index < services.length - 1 ? 1 : 0,
-        borderBottomColor: beige,
-      }}
-    >
+    <View style={{
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      borderBottomWidth: index < services.length - 1 ? 1 : 0,
+      borderBottomColor: beige,
+    }}>
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 15, color: darkBrown }}>
           {item.service?.name ?? 'Service'}
@@ -272,7 +256,6 @@ export default function ProviderServicesScreen() {
     </View>
   );
 
-  // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: white, justifyContent: 'center', alignItems: 'center' }}>
@@ -283,30 +266,19 @@ export default function ProviderServicesScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: white }}>
-      {/* ── Header ── */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 12,
-          borderBottomWidth: 1,
-          borderBottomColor: beige,
-        }}
-      >
+      {/* Header */}
+      <View style={{
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
+        borderBottomWidth: 1, borderBottomColor: beige,
+      }}>
         <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 22, color: darkBrown }}>My Services</Text>
         <TouchableOpacity
           onPress={openAdd}
           style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: darkBrown,
-            paddingHorizontal: 14,
-            paddingVertical: 8,
-            borderRadius: 20,
-            gap: 6,
+            flexDirection: 'row', alignItems: 'center',
+            backgroundColor: darkBrown, paddingHorizontal: 14, paddingVertical: 8,
+            borderRadius: 20, gap: 6,
           }}
         >
           <Ionicons name="add" size={18} color={white} />
@@ -320,226 +292,212 @@ export default function ProviderServicesScreen() {
         </View>
       )}
 
-      {/* ── Service List ── */}
       {services.length === 0 ? (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 }}>
           <Ionicons name="cut-outline" size={48} color={beige} style={{ marginBottom: 12 }} />
           <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: darkBrown, textAlign: 'center' }}>
             No services yet
           </Text>
-          <Text
-            style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#888', textAlign: 'center', marginTop: 6 }}
-          >
+          <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#888', textAlign: 'center', marginTop: 6 }}>
             Tap "Add Service" to start building your menu.
           </Text>
         </View>
       ) : (
         <FlatList
           data={services}
-          keyExtractor={(item) => item.serviceId}
+          keyExtractor={item => item.serviceId}
           renderItem={renderService}
           refreshing={refreshing}
           onRefresh={() => { setRefreshing(true); fetchData(); }}
           contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           style={{ flex: 1 }}
-          ItemSeparatorComponent={() => null}
           ListHeaderComponent={
             <View style={{ borderWidth: 2, borderColor: beige, borderRadius: 12, marginHorizontal: 20, marginTop: 16, overflow: 'hidden' }} />
           }
         />
       )}
 
-      {/* ═══════════════════════════════════════════════════════════
-          SERVICE FORM MODAL
-      ═══════════════════════════════════════════════════════════ */}
       <Modal visible={modalVisible} animationType="slide" transparent presentationStyle="overFullScreen">
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
-            <View
-              style={{
-                backgroundColor: white,
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-                paddingHorizontal: 20,
-                paddingTop: 16,
-                paddingBottom: insets.bottom + 16,
-                maxHeight: '90%',
-              }}
-            >
+            <View style={{
+              backgroundColor: white,
+              borderTopLeftRadius: 24, borderTopRightRadius: 24,
+              paddingTop: 16, maxHeight: '92%', flex: 1,
+            }}>
               {/* Handle */}
               <View style={{ width: 40, height: 4, backgroundColor: beige, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
 
               {/* Title + close */}
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingHorizontal: 20 }}>
                 <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 20, color: darkBrown }}>
-                  {isEditing ? 'Edit Service' : 'Add Service'}
+                  {isEditing ? 'Edit Service' : 'Add Services'}
                 </Text>
                 <TouchableOpacity onPress={() => setModalVisible(false)} style={{ padding: 4 }}>
                   <Ionicons name="close" size={24} color={darkBrown} />
                 </TouchableOpacity>
               </View>
 
-              <ScrollView showsVerticalScrollIndicator={false}>
-                {/* ── Service picker (add only) ── */}
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }}>
+                {/* Service picker — add mode */}
                 {!isEditing && (
                   <View style={{ marginBottom: 20 }}>
-                    <Text style={labelStyle}>Service *</Text>
+                    <Text style={labelStyle}>Services *</Text>
 
                     {/* Category tabs */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
-                      {categories.map((cat) => (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }} contentContainerStyle={{ gap: 8 }}>
+                      {categories.map(cat => (
                         <TouchableOpacity
                           key={cat.id}
-                          onPress={() => { setActiveCategoryId(cat.id); setForm((f) => ({ ...f, serviceId: '' })); }}
+                          activeOpacity={0.85}
+                          onPress={() => setActiveCategoryId(cat.id)}
                           style={{
-                            paddingHorizontal: 14,
-                            paddingVertical: 6,
-                            marginRight: 8,
-                            borderRadius: 16,
+                            height: 44,
+                            paddingHorizontal: 16,
+                            justifyContent: 'center',
+                            borderRadius: 22,
                             backgroundColor: activeCategoryId === cat.id ? darkBrown : lightBeige,
+                            borderWidth: 1.5,
+                            borderColor: activeCategoryId === cat.id ? darkBrown : beige,
                           }}
                         >
-                          <Text
-                            style={{
-                              fontFamily: 'Philosopher-Bold',
-                              fontSize: 12,
-                              color: activeCategoryId === cat.id ? white : darkBrown,
-                            }}
-                          >
+                          <Text style={{
+                            fontFamily: 'Philosopher-Bold',
+                            fontSize: 15,
+                            color: activeCategoryId === cat.id ? white : darkBrown,
+                          }}>
                             {cat.name}
                           </Text>
                         </TouchableOpacity>
                       ))}
                     </ScrollView>
 
-                    {/* Service list for selected category */}
+                    {/* Service checkboxes */}
                     {activeCategoryServices.length === 0 ? (
                       <Text style={{ fontFamily: 'Philosopher-Regular', color: '#888', fontSize: 13, paddingVertical: 8 }}>
                         All services from this category are already added.
                       </Text>
                     ) : (
-                      <View style={{ borderWidth: 1.5, borderColor: beige, borderRadius: 10, overflow: 'hidden' }}>
-                        {activeCategoryServices.map((svc, i) => (
-                          <TouchableOpacity
-                            key={svc.id}
-                            onPress={() => setForm((f) => ({ ...f, serviceId: svc.id }))}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              paddingHorizontal: 14,
-                              paddingVertical: 10,
-                              backgroundColor: form.serviceId === svc.id ? lightBeige : white,
-                              borderBottomWidth: i < activeCategoryServices.length - 1 ? 1 : 0,
-                              borderBottomColor: beige,
-                            }}
-                          >
-                            <Ionicons
-                              name={form.serviceId === svc.id ? 'radio-button-on' : 'radio-button-off'}
-                              size={18}
-                              color={darkBrown}
-                              style={{ marginRight: 10 }}
-                            />
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 14, color: darkBrown }}>{svc.name}</Text>
-                              {svc.description && (
-                                <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 12, color: '#888', marginTop: 1 }}>
-                                  {svc.description}
+                      <View>
+                        {activeCategoryServices.map(svc => {
+                          const selected = selectedServiceId === svc.id;
+                          return (
+                            <TouchableOpacity
+                              key={svc.id}
+                              activeOpacity={0.85}
+                              onPress={() => setSelectedServiceId(svc.id)}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'flex-start',
+                                paddingHorizontal: 14,
+                                paddingVertical: 16,
+                                borderRadius: 12,
+                                marginBottom: 4,
+                                backgroundColor: selected ? lightBeige : white,
+                              }}
+                            >
+                              <Ionicons
+                                name={selected ? 'radio-button-on' : 'radio-button-off'}
+                                size={20}
+                                color={darkBrown}
+                                style={{ marginRight: 12, marginTop: 1 }}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 17, color: darkBrown }}>
+                                  {svc.name}
                                 </Text>
-                              )}
-                            </View>
-                          </TouchableOpacity>
-                        ))}
+                                {svc.description && (
+                                  <Text style={{ fontFamily: 'Philosopher-Regular', fontSize: 14, color: '#666', marginTop: 4, lineHeight: 20 }}>
+                                    {svc.description}
+                                  </Text>
+                                )}
+                              </View>
+                            </TouchableOpacity>
+                          );
+                        })}
                       </View>
                     )}
                   </View>
                 )}
 
-                {/* ── Service name (edit — read only) ── */}
+                {/* Service name — edit mode */}
                 {isEditing && (
                   <View style={{ marginBottom: 20 }}>
                     <Text style={labelStyle}>Service</Text>
                     <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 15, color: darkBrown, paddingVertical: 8 }}>
-                      {services.find((s) => s.serviceId === form.serviceId)?.service?.name ?? '—'}
+                      {services.find(s => s.serviceId === editForm.serviceId)?.service?.name ?? '—'}
                     </Text>
                   </View>
                 )}
 
-                {/* ── Price ── */}
+                {/* Price */}
                 <View style={{ marginBottom: 20 }}>
                   <Text style={labelStyle}>Price (€) *</Text>
                   <TextInput
                     style={inputStyle}
-                    value={form.price}
-                    onChangeText={(v) => setForm((f) => ({ ...f, price: v }))}
+                    value={isEditing ? editForm.price : addPrice}
+                    onChangeText={v => isEditing ? setEditForm(f => ({ ...f, price: v })) : setAddPrice(v)}
                     keyboardType="decimal-pad"
                     placeholder="0.00"
                     placeholderTextColor="#bbb"
                   />
                 </View>
 
-                {/* ── Duration ── */}
+                {/* Duration */}
                 <View style={{ marginBottom: 20 }}>
                   <Text style={labelStyle}>Duration (minutes) *</Text>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
-                    {DURATIONS.map((d) => (
-                      <TouchableOpacity
-                        key={d}
-                        onPress={() => setForm((f) => ({ ...f, durationMinutes: d }))}
-                        style={{
-                          paddingHorizontal: 16,
-                          paddingVertical: 8,
-                          borderRadius: 20,
-                          backgroundColor: form.durationMinutes === d ? darkBrown : lightBeige,
-                          borderWidth: 1.5,
-                          borderColor: form.durationMinutes === d ? darkBrown : beige,
-                        }}
-                      >
-                        <Text
+                    {DURATIONS.map(d => {
+                      const active = isEditing ? editForm.durationMinutes === d : addDuration === d;
+                      return (
+                        <TouchableOpacity
+                          key={d}
+                          onPress={() => isEditing ? setEditForm(f => ({ ...f, durationMinutes: d })) : setAddDuration(d)}
                           style={{
-                            fontFamily: 'Philosopher-Bold',
-                            fontSize: 13,
-                            color: form.durationMinutes === d ? white : darkBrown,
+                            paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
+                            backgroundColor: active ? darkBrown : lightBeige,
+                            borderWidth: 1.5, borderColor: active ? darkBrown : beige,
                           }}
                         >
-                          {d}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 13, color: active ? white : darkBrown }}>
+                            {d}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
 
-                {/* ── Active toggle ── */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                  <Text style={labelStyle}>Active</Text>
-                  <Switch
-                    value={form.isAvailable}
-                    onValueChange={(v) => setForm((f) => ({ ...f, isAvailable: v }))}
-                    trackColor={{ false: beige, true: darkBrown }}
-                    thumbColor={white}
-                  />
-                </View>
+                {/* Active toggle — edit only */}
+                {isEditing && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+                    <Text style={labelStyle}>Active</Text>
+                    <Switch
+                      value={editForm.isAvailable}
+                      onValueChange={v => setEditForm(f => ({ ...f, isAvailable: v }))}
+                      trackColor={{ false: beige, true: darkBrown }}
+                      thumbColor={white}
+                    />
+                  </View>
+                )}
+              </ScrollView>
 
-                {/* ── Save button ── */}
+              {/* Save button */}
+              <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: insets.bottom + 16, borderTopWidth: 1, borderTopColor: beige, backgroundColor: white }}>
                 <TouchableOpacity
+                  activeOpacity={0.8}
                   onPress={handleSave}
                   disabled={saving}
-                  style={{
-                    backgroundColor: darkBrown,
-                    borderRadius: 12,
-                    paddingVertical: 16,
-                    alignItems: 'center',
-                    marginBottom: 8,
-                  }}
+                  style={{ backgroundColor: darkBrown, borderRadius: 12, paddingVertical: 16, alignItems: 'center' }}
                 >
-                  {saving ? (
-                    <ActivityIndicator color={white} />
-                  ) : (
-                    <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: white }}>
-                      {isEditing ? 'Save Changes' : 'Add Service'}
-                    </Text>
-                  )}
+                  {saving
+                    ? <ActivityIndicator color={white} />
+                    : <Text style={{ fontFamily: 'Philosopher-Bold', fontSize: 16, color: white }}>
+                        {isEditing ? 'Save Changes' : 'Add Service'}
+                      </Text>
+                  }
                 </TouchableOpacity>
-              </ScrollView>
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -547,27 +505,3 @@ export default function ProviderServicesScreen() {
     </SafeAreaView>
   );
 }
-
-// ─── Shared styles ────────────────────────────────────────────────────────────
-const darkBrownColor = '#423120';
-const beigeColor = '#D7C3A7';
-
-const labelStyle = {
-  fontFamily: 'Philosopher-Bold' as const,
-  fontSize: 13,
-  color: '#888',
-  textTransform: 'uppercase' as const,
-  letterSpacing: 0.5,
-  marginBottom: 6,
-};
-
-const inputStyle = {
-  borderWidth: 1.5,
-  borderColor: beigeColor,
-  borderRadius: 10,
-  paddingHorizontal: 14,
-  paddingVertical: 10,
-  fontFamily: 'Philosopher-Regular' as const,
-  fontSize: 15,
-  color: darkBrownColor,
-};

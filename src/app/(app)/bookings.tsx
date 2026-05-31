@@ -20,7 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { API_ENDPOINTS } from "../../../config/constants";
 import { router, useLocalSearchParams } from "expo-router";
 import Header from "../components/Header";
-import { useUser } from "@clerk/clerk-expo";
+import { useUser, useAuth } from "@clerk/clerk-expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const beige = "#D9C7AF";
@@ -82,6 +82,7 @@ export default function BookingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [salonNames, setSalonNames] = useState<Record<string, string>>({});
   const { user } = useUser();
+  const { getToken } = useAuth();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ view?: string }>();
 
@@ -126,7 +127,8 @@ export default function BookingsScreen() {
       console.log("User ID:", userId);
       console.log("User Email:", userEmail);
 
-      const data = await getBookings(undefined, userId, userEmail);
+      const token = await getToken();
+      const data = await getBookings(token ?? undefined, userId, userEmail);
       console.log("Bookings data received:", data);
       setBookings(data);
 
